@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useLocation } from 'react-router';
+import { Link, useLocation } from 'react-router-dom'; // Changed from "react-router"
 import {
   LayoutDashboard,
   ShoppingCart,
@@ -76,7 +76,16 @@ const navigationItems: NavItem[] = [
     label: 'Administração',
     icon: Settings,
     path: '/administration',
-    permission: UserPermissions.SETTINGS_VIEW
+    permission: UserPermissions.SETTINGS_VIEW,
+    children: [
+      { id: 'admin-company', label: 'Dados da Empresa', icon: Building2, path: '/administration/company-settings', permission: UserPermissions.SETTINGS_VIEW },
+      { id: 'admin-parameters', label: 'Parâmetros do Sistema', icon: Printer, path: '/administration/system-parameters', permission: UserPermissions.SETTINGS_VIEW },
+      { id: 'admin-users', label: 'Gestão de Usuários', icon: UserCheck, path: '/administration/users-management', permission: UserPermissions.USERS_VIEW },
+      { id: 'admin-payment-methods', label: 'Meios de Pagamento', icon: CreditCard, path: '/administration/payment-methods', permission: UserPermissions.SECTION_PAYMENT_METHODS },
+      { id: 'admin-product-structure', label: 'Estrutura de Produtos', icon: Package, path: '/administration/product-structure', permission: UserPermissions.SECTION_BRANDS_CATEGORIES },
+      { id: 'admin-warranty-stock', label: 'Garantias e Estoque', icon: Clock, path: '/administration/warranty-stock', permission: UserPermissions.SECTION_WARRANTY_STOCK },
+      { id: 'admin-audit', label: 'Auditoria do Sistema', icon: History, path: '/administration/audit', permission: UserPermissions.AUDIT_VIEW },
+    ]
   }
 ];
 
@@ -84,7 +93,7 @@ export default function Sidebar() {
   const location = useLocation();
   const { user, logout, hasPermission } = useAuth();
   const { theme, toggleTheme } = useTheme();
-  const [expandedItems, setExpandedItems] = useState<string[]>(['inventory', 'admin']);
+  const [expandedItems, setExpandedItems] = useState<string[]>(['admin']); // Keep admin expanded by default
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
 
@@ -101,7 +110,7 @@ export default function Sidebar() {
       return null;
     }
 
-    const isActive = item.path === location.pathname;
+    const isActive = item.path === location.pathname || (item.children && item.children.some(child => location.pathname.startsWith(child.path || '')));
     const isExpanded = expandedItems.includes(item.id);
     const hasChildren = item.children && item.children.length > 0;
 
