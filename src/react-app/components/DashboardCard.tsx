@@ -1,0 +1,146 @@
+import { ReactNode, useState } from 'react';
+import { TrendingUp, TrendingDown, Settings, EyeOff, X } from 'lucide-react';
+import { useTheme } from '@/react-app/hooks/useTheme';
+
+interface DashboardCardProps {
+  title: string;
+  value: string;
+  icon: ReactNode;
+  trend?: number;
+  subtitle?: string;
+  id: string;
+  isVisible?: boolean;
+  customColor?: string;
+  onVisibilityChange?: (id: string, visible: boolean) => void;
+  onColorChange?: (id: string, color: string) => void;
+}
+
+const colorOptions = [
+  { name: 'Azul', value: 'from-blue-500 to-blue-600', bg: 'bg-blue-500' },
+  { name: 'Verde', value: 'from-green-500 to-green-600', bg: 'bg-green-500' },
+  { name: 'Roxo', value: 'from-purple-500 to-purple-600', bg: 'bg-purple-500' },
+  { name: 'Laranja', value: 'from-orange-500 to-orange-600', bg: 'bg-orange-500' },
+  { name: 'Rosa', value: 'from-pink-500 to-pink-600', bg: 'bg-pink-500' },
+  { name: 'Vermelho', value: 'from-red-500 to-red-600', bg: 'bg-red-500' },
+  { name: 'Índigo', value: 'from-indigo-500 to-indigo-600', bg: 'bg-indigo-500' },
+  { name: 'Amarelo', value: 'from-yellow-500 to-yellow-600', bg: 'bg-yellow-500' },
+];
+
+export default function DashboardCard({ 
+  title, 
+  value, 
+  icon, 
+  trend, 
+  subtitle, 
+  id,
+  isVisible = true,
+  customColor = 'from-blue-500 to-blue-600',
+  onVisibilityChange,
+  onColorChange
+}: DashboardCardProps) {
+  const { theme } = useTheme();
+  const [showCustomization, setShowCustomization] = useState(false);
+  const isPositive = trend && trend > 0;
+  const isNegative = trend && trend < 0;
+
+  if (!isVisible) return null;
+
+  return (
+    <div className={`rounded-xl shadow-lg p-6 hover:shadow-xl transition-all duration-200 relative group ${
+      theme === 'dark' 
+        ? `bg-gradient-to-br ${customColor} text-white` 
+        : `bg-gradient-to-br ${customColor} text-white`
+    }`}>
+      {/* Customization Button */}
+      <button
+        onClick={() => setShowCustomization(!showCustomization)}
+        className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-1 hover:bg-white/20 rounded-lg"
+        title="Personalizar card"
+      >
+        <Settings size={16} />
+      </button>
+
+      {/* Customization Panel */}
+      {showCustomization && (
+        <div className={`absolute top-12 right-3 p-4 rounded-lg shadow-xl z-10 min-w-48 ${
+          theme === 'dark' ? 'bg-slate-800 border border-slate-700' : 'bg-white border border-slate-200'
+        }`}>
+          <div className="flex items-center justify-between mb-3">
+            <h4 className={`text-sm font-medium ${
+              theme === 'dark' ? 'text-white' : 'text-slate-800'
+            }`}>
+              Personalizar
+            </h4>
+            <button
+              onClick={() => setShowCustomization(false)}
+              className={`p-1 hover:bg-slate-100 rounded ${
+                theme === 'dark' ? 'hover:bg-slate-700 text-slate-300' : 'text-slate-600'
+              }`}
+            >
+              <X size={14} />
+            </button>
+          </div>
+
+          {/* Visibility Toggle */}
+          <div className="mb-3">
+            <button
+              onClick={() => onVisibilityChange?.(id, false)}
+              className={`flex items-center w-full p-2 text-sm rounded-lg transition-colors ${
+                theme === 'dark' 
+                  ? 'hover:bg-slate-700 text-slate-300' 
+                  : 'hover:bg-slate-100 text-slate-700'
+              }`}
+            >
+              <EyeOff size={14} className="mr-2" />
+              Ocultar card
+            </button>
+          </div>
+
+          {/* Color Options */}
+          <div>
+            <p className={`text-xs font-medium mb-2 ${
+              theme === 'dark' ? 'text-slate-300' : 'text-slate-600'
+            }`}>
+              Cor do card:
+            </p>
+            <div className="grid grid-cols-4 gap-2">
+              {colorOptions.map((color) => (
+                <button
+                  key={color.value}
+                  onClick={() => {
+                    onColorChange?.(id, color.value);
+                    setShowCustomization(false);
+                  }}
+                  className={`w-6 h-6 rounded-lg ${color.bg} hover:scale-110 transition-transform ${
+                    customColor === color.value ? 'ring-2 ring-white ring-offset-2' : ''
+                  }`}
+                  title={color.name}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="flex items-center justify-between mb-4">
+        <div className="p-3 bg-white/20 rounded-lg backdrop-blur-sm">
+          {icon}
+        </div>
+        {trend !== undefined && (
+          <div className={`flex items-center text-sm ${isPositive ? 'text-green-100' : isNegative ? 'text-red-100' : 'text-white/80'}`}>
+            {isPositive && <TrendingUp size={16} className="mr-1" />}
+            {isNegative && <TrendingDown size={16} className="mr-1" />}
+            {Math.abs(trend)}%
+          </div>
+        )}
+      </div>
+      <div>
+        <h3 className="text-2xl font-bold mb-1">{value}</h3>
+        <p className="text-white/90 text-sm">{title}</p>
+        {subtitle && (
+          <p className="text-xs text-white/80 mt-1">{subtitle}</p>
+        )}
+      </div>
+    </div>
+  );
+}
