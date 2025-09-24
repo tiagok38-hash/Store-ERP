@@ -1,4 +1,4 @@
-import SystemParameters from '@/react-app/components/admin/SystemParameters';
+import ReceiptSettingsSection from '@/react-app/components/admin/ReceiptSettingsSection';
 import { useTheme } from '@/react-app/hooks/useTheme';
 import { Printer } from 'lucide-react';
 
@@ -24,7 +24,7 @@ export default function SystemParametersPage() {
       <div className={`rounded-xl shadow-lg p-6 ${
         theme === 'dark' ? 'bg-slate-800' : 'bg-white'
       }`}>
-        <SystemParameters />
+        <ReceiptSettingsSection />
       </div>
     </div>
   );

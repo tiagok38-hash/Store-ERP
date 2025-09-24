@@ -1,4 +1,4 @@
-import CompanySettings from '@/react-app/components/admin/CompanySettings';
+import CompanyInfoSection from '@/react-app/components/admin/CompanyInfoSection';
 import { useTheme } from '@/react-app/hooks/useTheme';
 import { Building2 } from 'lucide-react';
 
@@ -24,7 +24,7 @@ export default function CompanySettingsPage() {
       <div className={`rounded-xl shadow-lg p-6 ${
         theme === 'dark' ? 'bg-slate-800' : 'bg-white'
       }`}>
-        <CompanySettings />
+        <CompanyInfoSection />
       </div>
     </div>
   );
