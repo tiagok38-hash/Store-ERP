@@ -1,7 +1,10 @@
 // Utilidades para formatação de moeda brasileira
 
 // Formatar número para formato brasileiro (1.234,56)
-export const formatCurrencyBR = (value: number): string => {
+export const formatCurrencyBR = (value: number | null | undefined): string => {
+  if (value === null || value === undefined) {
+    return '0,00'; // Retorna '0,00' se o valor for nulo ou indefinido
+  }
   return value.toLocaleString('pt-BR', { 
     minimumFractionDigits: 2, 
     maximumFractionDigits: 2 
@@ -9,7 +12,7 @@ export const formatCurrencyBR = (value: number): string => {
 };
 
 // Formatar valor para exibição com R$
-export const formatCurrencyDisplay = (value: number): string => {
+export const formatCurrencyDisplay = (value: number | null | undefined): string => {
   return `R$ ${formatCurrencyBR(value)}`;
 };
 
