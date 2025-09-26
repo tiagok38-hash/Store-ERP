@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { X, CheckCircle, Package } from 'lucide-react';
-import { formatCurrencyInput, parseCurrencyBR } from '@/react-app/utils/currency';
+import { formatCurrencyInput, parseCurrencyBR, formatCurrencyBR } from '@/react-app/utils/currency';
 
 interface PurchaseItem {
   id: string;
@@ -133,14 +133,6 @@ export default function FinalizePurchaseModal({
     }
     
     onClose();
-  };
-
-  // Função para formatar valores no padrão brasileiro para exibição
-  const formatCurrencyDisplay = (value: number): string => {
-    return value.toLocaleString('pt-BR', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    });
   };
 
   if (!isOpen || !purchase) return null;
@@ -280,7 +272,7 @@ export default function FinalizePurchaseModal({
                       </td>
                       <td className="border border-slate-300 px-1 py-2">
                         <div className="text-xs text-slate-700 bg-slate-100 px-1 py-1 rounded text-center">
-                          R$ {formatCurrencyDisplay(item.costPrice)}
+                          R$ {formatCurrencyBR(item.costPrice)}
                         </div>
                       </td>
                       <td className="border border-slate-300 px-1 py-2">
@@ -297,15 +289,21 @@ export default function FinalizePurchaseModal({
                       </td>
                       <td className="border border-slate-300 px-1 py-2">
                         <div className="text-xs text-green-600 bg-green-50 px-1 py-1 rounded text-center">
-                          {unit.markup === null ? '-' : `R$ ${formatCurrencyDisplay(item.costPrice + (item.costPrice * (unit.markup || 0) / 100))}`}
+                          {unit.markup === null ? '-' : `R$ ${formatCurrencyBR(item.costPrice + (item.costPrice * (unit.markup || 0) / 100))}`}
                         </div>
                       </td>
                       <td className="border border-slate-300 px-1 py-2 bg-red-50">
                         <input
                           type="text"
-                          value={unit.salePrice ? formatCurrencyInput(unit.salePrice.toString()) : ''}
+                          value={unit.salePrice ? formatCurrencyBR(unit.salePrice) : ''}
                           onChange={(e) => {
-                            const numericValue = parseCurrencyBR(e.target.value);
+                            let inputValue = e.target.value;
+                            // Remove todos os caracteres que não são dígitos ou uma vírgula
+                            inputValue = inputValue.replace(/[^0-9,]/g, '');
+                            // Substitui a vírgula por ponto para parseFloat
+                            inputValue = inputValue.replace(',', '.');
+                            
+                            const numericValue = parseFloat(inputValue) || 0;
                             updateItemUnit(item.id, unitIndex, 'salePrice', numericValue);
                           }}
                           className="w-full px-1 py-1 text-xs border border-red-300 rounded focus:ring-1 focus:ring-red-400 focus:border-red-400 bg-white"
