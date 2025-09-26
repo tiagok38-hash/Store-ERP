@@ -249,7 +249,20 @@ export default function PurchaseModal({
       setSelectedColor(editingPurchase.selectedColor || '');
       setSelectedDescription(editingPurchase.selectedDescription || '');
       setProductVariations(editingPurchase.productVariations || []);
-      setItems(editingPurchase.items || []);
+
+      // Inicializa items corretamente, calculando totalPrice para itens existentes
+      const initializedItems = editingPurchase.items.map((item: any) => {
+        const quantity = item.quantity || 0;
+        const finalPrice = item.finalPrice || 0;
+        return {
+          ...item,
+          quantity: quantity,
+          costPrice: item.costPrice || 0,
+          finalPrice: finalPrice,
+          totalPrice: finalPrice * quantity, // Calcula totalPrice para itens existentes
+        };
+      });
+      setItems(initializedItems);
       setAdditionalCost(editingPurchase.additionalCost || 0);
     } else {
       // Resetar formulário para nova compra
@@ -262,7 +275,7 @@ export default function PurchaseModal({
       setProductType('apple');
       setSelectedSupplier('');
       setSupplierSearchTerm('');
-      setSelectedBrand('1');
+      setSelectedBrand('1'); // Default to Apple brand ID
       setSelectedCategory('');
       setSelectedModel('');
       setSelectedStorage('');
@@ -327,7 +340,7 @@ export default function PurchaseModal({
     }
 
     const costPrice = parseCurrencyBR(currentItem.costPrice);
-    const additionalCost = parseCurrencyBR(currentItem.additionalCost);
+    const itemSpecificAdditionalCost = parseCurrencyBR(currentItem.additionalCost); // Renomeado para clareza
     const quantity = currentItem.quantity;
 
     if (costPrice <= 0) {
@@ -335,7 +348,8 @@ export default function PurchaseModal({
       return;
     }
 
-    const totalPrice = (costPrice + additionalCost) * quantity;
+    const finalPrice = costPrice + itemSpecificAdditionalCost; // Preço final unitário
+    const totalPrice = finalPrice * quantity; // Total para esta linha de item
 
     const hasImeiSerial = hasImeiSn === 'sim';
 
@@ -344,7 +358,7 @@ export default function PurchaseModal({
       description,
       quantity,
       costPrice,
-      finalPrice: costPrice + additionalCost,
+      finalPrice, // Usar o finalPrice calculado
       totalPrice,
       condition: currentItem.condition,
       location: currentItem.location,
