@@ -233,7 +233,6 @@ export default function EnhancedSalesModal({ isOpen, onClose }: EnhancedSalesMod
 
   const handleSellerSelect = (seller: Seller) => {
     setSelectedSeller(seller);
-    // Removido setSellerSearchTerm(seller.name);
   };
 
   const addToCart = (unit: InventoryUnit) => {
@@ -334,14 +333,13 @@ export default function EnhancedSalesModal({ isOpen, onClose }: EnhancedSalesMod
   };
 
   const addPaymentMethod = (type: PaymentMethod['type'] = 'money') => {
-    const remaining = getRemainingAmount();
     setPaymentMethods(prev => [...prev, { 
       type, 
-      amount: remaining > 0 ? remaining : 0,
+      amount: 0, // Initialize amount to 0 for user input
       installments: 1,
       withInterest: false,
       interestRate: 0,
-      installmentValue: remaining > 0 ? remaining : 0,
+      installmentValue: 0,
       taxesAmount: 0
     }]);
   };
@@ -778,7 +776,7 @@ export default function EnhancedSalesModal({ isOpen, onClose }: EnhancedSalesMod
                 <button onClick={() => addPaymentMethod('money')} className="px-2.5 py-1.5 bg-green-500 text-white rounded-lg text-xs flex items-center hover:bg-green-600"><DollarSign size={14} className="mr-1" /> Dinheiro</button>
                 <button onClick={() => addPaymentMethod('debit')} className="px-2.5 py-1.5 bg-purple-500 text-white rounded-lg text-xs flex items-center hover:bg-purple-600"><CreditCard size={14} className="mr-1" /> Débito</button>
                 <button onClick={() => addPaymentMethod('credit')} className="px-2.5 py-1.5 bg-orange-500 text-white rounded-lg text-xs flex items-center hover:bg-orange-600"><CreditCard size={14} className="mr-1" /> Crédito</button>
-                <button onClick={() => addPaymentMethod('trade_in')} className="px-2.5 py-1.5 bg-indigo-500 text-white rounded-lg text-xs flex items-center hover:bg-indigo-600"><RefreshCw size={14} className="mr-1" /> Troca</button>
+                <button onClick={() => addPaymentMethod('trade_in')} className="px-2.5 py-1.5 bg-indigo-500 text-white rounded-lg text-xs flex items-center hover:bg-indigo-600"><RefreshCw size={14} className="mr-1" /> Aparelho na Troca</button>
                 <button onClick={() => addPaymentMethod('crediario')} className="px-2.5 py-1.5 bg-red-500 text-white rounded-lg text-xs flex items-center hover:bg-red-600"><Building2 size={14} className="mr-1" /> Crediário</button>
               </div>
 
@@ -854,7 +852,7 @@ export default function EnhancedSalesModal({ isOpen, onClose }: EnhancedSalesMod
                               type="text"
                               value={formatCurrencyInput(method.amount.toString())}
                               onChange={(e) => updatePaymentMethod(index, 'amount', e.target.value)}
-                              className={`w-20 px-1.5 py-0.5 border rounded text-xs text-right ${
+                              className={`w-24 px-2 py-1 border rounded text-sm text-right ${
                                 theme === 'dark' ? 'bg-slate-600 border-slate-500 text-white' : 'bg-white border-slate-300 text-slate-900'
                               }`}
                             />
@@ -864,7 +862,7 @@ export default function EnhancedSalesModal({ isOpen, onClose }: EnhancedSalesMod
                               onClick={() => removePaymentMethod(index)}
                               className="text-red-500 hover:text-red-700 p-1 rounded"
                             >
-                              <X size={14} />
+                              <X size={16} />
                             </button>
                           </td>
                         </tr>
@@ -876,18 +874,18 @@ export default function EnhancedSalesModal({ isOpen, onClose }: EnhancedSalesMod
             </div>
 
             {/* Termo de Garantia e Observações - Agrupados */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-              <div className={`rounded-lg p-3 ${theme === 'dark' ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
-                <h3 className={`text-base font-semibold mb-3 flex items-center ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>
-                  <ShieldCheck className="mr-2 text-green-600" size={18} />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+              <div className={`rounded-lg p-4 ${theme === 'dark' ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
+                <h3 className={`text-lg font-semibold mb-4 flex items-center ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>
+                  <ShieldCheck className="mr-2 text-green-600" size={20} />
                   Termo de Garantia
                 </h3>
-                <div className="mb-3">
+                <div className="mb-4">
                   <div className="relative">
                     <select
                       value={selectedWarrantyTerm}
                       onChange={(e) => setSelectedWarrantyTerm(e.target.value)}
-                      className={`w-full px-2 py-1.5 border rounded-lg text-xs ${
+                      className={`w-full px-3 py-2 border rounded-lg ${
                         theme === 'dark' ? 'bg-slate-600 border-slate-500 text-white' : 'bg-white border-slate-300 text-slate-900'
                       }`}
                     >
@@ -895,21 +893,21 @@ export default function EnhancedSalesModal({ isOpen, onClose }: EnhancedSalesMod
                         <option key={term.id} value={term.name}>{term.name}</option>
                       ))}
                     </select>
-                    <Info className={`absolute right-2 top-1/2 transform -translate-y-1/2 ${theme === 'dark' ? 'text-slate-400' : 'text-slate-500'}`} size={16} />
+                    <Info className={`absolute right-3 top-1/2 transform -translate-y-1/2 ${theme === 'dark' ? 'text-slate-400' : 'text-slate-500'}`} size={20} />
                   </div>
                 </div>
               </div>
 
-              <div className={`rounded-lg p-3 ${theme === 'dark' ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
-                <h3 className={`text-base font-semibold mb-3 flex items-center ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>
-                  <FileText className="mr-2 text-blue-600" size={18} />
+              <div className={`rounded-lg p-4 ${theme === 'dark' ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
+                <h3 className={`text-lg font-semibold mb-4 flex items-center ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>
+                  <FileText className="mr-2 text-blue-600" size={20} />
                   Observações
                 </h3>
                 <div>
                   <textarea
                     value={observations}
                     onChange={(e) => setObservations(e.target.value)}
-                    className={`w-full px-2 py-1.5 border rounded-lg text-xs ${
+                    className={`w-full px-3 py-2 border rounded-lg ${
                       theme === 'dark' ? 'bg-slate-600 border-slate-500 text-white' : 'bg-white border-slate-300 text-slate-900'
                     }`}
                     rows={3}
@@ -923,16 +921,16 @@ export default function EnhancedSalesModal({ isOpen, onClose }: EnhancedSalesMod
             <button
               onClick={handleSale}
               disabled={cart.length === 0 || getRemainingAmount() > 0.01}
-              className="w-full bg-gradient-to-r from-green-500 to-green-600 text-white px-3 py-2.5 rounded-lg hover:shadow-lg transition-all duration-200 font-bold text-base disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+              className="w-full bg-gradient-to-r from-green-500 to-green-600 text-white px-4 py-3 rounded-lg hover:shadow-lg transition-all duration-200 font-bold text-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
             >
               {getRemainingAmount() > 0.01 ? (
                 <>
-                  <Calculator className="mr-2" size={18} />
+                  <Calculator className="mr-2" size={20} />
                   Faltam R$ {formatCurrencyBR(getRemainingAmount())}
                 </>
               ) : (
                 <>
-                  <Check className="mr-2" size={18} />
+                  <Check className="mr-2" size={20} />
                   Finalizar Venda
                 </>
               )}

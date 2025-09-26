@@ -242,60 +242,62 @@ export default function PurchaseModal({
 
   // Efeito para inicializar o formulário quando editingPurchase muda
   useEffect(() => {
-    if (editingPurchase) {
-      setFormData({
-        supplierId: editingPurchase.supplierId || '',
-        purchaseDate: editingPurchase.purchaseDate || new Date().toISOString().split('T')[0],
-        invoiceNumber: editingPurchase.invoiceNumber || '',
-        observations: editingPurchase.observations || ''
-      });
-      setProductType(editingPurchase.productType || 'apple');
-      setSelectedSupplier(editingPurchase.supplierId || '');
-      setSupplierSearchTerm(mockSuppliers.find(s => s.id === editingPurchase.supplierId)?.name || '');
-      setSelectedBrand(editingPurchase.selectedBrand || (editingPurchase.productType === 'apple' ? '1' : ''));
-      setSelectedCategory(editingPurchase.selectedCategory || '');
-      setSelectedModel(editingPurchase.selectedModel || '');
-      setSelectedStorage(editingPurchase.selectedStorage || '');
-      setSelectedColor(editingPurchase.selectedColor || '');
-      setSelectedDescription(editingPurchase.selectedDescription || '');
-      setProductVariations(editingPurchase.productVariations || []);
+    if (isOpen) { // Only reset if modal is opening
+      if (editingPurchase) {
+        setFormData({
+          supplierId: editingPurchase.supplierId || '',
+          purchaseDate: editingPurchase.purchaseDate || new Date().toISOString().split('T')[0],
+          invoiceNumber: editingPurchase.invoiceNumber || '',
+          observations: editingPurchase.observations || ''
+        });
+        setProductType(editingPurchase.productType || 'apple');
+        setSelectedSupplier(editingPurchase.supplierId || '');
+        setSupplierSearchTerm(mockSuppliers.find(s => s.id === editingPurchase.supplierId)?.name || '');
+        setSelectedBrand(editingPurchase.selectedBrand || (editingPurchase.productType === 'apple' ? '1' : ''));
+        setSelectedCategory(editingPurchase.selectedCategory || '');
+        setSelectedModel(editingPurchase.selectedModel || '');
+        setSelectedStorage(editingPurchase.selectedStorage || '');
+        setSelectedColor(editingPurchase.selectedColor || '');
+        setSelectedDescription(editingPurchase.selectedDescription || '');
+        setProductVariations(editingPurchase.productVariations || []);
 
-      // Inicializa items corretamente, calculando totalPrice para itens existentes
-      const initializedItems = editingPurchase.items.map((item: any) => {
-        const quantity = item.quantity || 0;
-        const finalPrice = item.finalPrice || 0;
-        return {
-          ...item,
-          quantity: quantity,
-          costPrice: item.costPrice || 0,
-          finalPrice: finalPrice,
-          totalPrice: finalPrice * quantity, // Calcula totalPrice para itens existentes
-        };
-      });
-      setItems(initializedItems);
-      setAdditionalCost(editingPurchase.additionalCost || 0);
-    } else {
-      // Resetar formulário para nova compra
-      setFormData({
-        supplierId: '',
-        purchaseDate: new Date().toISOString().split('T')[0],
-        invoiceNumber: '',
-        observations: ''
-      });
-      setProductType('apple');
-      setSelectedSupplier('');
-      setSupplierSearchTerm('');
-      setSelectedBrand('1'); // Default to Apple brand ID
-      setSelectedCategory('');
-      setSelectedModel('');
-      setSelectedStorage('');
-      setSelectedColor('');
-      setSelectedDescription('');
-      setProductVariations([]);
-      setItems([]);
-      setAdditionalCost(0);
+        // Inicializa items corretamente, calculando totalPrice para itens existentes
+        const initializedItems = editingPurchase.items.map((item: any) => {
+          const quantity = item.quantity || 0;
+          const finalPrice = item.finalPrice || 0;
+          return {
+            ...item,
+            quantity: quantity,
+            costPrice: item.costPrice || 0,
+            finalPrice: finalPrice,
+            totalPrice: finalPrice * quantity, // Calcula totalPrice para itens existentes
+          };
+        });
+        setItems(initializedItems);
+        setAdditionalCost(editingPurchase.additionalCost || 0);
+      } else {
+        // Resetar formulário para nova compra
+        setFormData({
+          supplierId: '',
+          purchaseDate: new Date().toISOString().split('T')[0],
+          invoiceNumber: '',
+          observations: ''
+        });
+        setProductType('apple');
+        setSelectedSupplier('');
+        setSupplierSearchTerm('');
+        setSelectedBrand('1'); // Default to Apple brand ID
+        setSelectedCategory('');
+        setSelectedModel('');
+        setSelectedStorage('');
+        setSelectedColor('');
+        setSelectedDescription('');
+        setProductVariations([]);
+        setItems([]);
+        setAdditionalCost(0);
+      }
     }
-  }, [editingPurchase]);
+  }, [isOpen, editingPurchase]);
 
 
   const filteredSuppliers = mockSuppliers.filter(supplier => 
@@ -381,7 +383,7 @@ export default function PurchaseModal({
 
     // Se for trade-in, passa o valor para o componente pai
     if (isTradeIn && onTradeInValue) {
-      onTradeInValue(costPrice);
+      // This logic is now moved to handleSubmit to ensure all items are accounted for
     }
   };
 
@@ -448,6 +450,11 @@ export default function PurchaseModal({
     // Callback para salvar a compra
     if (onPurchaseSaved) {
       onPurchaseSaved(purchaseData);
+    }
+
+    // Se for trade-in, passa o valor total da compra para o componente pai
+    if (isTradeIn && onTradeInValue) {
+      onTradeInValue(total); // Passa o valor total da compra de trade-in
     }
     
     showSuccess(
