@@ -30,6 +30,7 @@ import ProductConfirmModal from '@/react-app/components/ProductConfirmModal';
 import PurchaseModal from '@/react-app/components/PurchaseModal';
 import CustomerModal from '@/react-app/components/CustomerModal';
 import ProductModal from '@/react-app/components/ProductModal';
+import PaymentInputModal from '@/react-app/components/PaymentInputModal'; // Import the new modal
 
 interface InventoryUnit {
   id: string;
@@ -189,6 +190,12 @@ export default function EnhancedSalesModal({ isOpen, onClose }: EnhancedSalesMod
   const [availableInventory, setAvailableInventory] = useState<InventoryUnit[]>(mockInventoryUnits);
   const [isAnimatingOut, setIsAnimatingOut] = useState(false);
 
+  // State for PaymentInputModal
+  const [isPaymentInputModalOpen, setIsPaymentInputModalOpen] = useState(false);
+  const [currentPaymentMethodData, setCurrentPaymentMethodData] = useState<PaymentMethod | null>(null);
+  const [editingPaymentMethodIndex, setEditingPaymentMethodIndex] = useState<number | null>(null);
+
+
   const handleClose = () => {
     setIsAnimatingOut(true);
     setTimeout(() => {
@@ -332,9 +339,13 @@ export default function EnhancedSalesModal({ isOpen, onClose }: EnhancedSalesMod
   };
 
   const addPaymentMethod = (type: PaymentMethod['type'] = 'money') => {
-    console.log(`Attempting to add payment method: ${type}`); // Log para depuração
-    const initialAmount = type === 'trade_in' ? 0 : getRemainingAmount(); // Pre-fill with remaining amount
-    setPaymentMethods(prev => [...prev, { 
+    if (type === 'trade_in') {
+      setIsTradeInModalOpen(true);
+      return;
+    }
+
+    const initialAmount = getRemainingAmount();
+    setCurrentPaymentMethodData({ 
       type, 
       amount: initialAmount, 
       installments: 1,
@@ -342,49 +353,30 @@ export default function EnhancedSalesModal({ isOpen, onClose }: EnhancedSalesMod
       interestRate: 0,
       installmentValue: 0,
       taxesAmount: 0
-    }]);
-    if (type === 'trade_in') {
-      setIsTradeInModalOpen(true);
-      console.log('setIsTradeInModalOpen(true) called'); // Log para depuração
-    }
+    });
+    setEditingPaymentMethodIndex(null); // Indicate new payment method
+    setIsPaymentInputModalOpen(true);
   };
 
-  const updatePaymentMethod = (index: number, field: keyof PaymentMethod, value: any) => {
-    const newMethods = [...paymentMethods];
-    let updatedMethod = { ...newMethods[index], [field]: value };
-
-    if (field === 'amount') {
-      updatedMethod.amount = parseCurrencyBR(value.toString());
-    }
-
-    // No need to open modal here, it's handled by addPaymentMethod
-    // if (field === 'type' && value === 'trade_in') {
-    //   setIsTradeInModalOpen(true);
-    //   updatedMethod.amount = 0; // Reset amount for trade_in until value is returned from modal
-    // }
-
-    // Recalculate interest and installment value for credit cards
-    if (updatedMethod.type === 'credit' && updatedMethod.installments && updatedMethod.amount) {
-      const baseAmount = updatedMethod.amount;
-      let totalAmountWithInterest = baseAmount;
-      let currentInterestRate = (interestRates[updatedMethod.installments as keyof typeof interestRates] || 0);
-
-      if (updatedMethod.withInterest && updatedMethod.installments > 3) {
-        totalAmountWithInterest = baseAmount * (1 + currentInterestRate / 100);
-      } else {
-        currentInterestRate = 0; // No interest if not explicitly enabled or <= 3 installments
-      }
-      updatedMethod.interestRate = currentInterestRate;
-      updatedMethod.installmentValue = totalAmountWithInterest / updatedMethod.installments;
-      updatedMethod.taxesAmount = calculatePaymentTaxes(updatedMethod, baseAmount); // Base tax on original amount
+  const handlePaymentAmountConfirm = (data: PaymentMethod) => {
+    if (editingPaymentMethodIndex !== null) {
+      // Update existing payment method
+      setPaymentMethods(prev => prev.map((method, index) => 
+        index === editingPaymentMethodIndex ? data : method
+      ));
     } else {
-      updatedMethod.interestRate = 0;
-      updatedMethod.installmentValue = updatedMethod.amount;
-      updatedMethod.taxesAmount = calculatePaymentTaxes(updatedMethod, updatedMethod.amount);
+      // Add new payment method
+      setPaymentMethods(prev => [...prev, data]);
     }
-    
-    newMethods[index] = updatedMethod;
-    setPaymentMethods(newMethods);
+    setIsPaymentInputModalOpen(false);
+    setCurrentPaymentMethodData(null);
+    setEditingPaymentMethodIndex(null);
+  };
+
+  const editPaymentMethod = (index: number) => {
+    setCurrentPaymentMethodData(paymentMethods[index]);
+    setEditingPaymentMethodIndex(index);
+    setIsPaymentInputModalOpen(true);
   };
 
   const removePaymentMethod = (index: number) => {
@@ -484,6 +476,10 @@ export default function EnhancedSalesModal({ isOpen, onClose }: EnhancedSalesMod
   };
 
   if (!isOpen && !isAnimatingOut) return null;
+
+  const totalSaleWithTaxes = getCartTotal() + getTotalPaymentTaxes();
+  const totalPaid = getTotalPayments();
+  const balance = totalSaleWithTaxes - totalPaid;
 
   return (
     <>
@@ -853,14 +849,14 @@ export default function EnhancedSalesModal({ isOpen, onClose }: EnhancedSalesMod
                             )}
                           </td>
                           <td className="py-1.5 px-2 text-right">
-                            <input
-                              type="text"
-                              value={formatCurrencyInput(method.amount.toString())}
-                              onChange={(e) => updatePaymentMethod(index, 'amount', e.target.value)}
-                              className={`w-24 px-2 py-0.5 border rounded text-xs text-right ${
-                                theme === 'dark' ? 'bg-slate-600 border-slate-500 text-white' : 'bg-white border-slate-300 text-slate-900'
+                            <button
+                              onClick={() => editPaymentMethod(index)}
+                              className={`px-2 py-0.5 border rounded text-xs text-right ${
+                                theme === 'dark' ? 'bg-slate-600 border-slate-500 text-white hover:bg-slate-500' : 'bg-white border-slate-300 text-slate-900 hover:bg-slate-100'
                               }`}
-                            />
+                            >
+                              R$ {formatCurrencyBR(method.amount)}
+                            </button>
                           </td>
                           <td className="py-1.5 px-2 text-center">
                             <button
@@ -875,6 +871,30 @@ export default function EnhancedSalesModal({ isOpen, onClose }: EnhancedSalesMod
                     )}
                   </tbody>
                 </table>
+              </div>
+            </div>
+
+            {/* Balance / Remaining / Overpaid */}
+            <div className={`rounded-lg p-3 mb-4 ${
+              balance > 0.01 ? 'bg-red-100 dark:bg-red-900/50 border border-red-300' :
+              balance < -0.01 ? 'bg-yellow-100 dark:bg-yellow-900/50 border border-yellow-300' :
+              'bg-green-100 dark:bg-green-900/50 border border-green-300'
+            }`}>
+              <div className="flex justify-between items-center">
+                <span className={`text-lg font-bold ${
+                  balance > 0.01 ? 'text-red-800 dark:text-red-300' :
+                  balance < -0.01 ? 'text-yellow-800 dark:text-yellow-300' :
+                  'text-green-800 dark:text-green-300'
+                }`}>
+                  {balance > 0.01 ? 'Faltam:' : balance < -0.01 ? 'Troco:' : 'Total Pago:'}
+                </span>
+                <span className={`text-xl font-bold ${
+                  balance > 0.01 ? 'text-red-800 dark:text-red-300' :
+                  balance < -0.01 ? 'text-yellow-800 dark:text-yellow-300' :
+                  'text-green-800 dark:text-green-300'
+                }`}>
+                  R$ {formatCurrencyBR(Math.abs(balance))}
+                </span>
               </div>
             </div>
 
@@ -925,13 +945,18 @@ export default function EnhancedSalesModal({ isOpen, onClose }: EnhancedSalesMod
             {/* Finalize Button */}
             <button
               onClick={handleSale}
-              disabled={cart.length === 0 || getRemainingAmount() > 0.01}
+              disabled={cart.length === 0 || Math.abs(balance) > 0.01} // Disable if balance is not zero
               className="w-full bg-gradient-to-r from-green-500 to-green-600 text-white px-4 py-3 rounded-lg hover:shadow-lg transition-all duration-200 font-bold text-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
             >
-              {getRemainingAmount() > 0.01 ? (
+              {balance > 0.01 ? (
                 <>
                   <Calculator className="mr-2" size={20} />
-                  Faltam R$ {formatCurrencyBR(getRemainingAmount())}
+                  Faltam R$ {formatCurrencyBR(balance)}
+                </>
+              ) : balance < -0.01 ? (
+                <>
+                  <Calculator className="mr-2" size={20} />
+                  Troco R$ {formatCurrencyBR(Math.abs(balance))}
                 </>
               ) : (
                 <>
@@ -976,6 +1001,18 @@ export default function EnhancedSalesModal({ isOpen, onClose }: EnhancedSalesMod
         isOpen={isProductModalOpen}
         onClose={() => setIsProductModalOpen(false)}
       />
+
+      {/* Payment Input Modal */}
+      {isPaymentInputModalOpen && currentPaymentMethodData && (
+        <PaymentInputModal
+          isOpen={isPaymentInputModalOpen}
+          onClose={() => setIsPaymentInputModalOpen(false)}
+          onConfirm={handlePaymentAmountConfirm}
+          initialData={currentPaymentMethodData}
+          totalSaleAmount={totalSaleWithTaxes}
+          remainingAmount={balance > 0 ? balance : 0} // Pass only positive remaining amount
+        />
+      )}
     </>
   );
 }
