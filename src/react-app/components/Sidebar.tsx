@@ -21,7 +21,7 @@ import {
   Sun,
   Moon,
   Printer,
-  Clock // Adicionado o ícone Clock aqui
+  Clock
 } from 'lucide-react';
 import { useAuth } from '@/react-app/hooks/useAuth';
 import { useTheme } from '@/react-app/hooks/useTheme';
@@ -84,7 +84,7 @@ const navigationItems: NavItem[] = [
       { id: 'admin-parameters', label: 'Parâmetros do Sistema', icon: Printer, path: '/administration/system-parameters', permission: UserPermissions.SETTINGS_VIEW },
       { id: 'admin-users', label: 'Gestão de Usuários', icon: UserCheck, path: '/administration/users-management', permission: UserPermissions.USERS_VIEW },
       { id: 'admin-payment-methods', label: 'Meios de Pagamento', icon: CreditCard, path: '/administration/payment-methods', permission: UserPermissions.SECTION_PAYMENT_METHODS },
-      { id: 'admin-product-structure', label: 'Estrutura de Produtos', icon: Package, path: '/administration/product-structure', permission: UserPermissions.SECTION_BRANDS_CATEGORIES },
+      { id: 'admin-product-structure', label: 'Marcas e Categorias', icon: Package, path: '/administration/product-structure', permission: UserPermissions.SECTION_BRANDS_CATEGORIES },
       { id: 'admin-warranty-stock', label: 'Garantias e Estoque', icon: Clock, path: '/administration/warranty-stock', permission: UserPermissions.SECTION_WARRANTY_STOCK },
       { id: 'admin-audit', label: 'Auditoria do Sistema', icon: History, path: '/administration/audit', permission: UserPermissions.AUDIT_VIEW },
     ]
