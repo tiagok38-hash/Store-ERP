@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 import { useTheme } from '@/react-app/hooks/useTheme';
 import { useNotification } from '@/react-app/components/NotificationSystem';
-import SalesModal from '@/react-app/components/SalesModal';
+import SalesModal from '@/react-app/components/SalesModal'; // Importa o modal de vendas correto
 import SaleActionsDropdown from '@/react-app/components/SaleActionsDropdown';
 import SaleViewModal from '@/react-app/components/SaleViewModal';
 import CardSimulatorModal from '@/react-app/components/CardSimulatorModal';
