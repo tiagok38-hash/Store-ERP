@@ -321,7 +321,8 @@ export default function EnhancedSalesModal({ isOpen, onClose }: EnhancedSalesMod
     } else if (method.type === 'credit') {
       fee = creditCardFee;
       if (method.withInterest && method.installments && method.installments > 3) {
-        fee += (interestRates[method.installments as keyof typeof interestRates] || 0);
+        let currentInterestRate = (interestRates[method.installments as keyof typeof interestRates] || 0);
+        fee += currentInterestRate;
       }
     }
     return itemAmount * (fee / 100);
@@ -932,43 +933,47 @@ export default function EnhancedSalesModal({ isOpen, onClose }: EnhancedSalesMod
               </div>
             </div>
 
-            {/* Termo de Garantia e Observações */}
-            <div className={`rounded-lg p-4 mb-6 ${theme === 'dark' ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
-              <h3 className={`text-lg font-semibold mb-4 flex items-center ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>
-                <ShieldCheck className="mr-2 text-green-600" size={20} />
-                Termo de Garantia
-              </h3>
-              <div className="mb-4">
-                <div className="relative">
-                  <select
-                    value={selectedWarrantyTerm}
-                    onChange={(e) => setSelectedWarrantyTerm(e.target.value)}
-                    className={`w-full px-3 py-2 border rounded-lg ${
-                      theme === 'dark' ? 'bg-slate-600 border-slate-500 text-white' : 'bg-white border-slate-300 text-slate-900'
-                    }`}
-                  >
-                    {mockWarrantyTerms.map(term => (
-                      <option key={term.id} value={term.name}>{term.name}</option>
-                    ))}
-                  </select>
-                  <Info className={`absolute right-3 top-1/2 transform -translate-y-1/2 ${theme === 'dark' ? 'text-slate-400' : 'text-slate-500'}`} size={20} />
+            {/* Termo de Garantia e Observações - Agrupados */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+              <div className={`rounded-lg p-4 ${theme === 'dark' ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
+                <h3 className={`text-lg font-semibold mb-4 flex items-center ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>
+                  <ShieldCheck className="mr-2 text-green-600" size={20} />
+                  Termo de Garantia
+                </h3>
+                <div className="mb-4">
+                  <div className="relative">
+                    <select
+                      value={selectedWarrantyTerm}
+                      onChange={(e) => setSelectedWarrantyTerm(e.target.value)}
+                      className={`w-full px-3 py-2 border rounded-lg ${
+                        theme === 'dark' ? 'bg-slate-600 border-slate-500 text-white' : 'bg-white border-slate-300 text-slate-900'
+                      }`}
+                    >
+                      {mockWarrantyTerms.map(term => (
+                        <option key={term.id} value={term.name}>{term.name}</option>
+                      ))}
+                    </select>
+                    <Info className={`absolute right-3 top-1/2 transform -translate-y-1/2 ${theme === 'dark' ? 'text-slate-400' : 'text-slate-500'}`} size={20} />
+                  </div>
                 </div>
               </div>
 
-              <h3 className={`text-lg font-semibold mb-4 flex items-center ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>
-                <FileText className="mr-2 text-blue-600" size={20} />
-                Observações
-              </h3>
-              <div>
-                <textarea
-                  value={observations}
-                  onChange={(e) => setObservations(e.target.value)}
-                  className={`w-full px-3 py-2 border rounded-lg ${
-                    theme === 'dark' ? 'bg-slate-600 border-slate-500 text-white' : 'bg-white border-slate-300 text-slate-900'
-                  }`}
-                  rows={3}
-                  placeholder="Observações | Visível em Recibos"
-                />
+              <div className={`rounded-lg p-4 ${theme === 'dark' ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
+                <h3 className={`text-lg font-semibold mb-4 flex items-center ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>
+                  <FileText className="mr-2 text-blue-600" size={20} />
+                  Observações
+                </h3>
+                <div>
+                  <textarea
+                    value={observations}
+                    onChange={(e) => setObservations(e.target.value)}
+                    className={`w-full px-3 py-2 border rounded-lg ${
+                      theme === 'dark' ? 'bg-slate-600 border-slate-500 text-white' : 'bg-white border-slate-300 text-slate-900'
+                    }`}
+                    rows={3}
+                    placeholder="Observações | Visível em Recibos"
+                  />
+                </div>
               </div>
             </div>
 
