@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { useLocation, useNavigate, Link } from 'react-router-dom'; // Importar useNavigate
 import {
   LayoutDashboard,
   ShoppingCart,
@@ -77,7 +77,7 @@ const navigationItems: NavItem[] = [
     id: 'admin',
     label: 'Administração',
     icon: Settings,
-    path: '/administration',
+    path: '/administration', // O item pai também tem um path
     permission: UserPermissions.SETTINGS_VIEW,
     children: [
       { id: 'admin-company', label: 'Dados da Empresa', icon: Building2, path: '/administration/company-settings', permission: UserPermissions.SETTINGS_VIEW },
@@ -93,6 +93,7 @@ const navigationItems: NavItem[] = [
 
 export default function Sidebar() {
   const location = useLocation();
+  const navigate = useNavigate(); // Usar useNavigate
   const { user, logout, hasPermission } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const [expandedItems, setExpandedItems] = useState<string[]>(['admin']); // Keep admin expanded by default
@@ -129,54 +130,50 @@ export default function Sidebar() {
           ? 'text-slate-300 hover:bg-slate-700/50 hover:text-white' 
           : 'text-slate-700 hover:bg-slate-50 hover:text-slate-900'}`;
 
-    const content = (
-      <div className={`${baseClasses} ${activeClasses}`}>
-        <ItemIcon 
-          size={20} 
-          className={`${isCollapsed ? 'mx-auto' : 'mr-3'} ${
-            isActive 
-              ? theme === 'dark' ? 'text-blue-400' : 'text-blue-600'
-              : theme === 'dark' ? 'text-white' : 'text-slate-700'
-          }`} 
-        />
-        {!isCollapsed && (
-          <>
-            <span className="font-medium flex-1">{item.label}</span>
-            {hasChildren && (
-              <button
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  toggleExpanded(item.id);
-                }}
-                className={`p-1 rounded transition-colors ${
-                  theme === 'dark' ? 'hover:bg-slate-600' : 'hover:bg-slate-200'
-                }`}
-              >
-                {isExpanded ? (
-                  <ChevronDown size={16} className={theme === 'dark' ? 'text-slate-300' : 'text-slate-500'} />
-                ) : (
-                  <ChevronRight size={16} className={theme === 'dark' ? 'text-slate-300' : 'text-slate-500'} />
-                )}
-              </button>
-            )}
-          </>
-        )}
-      </div>
-    );
+    const handleClick = (e: React.MouseEvent) => {
+      setIsMobileOpen(false); // Fechar sidebar mobile em qualquer clique
+
+      if (item.path) {
+        navigate(item.path);
+      }
+      
+      if (hasChildren) {
+        toggleExpanded(item.id);
+      }
+    };
 
     return (
       <div key={item.id}>
-        {item.path ? (
-          <Link 
-            to={item.path} 
-            onClick={() => setIsMobileOpen(false)}
-          >
-            {content}
-          </Link>
-        ) : (
-          content
-        )}
+        <button
+          onClick={handleClick}
+          className={`${baseClasses} ${activeClasses}`}
+        >
+          <ItemIcon 
+            size={20} 
+            className={`${isCollapsed ? 'mx-auto' : 'mr-3'} ${
+              isActive 
+                ? theme === 'dark' ? 'text-blue-400' : 'text-blue-600'
+                : theme === 'dark' ? 'text-white' : 'text-slate-700'
+            }`} 
+          />
+          {!isCollapsed && (
+            <>
+              <span className="font-medium flex-1">{item.label}</span>
+              {hasChildren && (
+                // Apenas o ícone de expansão, o clique é tratado pelo botão pai
+                <span className={`p-1 rounded transition-colors ${
+                  theme === 'dark' ? 'hover:bg-slate-600' : 'hover:bg-slate-200'
+                }`}>
+                  {isExpanded ? (
+                    <ChevronDown size={16} className={theme === 'dark' ? 'text-slate-300' : 'text-slate-500'} />
+                  ) : (
+                    <ChevronRight size={16} className={theme === 'dark' ? 'text-slate-300' : 'text-slate-500'} />
+                  )}
+                </span>
+              )}
+            </>
+          )}
+        </button>
         
         {hasChildren && isExpanded && !isCollapsed && (
           <div className={theme === 'dark' ? 'bg-slate-800/50' : 'bg-slate-25'}>
