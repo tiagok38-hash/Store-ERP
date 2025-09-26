@@ -172,10 +172,9 @@ export default function EnhancedSalesModal({ isOpen, onClose }: EnhancedSalesMod
   const [saleDate, setSaleDate] = useState(new Date().toISOString().split('T')[0]);
   const [customerSearchTerm, setCustomerSearchTerm] = useState('');
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
-  const [sellerSearchTerm, setSellerSearchTerm] = useState('');
+  // Removido sellerSearchTerm
   const [selectedSeller, setSelectedSeller] = useState<Seller | null>(null);
   const [leadOrigin, setLeadOrigin] = useState('');
-  // Removido productSearchType
   const [productSearchTerm, setProductSearchTerm] = useState('');
   const [cart, setCart] = useState<CartItem[]>([]);
   const [discountType, setDiscountType] = useState<'amount' | 'percentage'>('amount');
@@ -227,14 +226,6 @@ export default function EnhancedSalesModal({ isOpen, onClose }: EnhancedSalesMod
     );
   }, [customerSearchTerm]);
 
-  // Filter sellers based on search term
-  const filteredSellers = useMemo(() => {
-    const searchLower = sellerSearchTerm.toLowerCase();
-    return mockSellers.filter(seller => 
-      seller.name.toLowerCase().includes(searchLower)
-    );
-  }, [sellerSearchTerm]);
-
   const handleCustomerSelect = (customer: Customer) => {
     setSelectedCustomer(customer);
     setCustomerSearchTerm(customer.name);
@@ -242,7 +233,7 @@ export default function EnhancedSalesModal({ isOpen, onClose }: EnhancedSalesMod
 
   const handleSellerSelect = (seller: Seller) => {
     setSelectedSeller(seller);
-    setSellerSearchTerm(seller.name);
+    // Removido setSellerSearchTerm(seller.name);
   };
 
   const addToCart = (unit: InventoryUnit) => {
@@ -446,7 +437,7 @@ export default function EnhancedSalesModal({ isOpen, onClose }: EnhancedSalesMod
     setCustomerSearchTerm('');
     setPaymentMethods([]);
     setSelectedSeller(null);
-    setSellerSearchTerm('');
+    // Removido setSellerSearchTerm('');
     setLeadOrigin('');
     setProductSearchTerm('');
     setDiscountValue('');
@@ -495,43 +486,43 @@ export default function EnhancedSalesModal({ isOpen, onClose }: EnhancedSalesMod
     <>
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
         <div 
-          className={`rounded-xl shadow-2xl max-w-7xl w-full max-h-[95vh] overflow-hidden ${
+          className={`rounded-xl shadow-2xl max-w-5xl w-full max-h-[95vh] overflow-hidden ${
             theme === 'dark' ? 'bg-slate-800' : 'bg-white'
           } ${isAnimatingOut ? 'animate-modal-out' : 'animate-modal-in'}`}
         >
           {/* Header */}
-          <div className="bg-gradient-to-r from-green-600 to-green-700 text-white p-4 flex justify-between items-center rounded-t-xl">
-            <h2 className="text-2xl font-bold flex items-center">
-              <FileText className="mr-2" size={28} />
+          <div className="bg-gradient-to-r from-green-600 to-green-700 text-white p-3 flex justify-between items-center rounded-t-xl">
+            <h2 className="text-xl font-bold flex items-center">
+              <FileText className="mr-2" size={24} />
               Nova Venda
             </h2>
             <button
               onClick={handleClose}
               className="hover:bg-white/20 p-2 rounded-lg transition-colors"
             >
-              <X size={24} />
+              <X size={20} />
             </button>
           </div>
 
-          <div className="p-6 max-h-[calc(95vh-80px)] overflow-y-auto">
+          <div className="p-4 max-h-[calc(95vh-60px)] overflow-y-auto">
             {/* Dados da Venda */}
-            <div className={`rounded-lg p-4 mb-6 ${theme === 'dark' ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
-              <h3 className={`text-lg font-semibold mb-4 flex items-center ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>
-                <Edit3 className="mr-2 text-blue-600" size={20} />
+            <div className={`rounded-lg p-3 mb-4 ${theme === 'dark' ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
+              <h3 className={`text-base font-semibold mb-3 flex items-center ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>
+                <Edit3 className="mr-2 text-blue-600" size={18} />
                 Dados da venda
               </h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <div>
-                  <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-200' : 'text-slate-700'}`}>
+                  <label className={`block text-xs font-medium mb-1 ${theme === 'dark' ? 'text-slate-200' : 'text-slate-700'}`}>
                     Data da venda
                   </label>
                   <div className="relative">
-                    <Calendar className={`absolute left-3 top-1/2 transform -translate-y-1/2 ${theme === 'dark' ? 'text-slate-400' : 'text-slate-500'}`} size={20} />
+                    <Calendar className={`absolute left-2 top-1/2 transform -translate-y-1/2 ${theme === 'dark' ? 'text-slate-400' : 'text-slate-500'}`} size={16} />
                     <input
                       type="date"
                       value={saleDate}
                       onChange={(e) => setSaleDate(e.target.value)}
-                      className={`w-full pl-10 pr-4 py-2 border rounded-lg ${
+                      className={`w-full pl-8 pr-2 py-1.5 border rounded-lg text-xs ${
                         theme === 'dark' ? 'bg-slate-600 border-slate-500 text-white' : 'bg-white border-slate-300 text-slate-900'
                       }`}
                       readOnly // Data da venda é preenchida automaticamente
@@ -540,26 +531,26 @@ export default function EnhancedSalesModal({ isOpen, onClose }: EnhancedSalesMod
                 </div>
                 
                 <div>
-                  <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-200' : 'text-slate-700'}`}>
+                  <label className={`block text-xs font-medium mb-1 ${theme === 'dark' ? 'text-slate-200' : 'text-slate-700'}`}>
                     Cliente *
                   </label>
-                  <div className="flex gap-2">
+                  <div className="flex gap-1">
                     <div className="relative flex-1">
-                      <UserIcon className={`absolute left-3 top-1/2 transform -translate-y-1/2 ${theme === 'dark' ? 'text-slate-400' : 'text-slate-500'}`} size={20} />
+                      <UserIcon className={`absolute left-2 top-1/2 transform -translate-y-1/2 ${theme === 'dark' ? 'text-slate-400' : 'text-slate-500'}`} size={16} />
                       <input
                         type="text"
-                        placeholder="Buscar ou digitar nome do cliente"
+                        placeholder="Buscar ou digitar nome"
                         value={customerSearchTerm}
                         onChange={(e) => {
                           setCustomerSearchTerm(e.target.value);
                           setSelectedCustomer(null); // Clear selected customer on input change
                         }}
-                        className={`w-full pl-10 pr-4 py-2 border rounded-l-lg focus:ring-2 focus:ring-green-500 focus:border-transparent ${
+                        className={`w-full pl-8 pr-2 py-1.5 border rounded-l-lg text-xs focus:ring-2 focus:ring-green-500 focus:border-transparent ${
                           theme === 'dark' ? 'bg-slate-600 border-slate-500 text-white placeholder-slate-400' : 'bg-white border-slate-300 text-slate-900'
                         }`}
                       />
                       {customerSearchTerm && filteredCustomers.length > 0 && !selectedCustomer && (
-                        <div className={`absolute z-10 w-full mt-1 border rounded shadow-lg max-h-32 overflow-y-auto ${
+                        <div className={`absolute z-10 w-full mt-1 border rounded shadow-lg max-h-24 overflow-y-auto ${
                           theme === 'dark' ? 'bg-slate-700 border-slate-600' : 'bg-white border-slate-300'
                         } animate-dropdown-in`}>
                           {filteredCustomers.map(customer => (
@@ -567,11 +558,11 @@ export default function EnhancedSalesModal({ isOpen, onClose }: EnhancedSalesMod
                               key={customer.id}
                               type="button"
                               onClick={() => handleCustomerSelect(customer)}
-                              className={`w-full text-left px-3 py-2 transition-colors text-sm ${
+                              className={`w-full text-left px-2 py-1.5 transition-colors text-xs ${
                                 theme === 'dark' ? 'hover:bg-slate-600 text-white' : 'hover:bg-blue-50 text-slate-900'
                               }`}
                             >
-                              {customer.name} {customer.phone ? `| Cel/Tel: ${customer.phone}` : ''}
+                              {customer.name} {customer.phone ? `| ${customer.phone}` : ''}
                             </button>
                           ))}
                         </div>
@@ -579,81 +570,66 @@ export default function EnhancedSalesModal({ isOpen, onClose }: EnhancedSalesMod
                     </div>
                     <button 
                       onClick={() => setIsCustomerModalOpen(true)}
-                      className={`px-3 py-2 border-t border-r border-b rounded-r-lg ${
+                      className={`px-2 py-1.5 border-t border-r border-b rounded-r-lg text-xs ${
                         theme === 'dark' ? 'bg-slate-700 border-slate-500 text-white hover:bg-slate-600' : 'bg-slate-100 border-slate-300 text-slate-700 hover:bg-slate-200'
                       } transition-colors`} title="Adicionar novo cliente">
-                      <Plus size={16} />
+                      <Plus size={14} />
                     </button>
                   </div>
                   {selectedCustomer && (
                     <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-slate-300' : 'text-slate-600'}`}>
-                      Cliente selecionado: <span className="font-medium">{selectedCustomer.name}</span>
-                      <button onClick={() => setIsCustomerModalOpen(true)} className="ml-2 text-blue-500 hover:underline">Atualizar cadastro</button>
+                      Cliente: <span className="font-medium">{selectedCustomer.name}</span>
+                      <button onClick={() => setIsCustomerModalOpen(true)} className="ml-1 text-blue-500 hover:underline">Editar</button>
                     </p>
                   )}
                 </div>
 
                 <div>
-                  <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-200' : 'text-slate-700'}`}>
+                  <label className={`block text-xs font-medium mb-1 ${theme === 'dark' ? 'text-slate-200' : 'text-slate-700'}`}>
                     Vendedor *
                   </label>
                   <div className="relative">
-                    <UserIcon className={`absolute left-3 top-1/2 transform -translate-y-1/2 ${theme === 'dark' ? 'text-slate-400' : 'text-slate-500'}`} size={20} />
-                    <input
-                      type="text"
-                      placeholder="Buscar vendedor"
-                      value={sellerSearchTerm}
+                    <UserIcon className={`absolute left-2 top-1/2 transform -translate-y-1/2 ${theme === 'dark' ? 'text-slate-400' : 'text-slate-500'}`} size={16} />
+                    <select
+                      value={selectedSeller?.id || ''}
                       onChange={(e) => {
-                        setSellerSearchTerm(e.target.value);
-                        setSelectedSeller(null);
+                        const seller = mockSellers.find(s => s.id === e.target.value);
+                        setSelectedSeller(seller || null);
                       }}
-                      className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent ${
-                        theme === 'dark' ? 'bg-slate-600 border-slate-500 text-white placeholder-slate-400' : 'bg-white border-slate-300 text-slate-900'
+                      className={`w-full pl-8 pr-2 py-1.5 border rounded-lg text-xs focus:ring-2 focus:ring-green-500 focus:border-transparent ${
+                        theme === 'dark' ? 'bg-slate-600 border-slate-500 text-white' : 'bg-white border-slate-300 text-slate-900'
                       }`}
-                    />
-                    {sellerSearchTerm && filteredSellers.length > 0 && !selectedSeller && (
-                      <div className={`absolute z-10 w-full mt-1 border rounded shadow-lg max-h-32 overflow-y-auto ${
-                        theme === 'dark' ? 'bg-slate-700 border-slate-600' : 'bg-white border-slate-300'
-                      } animate-dropdown-in`}>
-                        {filteredSellers.map(seller => (
-                          <button
-                            key={seller.id}
-                            type="button"
-                            onClick={() => handleSellerSelect(seller)}
-                            className={`w-full text-left px-3 py-2 transition-colors text-sm ${
-                              theme === 'dark' ? 'hover:bg-slate-600 text-white' : 'hover:bg-blue-50 text-slate-900'
-                            }`}
-                          >
-                            {seller.name}
-                          </button>
-                        ))}
-                      </div>
-                    )}
+                    >
+                      <option value="">Selecionar vendedor</option>
+                      {mockSellers.map(seller => (
+                        <option key={seller.id} value={seller.id}>{seller.name}</option>
+                      ))}
+                    </select>
                   </div>
                 </div>
               </div>
             </div>
 
             {/* Produtos / Serviços */}
-            <div className={`rounded-lg p-4 mb-6 ${theme === 'dark' ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
-              <h3 className={`text-lg font-semibold mb-4 flex items-center ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>
-                <Package className="mr-2 text-purple-600" size={20} />
+            <div className={`rounded-lg p-3 mb-4 ${theme === 'dark' ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
+              <h3 className={`text-base font-semibold mb-3 flex items-center ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>
+                <Package className="mr-2 text-purple-600" size={18} />
                 Produtos / Serviços
               </h3>
-              <div className="mb-4 flex gap-2">
+              <div className="mb-3 flex gap-2">
                 <div className="relative flex-1">
-                  <Search className={`absolute left-3 top-1/2 transform -translate-y-1/2 ${theme === 'dark' ? 'text-slate-400' : 'text-slate-400'}`} size={20} />
+                  <Search className={`absolute left-2 top-1/2 transform -translate-y-1/2 ${theme === 'dark' ? 'text-slate-400' : 'text-slate-400'}`} size={16} />
                   <input
                     type="text"
-                    placeholder="Digite o Produto, IMEI ou Serial Number"
+                    placeholder="Buscar Produto, IMEI ou Serial Number"
                     value={productSearchTerm}
                     onChange={(e) => setProductSearchTerm(e.target.value)}
-                    className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent ${
+                    className={`w-full pl-8 pr-2 py-1.5 border rounded-lg text-xs focus:ring-2 focus:ring-purple-500 focus:border-transparent ${
                       theme === 'dark' ? 'bg-slate-600 border-slate-500 text-white placeholder-slate-400' : 'bg-white border-slate-300 text-slate-900'
                     }`}
                   />
                   {productSearchTerm && filteredAvailableUnits.length > 0 && (
-                    <div className={`absolute z-10 w-full mt-1 border rounded shadow-lg max-h-48 overflow-y-auto ${
+                    <div className={`absolute z-10 w-full mt-1 border rounded shadow-lg max-h-24 overflow-y-auto ${
                       theme === 'dark' ? 'bg-slate-700 border-slate-600' : 'bg-white border-slate-300'
                     } animate-dropdown-in`}>
                       {filteredAvailableUnits.map(unit => (
@@ -661,7 +637,7 @@ export default function EnhancedSalesModal({ isOpen, onClose }: EnhancedSalesMod
                           key={unit.id}
                           type="button"
                           onClick={() => handleProductUnitSelect(unit)}
-                          className={`w-full text-left px-3 py-2 transition-colors text-sm ${
+                          className={`w-full text-left px-2 py-1.5 transition-colors text-xs ${
                             theme === 'dark' ? 'hover:bg-slate-600 text-white' : 'hover:bg-blue-50 text-slate-900'
                           }`}
                         >
@@ -673,10 +649,10 @@ export default function EnhancedSalesModal({ isOpen, onClose }: EnhancedSalesMod
                 </div>
                 <button 
                   onClick={() => setIsProductModalOpen(true)}
-                  className={`px-3 py-2 border rounded-lg ${
+                  className={`px-2 py-1.5 border rounded-lg text-xs ${
                     theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white hover:bg-slate-600' : 'bg-slate-100 border-slate-300 text-slate-700 hover:bg-slate-200'
                   } transition-colors`} title="Adicionar novo produto (definição)">
-                  <Plus size={16} />
+                  <Plus size={14} />
                 </button>
               </div>
 
@@ -685,24 +661,24 @@ export default function EnhancedSalesModal({ isOpen, onClose }: EnhancedSalesMod
                 <table className="w-full">
                   <thead>
                     <tr className={`border-b ${theme === 'dark' ? 'border-slate-600' : 'border-slate-200'}`}>
-                      <th className={`text-left py-2 px-3 font-medium text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>Produto(s)</th>
-                      <th className={`text-center py-2 px-3 font-medium text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>Qtd.</th>
-                      <th className={`text-right py-2 px-3 font-medium text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>Valor</th>
-                      <th className={`text-center py-2 px-3 font-medium text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>Ações</th>
+                      <th className={`text-left py-1.5 px-2 font-medium text-xs ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>Produto(s)</th>
+                      <th className={`text-center py-1.5 px-2 font-medium text-xs ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>Qtd.</th>
+                      <th className={`text-right py-1.5 px-2 font-medium text-xs ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>Valor</th>
+                      <th className={`text-center py-1.5 px-2 font-medium text-xs ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>Ações</th>
                     </tr>
                   </thead>
                   <tbody>
                     {cart.length === 0 ? (
                       <tr>
-                        <td colSpan={4} className={`text-center py-8 ${theme === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>
+                        <td colSpan={4} className={`text-center py-6 text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>
                           Nenhum item no carrinho
                         </td>
                       </tr>
                     ) : (
                       cart.map((item) => (
                         <tr key={item.id} className={`border-b ${theme === 'dark' ? 'border-slate-600' : 'border-slate-100'}`}>
-                          <td className="py-2 px-3">
-                            <div className={`font-medium text-sm ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>
+                          <td className="py-1.5 px-2">
+                            <div className={`font-medium text-xs ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>
                               {item.productSku} - {item.productDescription}
                             </div>
                             {(item.imei1 || item.serialNumber) && (
@@ -714,18 +690,18 @@ export default function EnhancedSalesModal({ isOpen, onClose }: EnhancedSalesMod
                               {item.condition}, {item.warrantyTerm}
                             </div>
                           </td>
-                          <td className={`py-2 px-3 text-center text-sm ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>
+                          <td className={`py-1.5 px-2 text-center text-xs ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>
                             {item.quantity}
                           </td>
-                          <td className={`py-2 px-3 text-right font-medium text-sm ${theme === 'dark' ? 'text-green-400' : 'text-green-600'}`}>
+                          <td className={`py-1.5 px-2 text-right font-medium text-xs ${theme === 'dark' ? 'text-green-400' : 'text-green-600'}`}>
                             R$ {formatCurrencyBR(item.salePrice)}
                           </td>
-                          <td className="py-2 px-3 text-center">
+                          <td className="py-1.5 px-2 text-center">
                             <button
                               onClick={() => removeFromCart(item.id)}
                               className="text-red-500 hover:text-red-700 p-1 rounded"
                             >
-                              <X size={16} />
+                              <X size={14} />
                             </button>
                           </td>
                         </tr>
@@ -737,15 +713,15 @@ export default function EnhancedSalesModal({ isOpen, onClose }: EnhancedSalesMod
             </div>
 
             {/* Resumo */}
-            <div className={`rounded-lg p-4 mb-6 ${theme === 'dark' ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
-              <h3 className={`text-lg font-semibold mb-4 flex items-center ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>
-                <Calculator className="mr-2 text-orange-600" size={20} />
+            <div className={`rounded-lg p-3 mb-4 ${theme === 'dark' ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
+              <h3 className={`text-base font-semibold mb-3 flex items-center ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>
+                <Calculator className="mr-2 text-orange-600" size={18} />
                 Resumo
               </h3>
-              <div className="space-y-3">
+              <div className="space-y-2">
                 <div className="flex justify-between items-center">
                   <span className={`text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-slate-600'}`}>Subtotal</span>
-                  <span className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>
+                  <span className={`font-medium text-sm ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>
                     R$ {formatCurrencyBR(getCartSubtotal())}
                   </span>
                 </div>
@@ -755,7 +731,7 @@ export default function EnhancedSalesModal({ isOpen, onClose }: EnhancedSalesMod
                     <select
                       value={discountType}
                       onChange={(e) => setDiscountType(e.target.value as 'amount' | 'percentage')}
-                      className={`px-2 py-1 border rounded text-sm ${
+                      className={`px-1.5 py-1 border rounded text-xs ${
                         theme === 'dark' ? 'bg-slate-600 border-slate-500 text-white' : 'bg-white border-slate-300 text-slate-900'
                       }`}
                     >
@@ -766,25 +742,25 @@ export default function EnhancedSalesModal({ isOpen, onClose }: EnhancedSalesMod
                       type="text"
                       value={discountValue}
                       onChange={(e) => setDiscountValue(formatCurrencyInput(e.target.value))}
-                      className={`w-24 px-2 py-1 border rounded text-sm ${
+                      className={`w-20 px-1.5 py-1 border rounded text-xs ${
                         theme === 'dark' ? 'bg-slate-600 border-slate-500 text-white' : 'bg-white border-slate-300 text-slate-900'
                       }`}
                       placeholder="0,00"
                     />
-                    <span className={`font-medium ${theme === 'dark' ? 'text-red-400' : 'text-red-600'}`}>
+                    <span className={`font-medium text-sm ${theme === 'dark' ? 'text-red-400' : 'text-red-600'}`}>
                       - R$ {formatCurrencyBR(getDiscountAmount())}
                     </span>
                   </div>
                 </div>
-                <div className={`border-t pt-3 flex justify-between items-center ${theme === 'dark' ? 'border-slate-600' : 'border-slate-200'}`}>
-                  <span className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>Total</span>
-                  <span className={`text-2xl font-bold ${theme === 'dark' ? 'text-green-400' : 'text-green-600'}`}>
+                <div className={`border-t pt-2 flex justify-between items-center ${theme === 'dark' ? 'border-slate-600' : 'border-slate-200'}`}>
+                  <span className={`text-lg font-bold ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>Total</span>
+                  <span className={`text-xl font-bold ${theme === 'dark' ? 'text-green-400' : 'text-green-600'}`}>
                     R$ {formatCurrencyBR(getCartTotal())}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className={`text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-slate-600'}`}>Total em taxas de cartão</span>
-                  <span className={`font-medium ${theme === 'dark' ? 'text-red-400' : 'text-red-600'}`}>
+                  <span className={`font-medium text-sm ${theme === 'dark' ? 'text-red-400' : 'text-red-600'}`}>
                     R$ {formatCurrencyBR(getTotalPaymentTaxes())}
                   </span>
                 </div>
@@ -792,63 +768,59 @@ export default function EnhancedSalesModal({ isOpen, onClose }: EnhancedSalesMod
             </div>
 
             {/* Formas de Pagamento */}
-            <div className={`rounded-lg p-4 mb-6 ${theme === 'dark' ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
-              <h3 className={`text-lg font-semibold mb-4 flex items-center ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>
-                <CreditCard className="mr-2 text-blue-600" size={20} />
+            <div className={`rounded-lg p-3 mb-4 ${theme === 'dark' ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
+              <h3 className={`text-base font-semibold mb-3 flex items-center ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>
+                <CreditCard className="mr-2 text-blue-600" size={18} />
                 Formas de Pagamento
               </h3>
-              <div className="flex flex-wrap gap-2 mb-4">
-                <button onClick={() => addPaymentMethod('pix')} className="px-3 py-2 bg-blue-500 text-white rounded-lg text-sm flex items-center hover:bg-blue-600"><Smartphone size={16} className="mr-1" /> Pix</button>
-                <button onClick={() => addPaymentMethod('money')} className="px-3 py-2 bg-green-500 text-white rounded-lg text-sm flex items-center hover:bg-green-600"><DollarSign size={16} className="mr-1" /> Dinheiro</button>
-                <button onClick={() => addPaymentMethod('debit')} className="px-3 py-2 bg-purple-500 text-white rounded-lg text-sm flex items-center hover:bg-purple-600"><CreditCard size={16} className="mr-1" /> Débito</button>
-                <button onClick={() => addPaymentMethod('credit')} className="px-3 py-2 bg-orange-500 text-white rounded-lg text-sm flex items-center hover:bg-orange-600"><CreditCard size={16} className="mr-1" /> Crédito</button>
-                <button onClick={() => addPaymentMethod('trade_in')} className="px-3 py-2 bg-indigo-500 text-white rounded-lg text-sm flex items-center hover:bg-indigo-600"><RefreshCw size={16} className="mr-1" /> Aparelho na Troca</button>
-                <button onClick={() => addPaymentMethod('crediario')} className="px-3 py-2 bg-red-500 text-white rounded-lg text-sm flex items-center hover:bg-red-600"><Building2 size={16} className="mr-1" /> Crediário</button>
+              <div className="flex flex-wrap gap-2 mb-3">
+                <button onClick={() => addPaymentMethod('pix')} className="px-2.5 py-1.5 bg-blue-500 text-white rounded-lg text-xs flex items-center hover:bg-blue-600"><Smartphone size={14} className="mr-1" /> Pix</button>
+                <button onClick={() => addPaymentMethod('money')} className="px-2.5 py-1.5 bg-green-500 text-white rounded-lg text-xs flex items-center hover:bg-green-600"><DollarSign size={14} className="mr-1" /> Dinheiro</button>
+                <button onClick={() => addPaymentMethod('debit')} className="px-2.5 py-1.5 bg-purple-500 text-white rounded-lg text-xs flex items-center hover:bg-purple-600"><CreditCard size={14} className="mr-1" /> Débito</button>
+                <button onClick={() => addPaymentMethod('credit')} className="px-2.5 py-1.5 bg-orange-500 text-white rounded-lg text-xs flex items-center hover:bg-orange-600"><CreditCard size={14} className="mr-1" /> Crédito</button>
+                <button onClick={() => addPaymentMethod('trade_in')} className="px-2.5 py-1.5 bg-indigo-500 text-white rounded-lg text-xs flex items-center hover:bg-indigo-600"><RefreshCw size={14} className="mr-1" /> Troca</button>
+                <button onClick={() => addPaymentMethod('crediario')} className="px-2.5 py-1.5 bg-red-500 text-white rounded-lg text-xs flex items-center hover:bg-red-600"><Building2 size={14} className="mr-1" /> Crediário</button>
               </div>
 
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
                     <tr className={`border-b ${theme === 'dark' ? 'border-slate-600' : 'border-slate-200'}`}>
-                      <th className={`text-left py-2 px-3 font-medium text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>Forma de pagamento</th>
-                      <th className={`text-left py-2 px-3 font-medium text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>Tipo</th>
-                      <th className={`text-left py-2 px-3 font-medium text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>Taxas</th>
-                      <th className={`text-left py-2 px-3 font-medium text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>Parcelas</th>
-                      <th className={`text-right py-2 px-3 font-medium text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>Valor</th>
-                      <th className={`text-center py-2 px-3 font-medium text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>Ações</th>
+                      <th className={`text-left py-1.5 px-2 font-medium text-xs ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>Forma</th>
+                      <th className={`text-left py-1.5 px-2 font-medium text-xs ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>Taxas</th>
+                      <th className={`text-left py-1.5 px-2 font-medium text-xs ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>Parcelas</th>
+                      <th className={`text-right py-1.5 px-2 font-medium text-xs ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>Valor</th>
+                      <th className={`text-center py-1.5 px-2 font-medium text-xs ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>Ações</th>
                     </tr>
                   </thead>
                   <tbody>
                     {paymentMethods.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className={`text-center py-8 ${theme === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>
+                        <td colSpan={5} className={`text-center py-6 text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>
                           Nenhuma forma de pagamento adicionada
                         </td>
                       </tr>
                     ) : (
                       paymentMethods.map((method, index) => (
                         <tr key={index} className={`border-b ${theme === 'dark' ? 'border-slate-600' : 'border-slate-100'}`}>
-                          <td className="py-2 px-3">
-                            <div className="flex items-center gap-2">
+                          <td className="py-1.5 px-2">
+                            <div className="flex items-center gap-1">
                               {getPaymentMethodIcon(method.type)}
-                              <span className={`text-sm ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>
+                              <span className={`text-xs ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>
                                 {getPaymentMethodLabel(method.type)}
                               </span>
                             </div>
                           </td>
-                          <td className={`py-2 px-3 text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-slate-600'}`}>
-                            {method.type === 'credit' ? 'CJ' : '-'} {/* CJ for Juros Compostos */}
+                          <td className={`py-1.5 px-2 text-xs ${theme === 'dark' ? 'text-slate-300' : 'text-slate-600'}`}>
+                            {method.taxesAmount ? `${(method.taxesAmount / method.amount * 100).toFixed(2)}%` : '-'}
                           </td>
-                          <td className={`py-2 px-3 text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-slate-600'}`}>
-                            {method.taxesAmount ? `${(method.taxesAmount / method.amount * 100).toFixed(2)}% - R$ ${formatCurrencyBR(method.taxesAmount)}` : '-'}
-                          </td>
-                          <td className="py-2 px-3">
+                          <td className="py-1.5 px-2">
                             {method.type === 'credit' || method.type === 'crediario' ? (
                               <div className="flex items-center gap-1">
                                 <select
                                   value={method.installments || 1}
                                   onChange={(e) => updatePaymentMethod(index, 'installments', parseInt(e.target.value))}
-                                  className={`px-2 py-1 border rounded text-xs ${
+                                  className={`px-1 py-0.5 border rounded text-xs ${
                                     theme === 'dark' ? 'bg-slate-600 border-slate-500 text-white' : 'bg-white border-slate-300 text-slate-900'
                                   }`}
                                 >
@@ -869,7 +841,7 @@ export default function EnhancedSalesModal({ isOpen, onClose }: EnhancedSalesMod
                                 )}
                                 {method.installmentValue && (
                                   <span className={`text-xs ${theme === 'dark' ? 'text-slate-300' : 'text-slate-600'}`}>
-                                    de R$ {formatCurrencyBR(method.installmentValue)}
+                                    R$ {formatCurrencyBR(method.installmentValue)}
                                   </span>
                                 )}
                               </div>
@@ -877,22 +849,22 @@ export default function EnhancedSalesModal({ isOpen, onClose }: EnhancedSalesMod
                               '-'
                             )}
                           </td>
-                          <td className="py-2 px-3 text-right">
+                          <td className="py-1.5 px-2 text-right">
                             <input
                               type="text"
                               value={formatCurrencyInput(method.amount.toString())}
                               onChange={(e) => updatePaymentMethod(index, 'amount', e.target.value)}
-                              className={`w-24 px-2 py-1 border rounded text-sm text-right ${
+                              className={`w-20 px-1.5 py-0.5 border rounded text-xs text-right ${
                                 theme === 'dark' ? 'bg-slate-600 border-slate-500 text-white' : 'bg-white border-slate-300 text-slate-900'
                               }`}
                             />
                           </td>
-                          <td className="py-2 px-3 text-center">
+                          <td className="py-1.5 px-2 text-center">
                             <button
                               onClick={() => removePaymentMethod(index)}
                               className="text-red-500 hover:text-red-700 p-1 rounded"
                             >
-                              <X size={16} />
+                              <X size={14} />
                             </button>
                           </td>
                         </tr>
@@ -904,18 +876,18 @@ export default function EnhancedSalesModal({ isOpen, onClose }: EnhancedSalesMod
             </div>
 
             {/* Termo de Garantia e Observações - Agrupados */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-              <div className={`rounded-lg p-4 ${theme === 'dark' ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
-                <h3 className={`text-lg font-semibold mb-4 flex items-center ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>
-                  <ShieldCheck className="mr-2 text-green-600" size={20} />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              <div className={`rounded-lg p-3 ${theme === 'dark' ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
+                <h3 className={`text-base font-semibold mb-3 flex items-center ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>
+                  <ShieldCheck className="mr-2 text-green-600" size={18} />
                   Termo de Garantia
                 </h3>
-                <div className="mb-4">
+                <div className="mb-3">
                   <div className="relative">
                     <select
                       value={selectedWarrantyTerm}
                       onChange={(e) => setSelectedWarrantyTerm(e.target.value)}
-                      className={`w-full px-3 py-2 border rounded-lg ${
+                      className={`w-full px-2 py-1.5 border rounded-lg text-xs ${
                         theme === 'dark' ? 'bg-slate-600 border-slate-500 text-white' : 'bg-white border-slate-300 text-slate-900'
                       }`}
                     >
@@ -923,21 +895,21 @@ export default function EnhancedSalesModal({ isOpen, onClose }: EnhancedSalesMod
                         <option key={term.id} value={term.name}>{term.name}</option>
                       ))}
                     </select>
-                    <Info className={`absolute right-3 top-1/2 transform -translate-y-1/2 ${theme === 'dark' ? 'text-slate-400' : 'text-slate-500'}`} size={20} />
+                    <Info className={`absolute right-2 top-1/2 transform -translate-y-1/2 ${theme === 'dark' ? 'text-slate-400' : 'text-slate-500'}`} size={16} />
                   </div>
                 </div>
               </div>
 
-              <div className={`rounded-lg p-4 ${theme === 'dark' ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
-                <h3 className={`text-lg font-semibold mb-4 flex items-center ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>
-                  <FileText className="mr-2 text-blue-600" size={20} />
+              <div className={`rounded-lg p-3 ${theme === 'dark' ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
+                <h3 className={`text-base font-semibold mb-3 flex items-center ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>
+                  <FileText className="mr-2 text-blue-600" size={18} />
                   Observações
                 </h3>
                 <div>
                   <textarea
                     value={observations}
                     onChange={(e) => setObservations(e.target.value)}
-                    className={`w-full px-3 py-2 border rounded-lg ${
+                    className={`w-full px-2 py-1.5 border rounded-lg text-xs ${
                       theme === 'dark' ? 'bg-slate-600 border-slate-500 text-white' : 'bg-white border-slate-300 text-slate-900'
                     }`}
                     rows={3}
@@ -951,16 +923,16 @@ export default function EnhancedSalesModal({ isOpen, onClose }: EnhancedSalesMod
             <button
               onClick={handleSale}
               disabled={cart.length === 0 || getRemainingAmount() > 0.01}
-              className="w-full bg-gradient-to-r from-green-500 to-green-600 text-white px-4 py-3 rounded-lg hover:shadow-lg transition-all duration-200 font-bold text-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+              className="w-full bg-gradient-to-r from-green-500 to-green-600 text-white px-3 py-2.5 rounded-lg hover:shadow-lg transition-all duration-200 font-bold text-base disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
             >
               {getRemainingAmount() > 0.01 ? (
                 <>
-                  <Calculator className="mr-2" size={20} />
+                  <Calculator className="mr-2" size={18} />
                   Faltam R$ {formatCurrencyBR(getRemainingAmount())}
                 </>
               ) : (
                 <>
-                  <Check className="mr-2" size={20} />
+                  <Check className="mr-2" size={18} />
                   Finalizar Venda
                 </>
               )}
