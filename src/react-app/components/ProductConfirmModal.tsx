@@ -122,7 +122,7 @@ export default function ProductConfirmModal({
                 <span className={`text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-slate-600'}`}>
                   Preço: 
                   <span className={`font-bold ml-1 ${theme === 'dark' ? 'text-green-400' : 'text-green-600'}`}>
-                    R$ {product?.price.toFixed(2)}
+                    R$ {(product?.price || 0).toFixed(2)}
                   </span>
                 </span>
               </div>
