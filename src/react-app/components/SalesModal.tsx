@@ -20,7 +20,8 @@ import {
   Info,
   Percent,
   Calendar,
-  Edit3
+  Edit3,
+  Package // Garantindo que Package esteja explicitamente importado
 } from 'lucide-react';
 import { useNotification } from '@/react-app/components/NotificationSystem';
 import { useTheme } from '@/react-app/hooks/useTheme';
@@ -320,8 +321,7 @@ export default function EnhancedSalesModal({ isOpen, onClose }: EnhancedSalesMod
     } else if (method.type === 'credit') {
       fee = creditCardFee;
       if (method.withInterest && method.installments && method.installments > 3) {
-        currentInterestRate = (interestRates[method.installments as keyof typeof interestRates] || 0);
-        fee += currentInterestRate;
+        fee += (interestRates[method.installments as keyof typeof interestRates] || 0);
       }
     }
     return itemAmount * (fee / 100);
