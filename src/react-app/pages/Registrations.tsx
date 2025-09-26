@@ -17,21 +17,30 @@ import {
 } from 'lucide-react';
 import CustomerModal from '@/react-app/components/CustomerModal';
 import CustomerHistoryModal from '@/react-app/components/CustomerHistoryModal';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/react-app/hooks/useAuth';
+import { useNotification } from '@/react-app/components/NotificationSystem';
+import DeleteConfirmModal from '@/react-app/components/DeleteConfirmModal';
 
 interface Customer {
   id: string;
+  user_id: string;
   name: string;
   email?: string;
   phone?: string;
   document?: string;
   address?: string;
+  house_number?: string;
+  neighborhood?: string;
   city?: string;
   state?: string;
-  zipCode?: string;
+  zip_code?: string;
   observations?: string;
-  isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+  date_of_birth?: string;
+  // Campos mockados, serão removidos ou calculados
   lastPurchase?: string;
   totalPurchases: number;
   purchaseCount: number;
@@ -39,23 +48,29 @@ interface Customer {
 
 interface Supplier {
   id: string;
+  user_id: string;
   name: string;
   email?: string;
   phone?: string;
   document?: string;
   address?: string;
+  house_number?: string;
+  neighborhood?: string;
   city?: string;
   state?: string;
-  zipCode?: string;
+  zip_code?: string;
   observations?: string;
-  isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+  // Campos mockados, serão removidos ou calculados
   lastPurchase?: string;
   totalPurchases: number;
 }
 
 export default function Registrations() {
+  const { user } = useAuth();
+  const { showSuccess, showError } = useNotification();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -65,166 +80,148 @@ export default function Registrations() {
   const [selectedData, setSelectedData] = useState<any>(null);
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
   const [selectedCustomerForHistory, setSelectedCustomerForHistory] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<any>(null);
 
   useEffect(() => {
-    // Mock data for customers
-    setCustomers([
-      {
-        id: '1',
-        name: 'João Silva',
-        email: 'joao.silva@email.com',
-        phone: '(11) 99999-1234',
-        document: '123.456.789-00',
-        address: 'Rua das Flores, 123',
-        city: 'São Paulo',
-        state: 'SP',
-        zipCode: '01234-567',
-        observations: 'Cliente preferencial',
-        isActive: true,
-        createdAt: '2025-01-15',
-        updatedAt: '2025-09-07',
-        lastPurchase: '2025-09-05',
-        totalPurchases: 15240.50,
-        purchaseCount: 8
-      },
-      {
-        id: '2',
-        name: 'Maria Santos',
-        email: 'maria.santos@email.com',
-        phone: '(11) 88888-5678',
-        document: '987.654.321-00',
-        address: 'Av. Principal, 456',
-        city: 'São Paulo',
-        state: 'SP',
-        zipCode: '02345-678',
-        isActive: true,
-        createdAt: '2025-02-20',
-        updatedAt: '2025-08-28',
-        lastPurchase: '2025-08-28',
-        totalPurchases: 8750.00,
-        purchaseCount: 5
-      },
-      {
-        id: '3',
-        name: 'Pedro Costa',
-        email: 'pedro.costa@email.com',
-        phone: '(11) 77777-9012',
-        document: '456.789.123-00',
-        address: 'Rua do Comércio, 789',
-        city: 'São Paulo',
-        state: 'SP',
-        zipCode: '03456-789',
-        observations: 'Sempre paga em dinheiro',
-        isActive: true,
-        createdAt: '2024-11-10',
-        updatedAt: '2025-09-01',
-        lastPurchase: '2025-09-01',
-        totalPurchases: 3200.00,
-        purchaseCount: 2
-      },
-      {
-        id: '4',
-        name: 'Ana Oliveira',
-        phone: '(11) 66666-3456',
-        document: '789.123.456-00',
-        isActive: false,
-        createdAt: '2024-08-05',
-        updatedAt: '2024-12-15',
-        lastPurchase: '2024-12-15',
-        totalPurchases: 950.00,
-        purchaseCount: 1
-      }
-    ]);
+    if (user) {
+      fetchCustomers();
+      fetchSuppliers();
+    } else {
+      setCustomers([]);
+      setSuppliers([]);
+      setIsLoading(false);
+    }
+  }, [user]);
 
-    // Mock data for suppliers
-    setSuppliers([
-      {
-        id: '1',
-        name: 'Fornecedor ABC Ltda',
-        email: 'contato@fornecedorabc.com.br',
-        phone: '(11) 1234-5678',
-        document: '12.345.678/0001-90',
-        address: 'Rua Industrial, 100',
-        city: 'São Paulo',
-        state: 'SP',
-        zipCode: '04567-890',
-        observations: 'Prazo de entrega: 5 dias úteis',
-        isActive: true,
-        createdAt: '2024-01-15',
-        updatedAt: '2025-08-20',
-        lastPurchase: '2025-08-20',
-        totalPurchases: 150000.00
-      },
-      {
-        id: '2',
-        name: 'Tech Distribuidora',
-        email: 'vendas@techdist.com.br',
-        phone: '(11) 9876-5432',
-        document: '98.765.432/0001-10',
-        address: 'Av. Tecnologia, 500',
-        city: 'São Paulo',
-        state: 'SP',
-        zipCode: '05678-901',
-        isActive: true,
-        createdAt: '2024-03-20',
-        updatedAt: '2025-07-15',
-        lastPurchase: '2025-07-15',
-        totalPurchases: 89500.00
-      },
-      {
-        id: '3',
-        name: 'Acessórios & Cia',
-        email: 'acessorios@email.com.br',
-        phone: '(11) 5555-1234',
-        document: '11.222.333/0001-44',
-        isActive: false,
-        createdAt: '2024-02-10',
-        updatedAt: '2024-06-30',
-        lastPurchase: '2024-06-30',
-        totalPurchases: 25600.00
+  const fetchCustomers = async () => {
+    setIsLoading(true);
+    const { data, error } = await supabase
+      .from('customers')
+      .select('*')
+      .eq('user_id', user?.id);
+
+    if (error) {
+      showError('Erro ao carregar clientes', error.message);
+      console.error('Error fetching customers:', error);
+    } else {
+      setCustomers(data || []);
+    }
+    setIsLoading(false);
+  };
+
+  const fetchSuppliers = async () => {
+    setIsLoading(true);
+    const { data, error } = await supabase
+      .from('suppliers')
+      .select('*')
+      .eq('user_id', user?.id);
+
+    if (error) {
+      showError('Erro ao carregar fornecedores', error.message);
+      console.error('Error fetching suppliers:', error);
+    } else {
+      setSuppliers(data || []);
+    }
+    setIsLoading(false);
+  };
+
+  const handleItemSaved = (newItem: any) => {
+    if (activeTab === 'customer') {
+      if (selectedData) {
+        setCustomers(customers.map(c => c.id === newItem.id ? newItem : c));
+      } else {
+        setCustomers([...customers, newItem]);
       }
-    ]);
-  }, []);
+    } else {
+      if (selectedData) {
+        setSuppliers(suppliers.map(s => s.id === newItem.id ? newItem : s));
+      } else {
+        setSuppliers([...suppliers, newItem]);
+      }
+    }
+    setIsAddModalOpen(false);
+    setSelectedData(null);
+  };
+
+  const openDeleteModal = (item: any) => {
+    setItemToDelete(item);
+    setIsDeleteModalOpen(true);
+  };
+
+  const deleteItem = async () => {
+    if (!itemToDelete) return;
+
+    const tableName = activeTab === 'customer' ? 'customers' : 'suppliers';
+    const { error } = await supabase
+      .from(tableName)
+      .delete()
+      .eq('id', itemToDelete.id);
+
+    if (error) {
+      showError(`Erro ao excluir ${activeTab}`, error.message);
+      console.error(`Error deleting ${tableName}:`, error);
+    } else {
+      if (activeTab === 'customer') {
+        setCustomers(customers.filter(c => c.id !== itemToDelete.id));
+      } else {
+        setSuppliers(suppliers.filter(s => s.id !== itemToDelete.id));
+      }
+      showSuccess(`${activeTab === 'customer' ? 'Cliente' : 'Fornecedor'} Excluído`, `O ${activeTab} "${itemToDelete.name}" foi excluído com sucesso.`);
+      setItemToDelete(null);
+      setIsDeleteModalOpen(false);
+    }
+  };
 
   const filteredCustomers = customers.filter(customer => {
     const matchesSearch = customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         customer.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         customer.phone?.includes(searchTerm) ||
-                         customer.document?.includes(searchTerm);
+                         (customer.email && customer.email.toLowerCase().includes(searchTerm.toLowerCase())) ||
+                         (customer.phone && customer.phone.includes(searchTerm)) ||
+                         (customer.document && customer.document.includes(searchTerm));
     const matchesStatus = filterStatus === 'all' || 
-                         (filterStatus === 'active' && customer.isActive) ||
-                         (filterStatus === 'inactive' && !customer.isActive);
+                         (filterStatus === 'active' && customer.is_active) ||
+                         (filterStatus === 'inactive' && !customer.is_active);
     return matchesSearch && matchesStatus;
   });
 
   const filteredSuppliers = suppliers.filter(supplier => {
     const matchesSearch = supplier.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         supplier.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         supplier.phone?.includes(searchTerm) ||
-                         supplier.document?.includes(searchTerm);
+                         (supplier.email && supplier.email.toLowerCase().includes(searchTerm.toLowerCase())) ||
+                         (supplier.phone && supplier.phone.includes(searchTerm)) ||
+                         (supplier.document && supplier.document.includes(searchTerm));
     const matchesStatus = filterStatus === 'all' || 
-                         (filterStatus === 'active' && supplier.isActive) ||
-                         (filterStatus === 'inactive' && !supplier.isActive);
+                         (filterStatus === 'active' && supplier.is_active) ||
+                         (filterStatus === 'inactive' && !supplier.is_active);
     return matchesSearch && matchesStatus;
   });
 
+  // Mocked summary data, will need to be calculated from Supabase in a real app
   const customerSummary = {
     total: customers.length,
-    active: customers.filter(c => c.isActive).length,
-    totalRevenue: customers.reduce((sum, c) => sum + c.totalPurchases, 0),
-    totalPurchases: customers.reduce((sum, c) => sum + c.purchaseCount, 0)
+    active: customers.filter(c => c.is_active).length,
+    totalRevenue: 0, // Needs calculation from sales
+    totalPurchases: 0 // Needs calculation from sales
   };
 
   const supplierSummary = {
     total: suppliers.length,
-    active: suppliers.filter(s => s.isActive).length,
-    totalSpent: suppliers.reduce((sum, s) => sum + s.totalPurchases, 0)
+    active: suppliers.filter(s => s.is_active).length,
+    totalSpent: 0 // Needs calculation from purchases
   };
 
   const handleViewHistory = (customer: Customer) => {
     setSelectedCustomerForHistory(customer);
     setIsHistoryModalOpen(true);
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 bg-gradient-to-br from-slate-50 to-slate-100 min-h-screen">
@@ -459,11 +456,11 @@ export default function Registrations() {
                   
                   <td className="py-2 px-3">
                     <span className={`px-1.5 py-0.5 rounded-full text-xs ${
-                      item.isActive 
+                      item.is_active 
                         ? 'bg-green-100 text-green-800' 
                         : 'bg-red-100 text-red-800'
                     }`}>
-                      {item.isActive ? 'Ativo' : 'Inativo'}
+                      {item.is_active ? 'Ativo' : 'Inativo'}
                     </span>
                   </td>
                   
@@ -496,7 +493,7 @@ export default function Registrations() {
                         <Edit size={14} className="text-green-600" />
                       </button>
                       <button
-                        onClick={() => alert(`Excluir ${activeTab === 'customer' ? 'cliente' : 'fornecedor'} ${item.id}`)}
+                        onClick={() => openDeleteModal(item)}
                         className="p-1.5 hover:bg-red-100 rounded-lg transition-colors"
                         title="Excluir"
                       >
@@ -520,6 +517,7 @@ export default function Registrations() {
         }}
         type={activeTab}
         data={selectedData}
+        onCustomerSaved={handleItemSaved}
       />
 
       {/* Customer History Modal */}
@@ -530,6 +528,16 @@ export default function Registrations() {
           setSelectedCustomerForHistory(null);
         }}
         customer={selectedCustomerForHistory}
+      />
+
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        onConfirm={deleteItem}
+        title="Confirmar Exclusão"
+        message={`Tem certeza que deseja excluir ${activeTab === 'customer' ? 'o cliente' : 'o fornecedor'} "${itemToDelete?.name}"? Esta ação não pode ser desfeita.`}
+        itemName={itemToDelete?.name}
       />
     </div>
   );

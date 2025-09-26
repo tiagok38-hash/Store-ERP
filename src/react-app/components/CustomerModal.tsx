@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   X, 
   Save, 
@@ -8,6 +8,9 @@ import {
   Building,
   Calendar
 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/react-app/hooks/useAuth';
+import { useNotification } from '@/react-app/components/NotificationSystem';
 
 interface CustomerModalProps {
   isOpen: boolean;
@@ -18,23 +21,46 @@ interface CustomerModalProps {
 }
 
 export default function CustomerModal({ isOpen, onClose, type, data, onCustomerSaved }: CustomerModalProps) {
+  const { user } = useAuth();
+  const { showSuccess, showError } = useNotification();
   const [formData, setFormData] = useState({
     name: data?.name || '',
     email: data?.email || '',
     phone: data?.phone || '',
     document: data?.document || '',
-    dateOfBirth: data?.dateOfBirth || '', // Novo campo: Data de Nascimento
+    dateOfBirth: data?.date_of_birth || '', // Usar date_of_birth do Supabase
     address: data?.address || '',
-    houseNumber: data?.houseNumber || '',
+    houseNumber: data?.house_number || '', // Usar house_number do Supabase
     neighborhood: data?.neighborhood || '',
-    city: data?.localidade || data?.city || '',
-    state: data?.uf || data?.state || '',
-    zipCode: data?.zipCode || '',
+    city: data?.city || '',
+    state: data?.state || '',
+    zipCode: data?.zip_code || '', // Usar zip_code do Supabase
     observations: data?.observations || ''
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isAnimatingOut, setIsAnimatingOut] = useState(false);
+
+  useEffect(() => {
+    // Reset form data when modal opens for a new item or when data changes for editing
+    if (isOpen) {
+      setFormData({
+        name: data?.name || '',
+        email: data?.email || '',
+        phone: data?.phone || '',
+        document: data?.document || '',
+        dateOfBirth: data?.date_of_birth || '',
+        address: data?.address || '',
+        houseNumber: data?.house_number || '',
+        neighborhood: data?.neighborhood || '',
+        city: data?.city || '',
+        state: data?.state || '',
+        zipCode: data?.zip_code || '',
+        observations: data?.observations || ''
+      });
+      setErrors({}); // Clear errors on open
+    }
+  }, [isOpen, data]);
 
   const handleClose = () => {
     setIsAnimatingOut(true);
@@ -46,8 +72,9 @@ export default function CustomerModal({ isOpen, onClose, type, data, onCustomerS
 
   const isCustomer = type === 'customer';
   const title = isCustomer ? 'Cliente' : 'Fornecedor';
+  const tableName = isCustomer ? 'customers' : 'suppliers';
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     const newErrors: Record<string, string> = {};
@@ -62,40 +89,67 @@ export default function CustomerModal({ isOpen, onClose, type, data, onCustomerS
       return;
     }
 
-    // Simular salvamento
-    const customerData = {
-      id: data?.id || Date.now().toString(),
-      name: formData.name,
-      email: formData.email,
-      phone: formData.phone,
-      document: formData.document,
-      dateOfBirth: formData.dateOfBirth, // Incluir no objeto de dados
-      address: formData.address,
-      houseNumber: formData.houseNumber,
-      neighborhood: formData.neighborhood,
-      city: formData.city,
-      state: formData.state,
-      zipCode: formData.zipCode,
-      observations: formData.observations
+    if (!user) {
+      showError('Erro', 'Usuário não autenticado.');
+      return;
+    }
+
+    const itemData = {
+      user_id: user.id,
+      name: formData.name.trim(),
+      email: formData.email.trim() || null,
+      phone: formData.phone.trim() || null,
+      document: formData.document.trim() || null,
+      date_of_birth: isCustomer ? (formData.dateOfBirth || null) : null, // Apenas para clientes
+      address: formData.address.trim() || null,
+      house_number: formData.houseNumber.trim() || null,
+      neighborhood: formData.neighborhood.trim() || null,
+      city: formData.city.trim() || null,
+      state: formData.state.trim() || null,
+      zip_code: formData.zipCode.trim() || null,
+      observations: formData.observations.trim() || null,
+      is_active: true,
     };
 
-    if (onCustomerSaved) {
-      onCustomerSaved(customerData);
+    if (data) {
+      // Update existing item
+      const { data: updatedData, error } = await supabase
+        .from(tableName)
+        .update(itemData)
+        .eq('id', data.id)
+        .select();
+
+      if (error) {
+        showError(`Erro ao atualizar ${title}`, error.message);
+        console.error(`Error updating ${tableName}:`, error);
+      } else {
+        showSuccess(`${title} Atualizado`, `O ${title} "${formData.name}" foi atualizado com sucesso.`);
+        onCustomerSaved?.(updatedData[0]); // Passar os dados atualizados
+        handleClose();
+      }
+    } else {
+      // Insert new item
+      const { data: newData, error } = await supabase
+        .from(tableName)
+        .insert(itemData)
+        .select();
+
+      if (error) {
+        showError(`Erro ao criar ${title}`, error.message);
+        console.error(`Error creating ${tableName}:`, error);
+      } else {
+        showSuccess(`${title} Criado`, `O ${title} "${formData.name}" foi criado com sucesso.`);
+        onCustomerSaved?.(newData[0]); // Passar os dados criados
+        handleClose();
+      }
     }
-    
-    alert(`${title} ${data ? 'atualizado' : 'criado'} com sucesso!`);
-    handleClose(); // Use the animated close
   };
 
   const formatDocument = (value: string) => {
-    // Remove caracteres não numéricos
     const numbers = value.replace(/\D/g, '');
-    
     if (numbers.length <= 11) {
-      // CPF: 000.000.000-00
       return numbers.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
     } else {
-      // CNPJ: 00.000.000/0000-00
       return numbers.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
     }
   };

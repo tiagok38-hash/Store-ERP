@@ -1,28 +1,28 @@
 import { useState } from 'react';
 import { Eye, EyeOff, Mail, Lock, LogIn } from 'lucide-react';
 import { useAuth } from '@/react-app/hooks/useAuth';
+import { useNotification } from '@/react-app/components/NotificationSystem'; // Importar useNotification
 
 export default function Login() {
   const { login } = useAuth();
+  const { showError } = useNotification(); // Usar o hook de notificação
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    setError('');
 
     try {
       const result = await login({ email, password });
       
       if (!result.success) {
-        setError(result.message || 'Credenciais inválidas');
+        showError('Erro de Login', result.message || 'Credenciais inválidas. Tente novamente.');
       }
     } catch (error) {
-      setError('Erro de conexão. Tente novamente.');
+      showError('Erro de Conexão', 'Não foi possível conectar ao servidor. Verifique sua internet.');
     } finally {
       setIsLoading(false);
     }
@@ -52,12 +52,6 @@ export default function Login() {
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-6">
-          {error && (
-            <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm">
-              {error}
-            </div>
-          )}
-
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Email

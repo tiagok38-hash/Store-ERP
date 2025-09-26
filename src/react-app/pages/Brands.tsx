@@ -10,18 +10,22 @@ import {
 } from 'lucide-react';
 import DeleteConfirmModal from '@/react-app/components/DeleteConfirmModal';
 import { useNotification } from '@/react-app/components/NotificationSystem';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/react-app/hooks/useAuth';
 
 interface Brand {
   id: string;
+  user_id: string; // Adicionado para RLS
   name: string;
   description?: string;
-  isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
 }
 
 export default function Brands() {
-  const { showSuccess } = useNotification();
+  const { showSuccess, showError } = useNotification();
+  const { user } = useAuth(); // Obter o usuário logado
   const [brands, setBrands] = useState<Brand[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('all');
@@ -34,71 +38,44 @@ export default function Brands() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [brandToDelete, setBrandToDelete] = useState<Brand | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    setBrands([
-      {
-        id: '1',
-        name: 'Apple',
-        description: 'Produtos Apple com inovação e qualidade premium',
-        isActive: true,
-        createdAt: '2025-01-15T00:00:00Z',
-        updatedAt: '2025-01-15T00:00:00Z'
-      },
-      {
-        id: '2',
-        name: 'Samsung',
-        description: 'Tecnologia Samsung para todos os perfis',
-        isActive: true,
-        createdAt: '2025-01-20T00:00:00Z',
-        updatedAt: '2025-01-20T00:00:00Z'
-      },
-      {
-        id: '3',
-        name: 'Xiaomi',
-        description: 'Smartphones com excelente custo-benefício',
-        isActive: true,
-        createdAt: '2025-02-01T00:00:00Z',
-        updatedAt: '2025-02-01T00:00:00Z'
-      },
-      {
-        id: '4',
-        name: 'Sony',
-        description: 'Eletrônicos e acessórios Sony',
-        isActive: true,
-        createdAt: '2025-02-05T00:00:00Z',
-        updatedAt: '2025-02-05T00:00:00Z'
-      },
-      {
-        id: '5',
-        name: 'Roku',
-        description: 'Dispositivos de streaming Roku',
-        isActive: true,
-        createdAt: '2025-02-08T00:00:00Z',
-        updatedAt: '2025-02-08T00:00:00Z'
-      },
-      {
-        id: '6',
-        name: 'Smart',
-        description: 'Produtos Smart TV e acessórios',
-        isActive: true,
-        createdAt: '2025-02-10T00:00:00Z',
-        updatedAt: '2025-02-10T00:00:00Z'
-      }
-    ]);
-  }, []);
+    fetchBrands();
+  }, [user]); // Recarregar marcas quando o usuário muda
+
+  const fetchBrands = async () => {
+    if (!user) {
+      setIsLoading(false);
+      setBrands([]);
+      return;
+    }
+    setIsLoading(true);
+    const { data, error } = await supabase
+      .from('brands')
+      .select('*')
+      .eq('user_id', user.id); // Filtrar por user_id para RLS
+
+    if (error) {
+      showError('Erro ao carregar marcas', error.message);
+      console.error('Error fetching brands:', error);
+    } else {
+      setBrands(data || []);
+    }
+    setIsLoading(false);
+  };
 
   const filteredBrands = brands.filter(brand => {
     const matchesSearch = brand.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          (brand.description && brand.description.toLowerCase().includes(searchTerm.toLowerCase()));
     const matchesStatus = selectedStatus === 'all' || 
-                         (selectedStatus === 'active' && brand.isActive) ||
-                         (selectedStatus === 'inactive' && !brand.isActive);
+                         (selectedStatus === 'active' && brand.is_active) ||
+                         (selectedStatus === 'inactive' && !brand.is_active);
     
     return matchesSearch && matchesStatus;
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     const newErrors: Record<string, string> = {};
@@ -112,22 +89,50 @@ export default function Brands() {
       return;
     }
 
-    const brandData: Brand = {
-      id: selectedBrand?.id || String(Date.now()),
+    if (!user) {
+      showError('Erro', 'Usuário não autenticado.');
+      return;
+    }
+
+    const brandData = {
+      user_id: user.id,
       name: formData.name.trim(),
-      description: formData.description.trim() || undefined,
-      isActive: true,
-      createdAt: selectedBrand?.createdAt || new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+      description: formData.description.trim() || null,
+      is_active: true, // Sempre ativo ao criar/editar
     };
 
     if (selectedBrand) {
-      setBrands(brands.map(b => b.id === selectedBrand.id ? brandData : b));
-    } else {
-      setBrands([...brands, brandData]);
-    }
+      // Update existing brand
+      const { data, error } = await supabase
+        .from('brands')
+        .update(brandData)
+        .eq('id', selectedBrand.id)
+        .select();
 
-    resetForm();
+      if (error) {
+        showError('Erro ao atualizar marca', error.message);
+        console.error('Error updating brand:', error);
+      } else {
+        setBrands(brands.map(b => b.id === selectedBrand.id ? data[0] : b));
+        showSuccess('Marca Atualizada', `A marca "${formData.name}" foi atualizada com sucesso.`);
+        resetForm();
+      }
+    } else {
+      // Insert new brand
+      const { data, error } = await supabase
+        .from('brands')
+        .insert(brandData)
+        .select();
+
+      if (error) {
+        showError('Erro ao criar marca', error.message);
+        console.error('Error creating brand:', error);
+      } else {
+        setBrands([...brands, data[0]]);
+        showSuccess('Marca Criada', `A marca "${formData.name}" foi criada com sucesso.`);
+        resetForm();
+      }
+    }
   };
 
   const resetForm = () => {
@@ -149,20 +154,37 @@ export default function Brands() {
     setIsAddModalOpen(true);
   };
 
-  
-
   const openDeleteModal = (brand: Brand) => {
     setBrandToDelete(brand);
     setIsDeleteModalOpen(true);
   };
 
-  const deleteBrand = () => {
+  const deleteBrand = async () => {
     if (brandToDelete) {
-      setBrands(brands.filter(b => b.id !== brandToDelete.id));
-      showSuccess('Marca Excluída', `A marca "${brandToDelete.name}" foi excluída com sucesso.`);
-      setBrandToDelete(null);
+      const { error } = await supabase
+        .from('brands')
+        .delete()
+        .eq('id', brandToDelete.id);
+
+      if (error) {
+        showError('Erro ao excluir marca', error.message);
+        console.error('Error deleting brand:', error);
+      } else {
+        setBrands(brands.filter(b => b.id !== brandToDelete.id));
+        showSuccess('Marca Excluída', `A marca "${brandToDelete.name}" foi excluída com sucesso.`);
+        setBrandToDelete(null);
+        setIsDeleteModalOpen(false);
+      }
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 bg-gradient-to-br from-slate-50 to-slate-100 min-h-screen">
@@ -192,11 +214,11 @@ export default function Brands() {
         </div>
         <div className="bg-white rounded-lg p-4 shadow-md">
           <h3 className="text-sm font-semibold text-slate-800 mb-2">Marcas Ativas</h3>
-          <p className="text-xl font-bold text-green-500">{brands.filter(b => b.isActive).length}</p>
+          <p className="text-xl font-bold text-green-500">{brands.filter(b => b.is_active).length}</p>
         </div>
         <div className="bg-white rounded-lg p-4 shadow-md">
           <h3 className="text-sm font-semibold text-slate-800 mb-2">Marcas Inativas</h3>
-          <p className="text-xl font-bold text-red-500">{brands.filter(b => !b.isActive).length}</p>
+          <p className="text-xl font-bold text-red-500">{brands.filter(b => !b.is_active).length}</p>
         </div>
       </div>
 
@@ -245,11 +267,11 @@ export default function Brands() {
                     <div className="flex items-center gap-3">
                       <h3 className="text-lg font-medium text-slate-800">{brand.name}</h3>
                       <span className={`text-sm px-2 py-1 rounded-full ${
-                        brand.isActive 
+                        brand.is_active 
                           ? 'bg-green-100 text-green-800' 
                           : 'bg-red-100 text-red-800'
                       }`}>
-                        {brand.isActive ? 'ativo' : 'inativo'}
+                        {brand.is_active ? 'ativo' : 'inativo'}
                       </span>
                     </div>
                     {brand.description && (
@@ -348,6 +370,16 @@ export default function Brands() {
           </div>
         </div>
       )}
+
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        onConfirm={deleteBrand}
+        title="Confirmar Exclusão"
+        message={`Tem certeza que deseja excluir a marca "${brandToDelete?.name}"? Esta ação não pode ser desfeita.`}
+        itemName={brandToDelete?.name}
+      />
     </div>
   );
 }

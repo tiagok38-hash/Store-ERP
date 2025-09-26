@@ -2,6 +2,14 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { productsWithStockApi } from './api/products-with-stock';
 
+// Define the Env interface to include Supabase keys and DB
+interface Env {
+  DB: D1Database;
+  SUPABASE_URL: string;
+  SUPABASE_ANON_KEY: string;
+  SUPABASE_SERVICE_ROLE_KEY: string;
+}
+
 const app = new Hono<{ Bindings: Env }>();
 
 app.use("/api/*", cors());
