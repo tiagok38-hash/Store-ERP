@@ -333,9 +333,10 @@ export default function EnhancedSalesModal({ isOpen, onClose }: EnhancedSalesMod
 
   const addPaymentMethod = (type: PaymentMethod['type'] = 'money') => {
     console.log(`Attempting to add payment method: ${type}`); // Log para depuração
+    const initialAmount = type === 'trade_in' ? 0 : getRemainingAmount(); // Pre-fill with remaining amount
     setPaymentMethods(prev => [...prev, { 
       type, 
-      amount: 0, // Initialize amount to 0 for user input
+      amount: initialAmount, 
       installments: 1,
       withInterest: false,
       interestRate: 0,
