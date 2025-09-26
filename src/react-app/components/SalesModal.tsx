@@ -175,7 +175,7 @@ export default function EnhancedSalesModal({ isOpen, onClose }: EnhancedSalesMod
   const [sellerSearchTerm, setSellerSearchTerm] = useState('');
   const [selectedSeller, setSelectedSeller] = useState<Seller | null>(null);
   const [leadOrigin, setLeadOrigin] = useState('');
-  const [productSearchType, setProductSearchType] = useState<'type' | 'barcode'>('type');
+  // Removido productSearchType
   const [productSearchTerm, setProductSearchTerm] = useState('');
   const [cart, setCart] = useState<CartItem[]>([]);
   const [discountType, setDiscountType] = useState<'amount' | 'percentage'>('amount');
@@ -372,11 +372,12 @@ export default function EnhancedSalesModal({ isOpen, onClose }: EnhancedSalesMod
     if (updatedMethod.type === 'credit' && updatedMethod.installments && updatedMethod.amount) {
       const baseAmount = updatedMethod.amount;
       let totalAmountWithInterest = baseAmount;
-      let currentInterestRate = 0;
+      let currentInterestRate = (interestRates[updatedMethod.installments as keyof typeof interestRates] || 0);
 
       if (updatedMethod.withInterest && updatedMethod.installments > 3) {
-        currentInterestRate = (interestRates[updatedMethod.installments as keyof typeof interestRates] || 0);
         totalAmountWithInterest = baseAmount * (1 + currentInterestRate / 100);
+      } else {
+        currentInterestRate = 0; // No interest if not explicitly enabled or <= 3 installments
       }
       updatedMethod.interestRate = currentInterestRate;
       updatedMethod.installmentValue = totalAmountWithInterest / updatedMethod.installments;
@@ -630,37 +631,6 @@ export default function EnhancedSalesModal({ isOpen, onClose }: EnhancedSalesMod
                     )}
                   </div>
                 </div>
-              </div>
-            </div>
-
-            {/* Forma de busca do produto */}
-            <div className="mb-4">
-              <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-200' : 'text-slate-700'}`}>
-                Forma que deseja buscar o produto
-              </label>
-              <div className="flex gap-4">
-                <label className="flex items-center">
-                  <input
-                    type="radio"
-                    name="productSearchType"
-                    value="type"
-                    checked={productSearchType === 'type'}
-                    onChange={() => setProductSearchType('type')}
-                    className="mr-1"
-                  />
-                  <span className={`text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>Digitar</span>
-                </label>
-                <label className="flex items-center">
-                  <input
-                    type="radio"
-                    name="productSearchType"
-                    value="barcode"
-                    checked={productSearchType === 'barcode'}
-                    onChange={() => setProductSearchType('barcode')}
-                    className="mr-1"
-                  />
-                  <span className={`text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>Leitor Código de Barras <span className="text-blue-500">(beta)</span></span>
-                </label>
               </div>
             </div>
 
