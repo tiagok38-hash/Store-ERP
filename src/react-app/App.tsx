@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom"; // Changed from "react-router"
+import { BrowserRouter as Router, Routes, Route, useLocation } from "react-router-dom";
 import AuthProvider from "@/react-app/components/AuthProvider";
 import ProtectedRoute from "@/react-app/components/ProtectedRoute";
 import Sidebar from "@/react-app/components/Sidebar";
@@ -23,131 +23,132 @@ import AuditPage from "@/react-app/pages/AuditPage";
 import { UserPermissions } from "@/shared/auth-types";
 
 export default function App() {
+  const location = useLocation(); // Hook para obter a localização atual
+
   return (
     <ThemeProvider>
       <NotificationProvider>
         <AuthProvider>
-          <Router>
-            <ProtectedRoute>
-              <div className="flex h-screen">
-                <Sidebar />
-                <main className="flex-1 overflow-auto">
-                  <Routes>
-                    <Route 
-                      path="/" 
-                      element={
-                        <ProtectedRoute permission={UserPermissions.DASHBOARD_VIEW}>
-                          <Dashboard />
-                        </ProtectedRoute>
-                      } 
-                    />
-                    
-                    <Route 
-                      path="/sales" 
-                      element={
-                        <ProtectedRoute permission={UserPermissions.SALES_VIEW}>
-                          <Sales />
-                        </ProtectedRoute>
-                      } 
-                    />
-                    
-                    <Route 
-                      path="/inventory" 
-                      element={
-                        <ProtectedRoute permission={UserPermissions.INVENTORY_VIEW}>
-                          <Inventory />
-                        </ProtectedRoute>
-                      } 
-                    />
-                    
-                    <Route 
-                      path="/registrations" 
-                      element={
-                        <ProtectedRoute permission={UserPermissions.CUSTOMERS_VIEW}>
-                          <Registrations />
-                        </ProtectedRoute>
-                      } 
-                    />
-                    
-                    <Route 
-                      path="/reports" 
-                      element={
-                        <ProtectedRoute permission={UserPermissions.REPORTS_VIEW}>
-                          <Reports />
-                        </ProtectedRoute>
-                      } 
-                    />
-                    
-                    <Route 
-                      path="/administration" 
-                      element={
-                        <ProtectedRoute permission={UserPermissions.SETTINGS_VIEW}>
-                          <Administration />
-                        </ProtectedRoute>
-                      } 
-                    />
-                    {/* New Administration Sub-Routes */}
-                    <Route 
-                      path="/administration/company-settings" 
-                      element={
-                        <ProtectedRoute permission={UserPermissions.SETTINGS_VIEW}>
-                          <CompanySettingsPage />
-                        </ProtectedRoute>
-                      } 
-                    />
-                    <Route 
-                      path="/administration/system-parameters" 
-                      element={
-                        <ProtectedRoute permission={UserPermissions.SETTINGS_VIEW}>
-                          <SystemParametersPage />
-                        </ProtectedRoute>
-                      } 
-                    />
-                    <Route 
-                      path="/administration/users-management" 
-                      element={
-                        <ProtectedRoute permission={UserPermissions.USERS_VIEW}>
-                          <UsersManagementPage />
-                        </ProtectedRoute>
-                      } 
-                    />
-                    <Route 
-                      path="/administration/payment-methods" 
-                      element={
-                        <ProtectedRoute permission={UserPermissions.SECTION_PAYMENT_METHODS}>
-                          <PaymentMethodsPage />
-                        </ProtectedRoute>
-                      } 
-                    />
-                    <Route 
-                      path="/administration/product-structure" 
-                      element={
-                        <ProtectedRoute permission={UserPermissions.SECTION_BRANDS_CATEGORIES}>
-                          <ProductStructurePage />
-                        </ProtectedRoute>
-                      } 
-                    />
-                    <Route 
-                      path="/administration/warranty-stock" 
-                      element={
-                        <ProtectedRoute permission={UserPermissions.SECTION_WARRANTY_STOCK}>
-                          <WarrantyStockPage />
-                        </ProtectedRoute>
-                      } 
-                    />
-                    <Route 
-                      path="/administration/audit" 
-                      element={
-                        <ProtectedRoute permission={UserPermissions.AUDIT_VIEW}>
-                          <AuditPage />
-                        </ProtectedRoute>
-                      } 
-                    />
-                  </Routes>
-                </main>
+          <div className="flex h-screen">
+            <Sidebar />
+            <main className="flex-1 overflow-auto">
+              {/* Adiciona uma chave para forçar a re-renderização e a animação na mudança de rota */}
+              <div key={location.pathname} className="animate-page-fade-in">
+                <Routes>
+                  <Route 
+                    path="/" 
+                    element={
+                      <ProtectedRoute permission={UserPermissions.DASHBOARD_VIEW}>
+                        <Dashboard />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  
+                  <Route 
+                    path="/sales" 
+                    element={
+                      <ProtectedRoute permission={UserPermissions.SALES_VIEW}>
+                        <Sales />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  
+                  <Route 
+                    path="/inventory" 
+                    element={
+                      <ProtectedRoute permission={UserPermissions.INVENTORY_VIEW}>
+                        <Inventory />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  
+                  <Route 
+                    path="/registrations" 
+                    element={
+                      <ProtectedRoute permission={UserPermissions.CUSTOMERS_VIEW}>
+                        <Registrations />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  
+                  <Route 
+                    path="/reports" 
+                    element={
+                      <ProtectedRoute permission={UserPermissions.REPORTS_VIEW}>
+                        <Reports />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  
+                  <Route 
+                    path="/administration" 
+                    element={
+                      <ProtectedRoute permission={UserPermissions.SETTINGS_VIEW}>
+                        <Administration />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  {/* New Administration Sub-Routes */}
+                  <Route 
+                    path="/administration/company-settings" 
+                    element={
+                      <ProtectedRoute permission={UserPermissions.SETTINGS_VIEW}>
+                        <CompanySettingsPage />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  <Route 
+                    path="/administration/system-parameters" 
+                    element={
+                      <ProtectedRoute permission={UserPermissions.SETTINGS_VIEW}>
+                        <SystemParametersPage />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  <Route 
+                    path="/administration/users-management" 
+                    element={
+                      <ProtectedRoute permission={UserPermissions.USERS_VIEW}>
+                        <UsersManagementPage />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  <Route 
+                    path="/administration/payment-methods" 
+                    element={
+                      <ProtectedRoute permission={UserPermissions.SECTION_PAYMENT_METHODS}>
+                        <PaymentMethodsPage />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  <Route 
+                    path="/administration/product-structure" 
+                    element={
+                      <ProtectedRoute permission={UserPermissions.SECTION_BRANDS_CATEGORIES}>
+                        <ProductStructurePage />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  <Route 
+                    path="/administration/warranty-stock" 
+                    element={
+                      <ProtectedRoute permission={UserPermissions.SECTION_WARRANTY_STOCK}>
+                        <WarrantyStockPage />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  <Route 
+                    path="/administration/audit" 
+                    element={
+                      <ProtectedRoute permission={UserPermissions.AUDIT_VIEW}>
+                        <AuditPage />
+                      </ProtectedRoute>
+                    } 
+                  />
+                </Routes>
               </div>
-            </ProtectedRoute>
-          </Router>
+            </main>
+          </div>
         </AuthProvider>
       </NotificationProvider>
     </ThemeProvider>
