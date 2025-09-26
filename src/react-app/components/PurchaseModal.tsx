@@ -112,28 +112,6 @@ const mockModels = {
   '12': ['Capinha Silicone', 'Capinha Transparente', 'Capinha Couro']
 };
 
-// Descrições pré-cadastradas para produtos genéricos
-const mockProductDescriptions = [
-  'Capinha Silicone Premium',
-  'Capinha Transparente Anti-Impacto',
-  'Capinha Couro Magnética',
-  'Película Vidro Temperado',
-  'Película Hidrogel',
-  'Película Privacidade',
-  'Carregador USB-C 20W',
-  'Carregador Lightning',
-  'Carregador Wireless',
-  'Power Bank 10000mAh',
-  'Cabo USB-C para Lightning',
-  'Cabo USB-C para USB-C',
-  'Adaptador Lightning para P2',
-  'Suporte Veicular Magnético',
-  'Fone de Ouvido Bluetooth',
-  'Smartwatch',
-  'Tablet Android',
-  'Smartphone Android'
-];
-
 // Armazenamento por modelo (para Apple)
 const mockStorage = {
   'iPhone 15 Pro Max': ['128GB', '256GB', '512GB', '1TB'],
@@ -179,6 +157,28 @@ const mockColors = {
   'Apple Watch Series 9': ['Midnight', 'Starlight', 'Rosa', 'Product Red'],
   'Apple Watch SE': ['Midnight', 'Starlight', 'Prata']
 };
+
+// Descrições pré-cadastradas para produtos genéricos
+const mockProductDescriptions = [
+  'Capinha Silicone Premium',
+  'Capinha Transparente Anti-Impacto',
+  'Capinha Couro Magnética',
+  'Película Vidro Temperado',
+  'Película Hidrogel',
+  'Película Privacidade',
+  'Carregador USB-C 20W',
+  'Carregador Lightning',
+  'Carregador Wireless',
+  'Power Bank 10000mAh',
+  'Cabo USB-C para Lightning',
+  'Cabo USB-C para USB-C',
+  'Adaptador Lightning para P2',
+  'Suporte Veicular Magnético',
+  'Fone de Ouvido Bluetooth',
+  'Smartwatch',
+  'Tablet Android',
+  'Smartphone Android'
+];
 
 // Função para formatar valores no padrão brasileiro
 const formatCurrency = (value: number): string => {
@@ -789,9 +789,7 @@ export default function PurchaseModal({
                         }`}
                         disabled={!selectedModel || availableStorage.length === 0}
                       >
-                        <option value="">
-                          {availableStorage.length === 0 ? 'N/A' : 'Armazenamento'}
-                        </option>
+                        <option value="">Armazenamento</option>
                         {availableStorage.map(storage => (
                           <option key={storage} value={storage}>{storage}</option>
                         ))}
@@ -814,9 +812,7 @@ export default function PurchaseModal({
                         }`}
                         disabled={!selectedModel || availableColors.length === 0}
                       >
-                        <option value="">
-                          {availableColors.length === 0 ? 'N/A' : 'Cor'}
-                        </option>
+                        <option value="">Cor</option>
                         {availableColors.map(color => (
                           <option key={color} value={color}>{color}</option>
                         ))}
