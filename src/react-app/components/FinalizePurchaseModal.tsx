@@ -21,6 +21,7 @@ interface ItemUnit {
   location: string;
   markup: number | null; // Pode ser null se não preenchido
   salePrice?: number; // Pode ser undefined para começar vazio
+  displaySalePrice: string; // Novo campo para o valor formatado do input
 }
 
 interface FinalizePurchaseModalProps {
@@ -55,7 +56,8 @@ export default function FinalizePurchaseModal({
             warranty: '1 ano',
             location: 'Loja',
             markup: null, // Inicializa como null
-            salePrice: undefined // Inicializa como undefined para começar vazio
+            salePrice: undefined, // Inicializa como undefined para começar vazio
+            displaySalePrice: '' // Inicializa o displaySalePrice como vazio
           });
         }
         unitsMap[item.id] = units;
@@ -71,15 +73,21 @@ export default function FinalizePurchaseModal({
       if (!newUnits[itemId]) return prev;
       
       newUnits[itemId] = [...newUnits[itemId]];
-      newUnits[itemId][unitIndex] = { ...newUnits[itemId][unitIndex], [field]: value };
+      const updatedUnit = { ...newUnits[itemId][unitIndex], [field]: value };
+
+      // Se o campo atualizado for displaySalePrice, também atualiza salePrice
+      if (field === 'displaySalePrice') {
+        updatedUnit.salePrice = parseCurrencyBR(value);
+      }
       
       // Quando o markup muda, APENAS o markup é atualizado no estado.
       // O salePrice não é alterado por aqui.
       if (field === 'markup') {
         const markup = value === null ? null : (parseFloat(value) || 0);
-        newUnits[itemId][unitIndex].markup = markup;
+        updatedUnit.markup = markup;
       }
       
+      newUnits[itemId][unitIndex] = updatedUnit;
       return newUnits;
     });
   };
@@ -285,11 +293,10 @@ export default function FinalizePurchaseModal({
                       <td className="border border-slate-300 px-1 py-2 bg-red-50">
                         <input
                           type="text"
-                          value={unit.salePrice !== undefined ? formatCurrencyInput(unit.salePrice.toString().replace('.', ',')) : ''}
+                          value={unit.displaySalePrice} // Usa o novo campo para exibição
                           onChange={(e) => {
                             const formattedValue = formatCurrencyInput(e.target.value);
-                            const numericValue = parseCurrencyBR(formattedValue);
-                            updateItemUnit(item.id, unitIndex, 'salePrice', numericValue);
+                            updateItemUnit(item.id, unitIndex, 'displaySalePrice', formattedValue);
                           }}
                           className="w-full px-1 py-1 text-xs border border-red-300 rounded focus:ring-1 focus:ring-red-400 focus:border-red-400 bg-white"
                           placeholder="R$"

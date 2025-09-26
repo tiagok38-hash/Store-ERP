@@ -15,37 +15,39 @@ export const formatCurrencyDisplay = (value: number): string => {
 
 // Formatar entrada de campo de texto para padrão brasileiro
 export const formatCurrencyInput = (value: string): string => {
-  // 1. Remove all non-digit and non-comma characters
+  // Remove tudo que não for dígito ou vírgula
   let cleanValue = value.replace(/[^0-9,]/g, '');
 
-  // 2. Handle empty string
+  // Garante que haja apenas uma vírgula
+  const commaCount = (cleanValue.match(/,/g) || []).length;
+  if (commaCount > 1) {
+    const firstCommaIndex = cleanValue.indexOf(',');
+    cleanValue = cleanValue.substring(0, firstCommaIndex + 1) + cleanValue.substring(firstCommaIndex + 1).replace(/,/g, '');
+  }
+
+  // Se a string estiver vazia, retorna vazio
   if (!cleanValue) return '';
 
-  // 3. Split into integer and decimal parts
-  const parts = cleanValue.split(',');
-  let integerPart = parts[0];
-  let decimalPart = parts.length > 1 ? parts[1] : '';
-
-  // 4. Remove leading zeros from integer part, unless it's just "0"
-  if (integerPart.length > 1 && integerPart.startsWith('0')) {
-    integerPart = integerPart.replace(/^0+/, '');
-    if (integerPart === '') integerPart = '0'; // If all zeros removed, keep one '0'
-  } else if (integerPart === '') {
-    integerPart = '0'; // If user types ",50", integer part is initially empty
+  // Se a vírgula for o último caractere, mantém
+  if (cleanValue.endsWith(',')) {
+    const integerPart = cleanValue.split(',')[0].replace(/^0+/, '') || '0'; // Remove zeros à esquerda para a parte inteira
+    const formattedInteger = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    return `${formattedInteger},`;
   }
 
-  // 5. Limit decimal part to 2 digits
-  decimalPart = decimalPart.slice(0, 2);
+  // Se não houver vírgula, formata como inteiro
+  if (!cleanValue.includes(',')) {
+    const integerPart = cleanValue.replace(/^0+/, '') || '0'; // Remove zeros à esquerda
+    return integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  }
 
-  // 6. Add thousands separator to integer part
+  // Se houver vírgula e parte decimal
+  const [integerPartRaw, decimalPartRaw] = cleanValue.split(',');
+  const integerPart = integerPartRaw.replace(/^0+/, '') || '0'; // Remove zeros à esquerda
   const formattedInteger = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  const formattedDecimal = decimalPartRaw.slice(0, 2); // Limita a 2 casas decimais
 
-  // 7. Reconstruct the formatted string
-  if (parts.length > 1) { // If there was a comma in the original cleanValue
-    return `${formattedInteger},${decimalPart}`;
-  } else { // No comma, just integer part
-    return formattedInteger;
-  }
+  return `${formattedInteger},${formattedDecimal}`;
 };
 
 // Converter entrada brasileira (1.234,56) para número
