@@ -323,9 +323,12 @@ export default function EnhancedSalesModal({ isOpen, onClose }: EnhancedSalesMod
   return (
     <>
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-        <div className={`rounded-xl shadow-2xl max-w-7xl w-full max-h-[90vh] overflow-hidden ${
-          theme === 'dark' ? 'bg-slate-800' : 'bg-white'
-        }`}>
+        <div 
+          className={`rounded-xl shadow-2xl max-w-7xl w-full max-h-[90vh] overflow-hidden ${
+            theme === 'dark' ? 'bg-slate-800' : 'bg-white'
+          }`}
+          style={{ animation: 'modalSlideIn 0.3s ease-out forwards' }}
+        >
           {/* Header */}
           <div className="bg-gradient-to-r from-green-600 to-green-700 text-white p-4 flex justify-between items-center">
             <h2 className="text-2xl font-bold flex items-center">

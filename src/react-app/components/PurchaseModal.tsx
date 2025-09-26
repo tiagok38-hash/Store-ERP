@@ -451,9 +451,12 @@ export default function PurchaseModal({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className={`rounded-xl shadow-2xl max-w-6xl w-full max-h-[95vh] overflow-y-auto ${
-        theme === 'dark' ? 'bg-slate-800' : 'bg-white'
-      }`}>
+      <div 
+        className={`rounded-xl shadow-2xl max-w-6xl w-full max-h-[95vh] overflow-y-auto ${
+          theme === 'dark' ? 'bg-slate-800' : 'bg-white'
+        }`}
+        style={{ animation: 'modalSlideIn 0.3s ease-out forwards' }}
+      >
         {/* Header */}
         <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white p-3 flex justify-between items-center rounded-t-xl">
           <h2 className="text-lg font-bold flex items-center">

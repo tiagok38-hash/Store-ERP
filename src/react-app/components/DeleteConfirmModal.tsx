@@ -61,9 +61,7 @@ export default function DeleteConfirmModal({
         className={`rounded-2xl shadow-2xl max-w-md w-full transform transition-all duration-300 ${
           theme === 'dark' ? 'bg-slate-800' : 'bg-white'
         }`}
-        style={{
-          animation: isOpen ? 'modalSlideIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)' : ''
-        }}
+        style={{ animation: 'modalSlideIn 0.3s ease-out forwards' }}
       >
         {/* Header com gradiente */}
         <div className={`bg-gradient-to-r ${colors.gradient} text-white p-6 rounded-t-2xl relative overflow-hidden`}>
@@ -145,19 +143,6 @@ export default function DeleteConfirmModal({
         {/* Glow effect */}
         <div className={`absolute -inset-1 bg-gradient-to-r ${colors.gradient} rounded-2xl blur opacity-20 -z-10`}></div>
       </div>
-
-      <style>{`
-        @keyframes modalSlideIn {
-          0% {
-            opacity: 0;
-            transform: scale(0.8) translateY(20px);
-          }
-          100% {
-            opacity: 1;
-            transform: scale(1) translateY(0);
-          }
-        }
-      `}</style>
     </div>
   );
 }

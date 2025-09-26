@@ -55,11 +55,14 @@ export default function SaleActionsDropdown({
           />
           
           {/* Dropdown Menu */}
-          <div className={`absolute right-0 top-full mt-1 border rounded-lg shadow-lg z-20 min-w-[160px] ${
-            theme === 'dark'
-              ? 'bg-slate-800 border-slate-700'
-              : 'bg-white border-slate-200'
-          }`}>
+          <div 
+            className={`absolute right-0 top-full mt-1 border rounded-lg shadow-lg z-20 min-w-[160px] ${
+              theme === 'dark'
+                ? 'bg-slate-800 border-slate-700'
+                : 'bg-white border-slate-200'
+            }`}
+            style={{ animation: 'dropdownSlideIn 0.2s ease-out forwards' }}
+          >
             <div className="py-1">
               <button
                 onClick={() => handleAction(() => onView(saleId))}

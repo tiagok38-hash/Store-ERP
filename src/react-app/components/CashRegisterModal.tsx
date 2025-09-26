@@ -47,7 +47,10 @@ export default function CashRegisterModal({ isOpen, onClose, type, currentAmount
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-2xl max-w-md w-full">
+      <div 
+        className="bg-white rounded-xl shadow-2xl max-w-md w-full"
+        style={{ animation: 'modalSlideIn 0.3s ease-out forwards' }}
+      >
         {/* Header */}
         <div className={`${type === 'open' ? 'bg-gradient-to-r from-green-600 to-green-700' : 'bg-gradient-to-r from-red-600 to-red-700'} text-white p-4 flex justify-between items-center rounded-t-xl`}>
           <h2 className="text-xl font-bold flex items-center">

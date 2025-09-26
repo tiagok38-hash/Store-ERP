@@ -93,9 +93,12 @@ export default function CardSimulatorModal({ isOpen, onClose }: CardSimulatorMod
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className={`rounded-2xl shadow-2xl max-w-md w-full transform transition-all duration-300 ${
-        theme === 'dark' ? 'bg-slate-800' : 'bg-white'
-      }`}>
+      <div 
+        className={`rounded-2xl shadow-2xl max-w-md w-full transform transition-all duration-300 ${
+          theme === 'dark' ? 'bg-slate-800' : 'bg-white'
+        }`}
+        style={{ animation: 'modalSlideIn 0.3s ease-out forwards' }}
+      >
         {/* Header */}
         <div className="bg-gradient-to-r from-blue-500 to-purple-600 text-white p-6 rounded-t-2xl relative overflow-hidden">
           <div className="absolute inset-0 bg-black/10"></div>

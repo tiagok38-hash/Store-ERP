@@ -351,7 +351,10 @@ export default function ProductModal({ isOpen, onClose, product }: ProductModalP
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-y-auto">
+      <div 
+        className="bg-white rounded-xl shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-y-auto"
+        style={{ animation: 'modalSlideIn 0.3s ease-out forwards' }}
+      >
         {/* Header */}
         <div className="bg-gradient-to-r from-blue-400 to-blue-500 text-white p-4 flex justify-between items-center rounded-t-xl">
           <h2 className="text-xl font-bold flex items-center">

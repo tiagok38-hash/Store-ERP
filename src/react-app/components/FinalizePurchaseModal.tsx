@@ -137,7 +137,10 @@ export default function FinalizePurchaseModal({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-2xl max-w-7xl w-full max-h-[90vh] overflow-hidden">
+      <div 
+        className="bg-white rounded-lg shadow-2xl max-w-7xl w-full max-h-[90vh] overflow-hidden"
+        style={{ animation: 'modalSlideIn 0.3s ease-out forwards' }}
+      >
         {/* Header */}
         <div className="bg-blue-600 text-white px-4 py-3 flex justify-between items-center rounded-t-lg">
           <div className="text-center flex-1">
