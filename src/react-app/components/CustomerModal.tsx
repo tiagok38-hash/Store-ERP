@@ -23,6 +23,8 @@ export default function CustomerModal({ isOpen, onClose, type, data, onCustomerS
     phone: data?.phone || '',
     document: data?.document || '',
     address: data?.address || '',
+    houseNumber: data?.houseNumber || '', // Novo campo
+    neighborhood: data?.neighborhood || '', // Novo campo
     city: data?.city || '',
     state: data?.state || '',
     zipCode: data?.zipCode || '',
@@ -66,6 +68,8 @@ export default function CustomerModal({ isOpen, onClose, type, data, onCustomerS
       phone: formData.phone,
       document: formData.document,
       address: formData.address,
+      houseNumber: formData.houseNumber, // Incluir no objeto de dados
+      neighborhood: formData.neighborhood, // Incluir no objeto de dados
       city: formData.city,
       state: formData.state,
       zipCode: formData.zipCode,
@@ -118,6 +122,7 @@ export default function CustomerModal({ isOpen, onClose, type, data, onCustomerS
           setFormData(prev => ({
             ...prev,
             address: data.logradouro || '',
+            neighborhood: data.bairro || '', // Preencher bairro
             city: data.localidade || '',
             state: data.uf || '',
             zipCode: formatZipCode(cleanCep)
@@ -246,6 +251,27 @@ export default function CustomerModal({ isOpen, onClose, type, data, onCustomerS
 
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">
+                  CEP
+                </label>
+                <input
+                  type="text"
+                  value={formData.zipCode}
+                  onChange={(e) => {
+                    const formatted = formatZipCode(e.target.value);
+                    setFormData({ ...formData, zipCode: formatted });
+                    
+                    // Buscar endereço automaticamente quando CEP estiver completo
+                    if (formatted.replace(/\D/g, '').length === 8) {
+                      fetchAddressByCep(formatted);
+                    }
+                  }}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  placeholder="00000-000"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
                   Endereço Completo
                 </label>
                 <input
@@ -254,6 +280,34 @@ export default function CustomerModal({ isOpen, onClose, type, data, onCustomerS
                   onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                   placeholder="Rua, número, complemento"
+                />
+              </div>
+
+              {/* Novo campo: Número */}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Número
+                </label>
+                <input
+                  type="text"
+                  value={formData.houseNumber}
+                  onChange={(e) => setFormData({ ...formData, houseNumber: e.target.value })}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  placeholder="123"
+                />
+              </div>
+
+              {/* Novo campo: Bairro */}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Bairro
+                </label>
+                <input
+                  type="text"
+                  value={formData.neighborhood}
+                  onChange={(e) => setFormData({ ...formData, neighborhood: e.target.value })}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  placeholder="Centro"
                 />
               </div>
 
@@ -311,29 +365,6 @@ export default function CustomerModal({ isOpen, onClose, type, data, onCustomerS
                   </select>
                 </div>
               </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  CEP
-                </label>
-                <input
-                  type="text"
-                  value={formData.zipCode}
-                  onChange={(e) => {
-                    const formatted = formatZipCode(e.target.value);
-                    setFormData({ ...formData, zipCode: formatted });
-                    
-                    // Buscar endereço automaticamente quando CEP estiver completo
-                    if (formatted.replace(/\D/g, '').length === 8) {
-                      fetchAddressByCep(formatted);
-                    }
-                  }}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                  placeholder="00000-000"
-                />
-              </div>
-
-              
 
               {/* Informações Adicionais para Clientes */}
               {isCustomer && (
