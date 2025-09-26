@@ -5,7 +5,7 @@ import ProtectedRoute from "@/react-app/components/ProtectedRoute";
 import Sidebar from "@/react-app/components/Sidebar";
 import { NotificationProvider } from "@/react-app/components/NotificationSystem";
 import { ThemeProvider } from "@/react-app/hooks/useTheme";
-import { SessionContextProvider, useSession } from "@/react-app/components/SessionContextProvider"; // Importar useSession
+import { SessionContextProvider, useSession } from "@/react-app/components/SessionContextProvider";
 import Dashboard from "@/react-app/pages/Dashboard";
 import Sales from "@/react-app/pages/Sales";
 import Inventory from "@/react-app/pages/Inventory";
@@ -22,8 +22,8 @@ import PaymentMethodsPage from "@/react-app/pages/PaymentMethodsPage";
 import ProductStructurePage from "@/react-app/pages/ProductStructurePage";
 import WarrantyStockPage from "@/react-app/pages/WarrantyStockPage";
 import AuditPage from "@/react-app/pages/AuditPage";
-import Login from "@/react-app/pages/Login"; // Importar a página de Login
-import Home from "@/react-app/pages/Home"; // Importar a página Home
+import Login from "@/react-app/pages/Login";
+import Home from "@/react-app/pages/Home";
 import { UserPermissions } from "@/shared/auth-types";
 
 // Componente interno para lidar com a lógica de redirecionamento
@@ -32,31 +32,38 @@ function AppContent() {
   const navigate = useNavigate();
   const { session, isLoading } = useSession();
 
+  // --- INÍCIO DA REMOÇÃO TEMPORÁRIA DA LÓGICA DE LOGIN ---
+  // Comentando o useEffect que lida com redirecionamentos de autenticação
+  /*
   useEffect(() => {
     if (!isLoading) {
       if (session && location.pathname === '/login') {
-        navigate('/'); // Redireciona para o dashboard se já estiver logado e tentar acessar /login
+        navigate('/');
       } else if (!session && location.pathname !== '/login') {
-        navigate('/login'); // Redireciona para o login se não estiver logado e tentar acessar outras páginas
+        navigate('/login');
       }
     }
   }, [session, isLoading, location.pathname, navigate]);
+  */
 
+  // Comentando o bloco que mostra o loader ou a página de Login
+  /*
   if (isLoading) {
-    return <Home />; // Mostra um loader enquanto a sessão está sendo carregada
+    return <Home />;
   }
 
-  // Se não estiver logado, renderiza apenas a página de Login
   if (!session) {
     return (
       <Routes>
         <Route path="/login" element={<Login />} />
-        <Route path="*" element={<Login />} /> {/* Qualquer outra rota vai para o login */}
+        <Route path="*" element={<Login />} />
       </Routes>
     );
   }
+  */
+  // --- FIM DA REMOÇÃO TEMPORÁRIA DA LÓGICA DE LOGIN ---
 
-  // Se estiver logado, renderiza o layout completo
+  // Se a lógica de login estiver comentada, sempre renderizamos o layout completo
   return (
     <div className="flex h-screen">
       <Sidebar />
@@ -173,6 +180,8 @@ function AppContent() {
                 </ProtectedRoute>
               } 
             />
+            {/* Adicionando a rota de login para que ela ainda exista, mas não seja forçada */}
+            <Route path="/login" element={<Login />} />
             {/* Fallback route for authenticated users */}
             <Route path="*" element={<Dashboard />} />
           </Routes>
@@ -186,7 +195,7 @@ export default function App() {
   return (
     <ThemeProvider>
       <NotificationProvider>
-        <SessionContextProvider> {/* Envolver com SessionContextProvider */}
+        <SessionContextProvider>
           <AuthProvider>
             <AppContent />
           </AuthProvider>

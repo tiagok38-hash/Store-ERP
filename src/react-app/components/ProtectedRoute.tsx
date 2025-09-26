@@ -7,6 +7,7 @@ interface ProtectedRouteProps {
 }
 
 export default function ProtectedRoute({ children }: ProtectedRouteProps) {
-  // Temporarily bypass authentication - allow access to all routes
+  // Temporariamente bypass authentication - allow access to all routes
+  // Para reativar a proteção de rota, remova esta linha e descomente a lógica de autenticação real.
   return <>{children}</>;
 }
