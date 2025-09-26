@@ -172,7 +172,6 @@ export default function EnhancedSalesModal({ isOpen, onClose }: EnhancedSalesMod
   const [saleDate, setSaleDate] = useState(new Date().toISOString().split('T')[0]);
   const [customerSearchTerm, setCustomerSearchTerm] = useState('');
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
-  // Removido sellerSearchTerm
   const [selectedSeller, setSelectedSeller] = useState<Seller | null>(null);
   const [leadOrigin, setLeadOrigin] = useState('');
   const [productSearchTerm, setProductSearchTerm] = useState('');
@@ -333,6 +332,7 @@ export default function EnhancedSalesModal({ isOpen, onClose }: EnhancedSalesMod
   };
 
   const addPaymentMethod = (type: PaymentMethod['type'] = 'money') => {
+    console.log(`Attempting to add payment method: ${type}`); // Log para depuração
     setPaymentMethods(prev => [...prev, { 
       type, 
       amount: 0, // Initialize amount to 0 for user input
@@ -342,6 +342,10 @@ export default function EnhancedSalesModal({ isOpen, onClose }: EnhancedSalesMod
       installmentValue: 0,
       taxesAmount: 0
     }]);
+    if (type === 'trade_in') {
+      setIsTradeInModalOpen(true);
+      console.log('setIsTradeInModalOpen(true) called'); // Log para depuração
+    }
   };
 
   const updatePaymentMethod = (index: number, field: keyof PaymentMethod, value: any) => {
@@ -352,10 +356,11 @@ export default function EnhancedSalesModal({ isOpen, onClose }: EnhancedSalesMod
       updatedMethod.amount = parseCurrencyBR(value.toString());
     }
 
-    if (field === 'type' && value === 'trade_in') {
-      setIsTradeInModalOpen(true);
-      updatedMethod.amount = 0; // Reset amount for trade_in until value is returned from modal
-    }
+    // No need to open modal here, it's handled by addPaymentMethod
+    // if (field === 'type' && value === 'trade_in') {
+    //   setIsTradeInModalOpen(true);
+    //   updatedMethod.amount = 0; // Reset amount for trade_in until value is returned from modal
+    // }
 
     // Recalculate interest and installment value for credit cards
     if (updatedMethod.type === 'credit' && updatedMethod.installments && updatedMethod.amount) {
@@ -373,7 +378,7 @@ export default function EnhancedSalesModal({ isOpen, onClose }: EnhancedSalesMod
       updatedMethod.taxesAmount = calculatePaymentTaxes(updatedMethod, baseAmount); // Base tax on original amount
     } else {
       updatedMethod.interestRate = 0;
-      updatedMethod.installmentValue = updatedMethod.amount;
+      updatedatedMethod.installmentValue = updatedMethod.amount;
       updatedMethod.taxesAmount = calculatePaymentTaxes(updatedMethod, updatedMethod.amount);
     }
     
@@ -435,7 +440,6 @@ export default function EnhancedSalesModal({ isOpen, onClose }: EnhancedSalesMod
     setCustomerSearchTerm('');
     setPaymentMethods([]);
     setSelectedSeller(null);
-    // Removido setSellerSearchTerm('');
     setLeadOrigin('');
     setProductSearchTerm('');
     setDiscountValue('');
@@ -852,7 +856,7 @@ export default function EnhancedSalesModal({ isOpen, onClose }: EnhancedSalesMod
                               type="text"
                               value={formatCurrencyInput(method.amount.toString())}
                               onChange={(e) => updatePaymentMethod(index, 'amount', e.target.value)}
-                              className={`w-24 px-2 py-1 border rounded text-sm text-right ${
+                              className={`w-24 px-2 py-0.5 border rounded text-xs text-right ${
                                 theme === 'dark' ? 'bg-slate-600 border-slate-500 text-white' : 'bg-white border-slate-300 text-slate-900'
                               }`}
                             />
@@ -862,7 +866,7 @@ export default function EnhancedSalesModal({ isOpen, onClose }: EnhancedSalesMod
                               onClick={() => removePaymentMethod(index)}
                               className="text-red-500 hover:text-red-700 p-1 rounded"
                             >
-                              <X size={16} />
+                              <X size={14} />
                             </button>
                           </td>
                         </tr>
@@ -953,6 +957,8 @@ export default function EnhancedSalesModal({ isOpen, onClose }: EnhancedSalesMod
         onClose={() => setIsTradeInModalOpen(false)}
         isTradeIn={true}
         onTradeInValue={handleTradeInValue}
+        // Aumentar o z-index para garantir que ele apareça sobre o SalesModal
+        style={{ zIndex: 60 }} 
       />
 
       {/* Customer Modal */}
