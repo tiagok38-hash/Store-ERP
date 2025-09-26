@@ -25,8 +25,8 @@ export default function CustomerModal({ isOpen, onClose, type, data, onCustomerS
     address: data?.address || '',
     houseNumber: data?.houseNumber || '', // Novo campo
     neighborhood: data?.neighborhood || '', // Novo campo
-    city: data?.city || '',
-    state: data?.state || '',
+    city: data?.localidade || data?.city || '', // Prioriza ViaCEP, senão usa o mock
+    state: data?.uf || data?.state || '', // Prioriza ViaCEP, senão usa o mock
     zipCode: data?.zipCode || '',
     observations: data?.observations || ''
   });
@@ -197,7 +197,8 @@ export default function CustomerModal({ isOpen, onClose, type, data, onCustomerS
                 />
               </div>
 
-              <div className="grid grid-cols-1 gap-4">
+              {/* Email e Telefone na mesma linha */}
+              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">
                     Email
@@ -283,34 +284,36 @@ export default function CustomerModal({ isOpen, onClose, type, data, onCustomerS
                 />
               </div>
 
-              {/* Novo campo: Número */}
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Número
-                </label>
-                <input
-                  type="text"
-                  value={formData.houseNumber}
-                  onChange={(e) => setFormData({ ...formData, houseNumber: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                  placeholder="123"
-                />
+              {/* Número e Bairro na mesma linha */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    Número
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.houseNumber}
+                    onChange={(e) => setFormData({ ...formData, houseNumber: e.target.value })}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    placeholder="123"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    Bairro
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.neighborhood}
+                    onChange={(e) => setFormData({ ...formData, neighborhood: e.target.value })}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    placeholder="Centro"
+                  />
+                </div>
               </div>
 
-              {/* Novo campo: Bairro */}
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Bairro
-                </label>
-                <input
-                  type="text"
-                  value={formData.neighborhood}
-                  onChange={(e) => setFormData({ ...formData, neighborhood: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                  placeholder="Centro"
-                />
-              </div>
-
+              {/* Cidade e Estado na mesma linha */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">
