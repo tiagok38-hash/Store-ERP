@@ -32,8 +32,8 @@ export default function App() {
           <div className="flex h-screen">
             <Sidebar />
             <main className="flex-1 overflow-auto">
-              {/* Adiciona uma chave para forçar a re-renderização e a animação na mudança de rota */}
-              <div key={location.pathname} className="animate-page-fade-in">
+              {/* Removendo a chave para evitar re-renderização forçada e a classe de animação */}
+              <div key={location.pathname}>
                 <Routes>
                   <Route 
                     path="/" 
