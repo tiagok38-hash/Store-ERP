@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom'; // Changed from "react-router"
+import { Link, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
   ShoppingCart,
@@ -19,7 +19,8 @@ import {
   Menu,
   X,
   Sun,
-  Moon
+  Moon,
+  Printer // Adicionado o ícone Printer aqui
 } from 'lucide-react';
 import { useAuth } from '@/react-app/hooks/useAuth';
 import { useTheme } from '@/react-app/hooks/useTheme';
