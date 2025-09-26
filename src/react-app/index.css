@@ -6,7 +6,7 @@
   font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
 }
 
-/* Global Modal Animation */
+/* Global Modal Animation - Entry */
 @keyframes modalSlideIn {
   0% {
     opacity: 0;
@@ -15,6 +15,18 @@
   100% {
     opacity: 1;
     transform: scale(1) translateY(0);
+  }
+}
+
+/* Global Modal Animation - Exit */
+@keyframes modalSlideOut {
+  0% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.95) translateY(10px);
   }
 }
 
@@ -46,4 +58,31 @@
 @keyframes pageFadeIn {
   0% { opacity: 0; }
   100% { opacity: 1; }
+}
+
+/* Page transition (simple fade-out) */
+@keyframes pageFadeOut {
+  0% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* Utility classes for animations */
+.animate-modal-in {
+  animation: modalSlideIn 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+}
+
+.animate-modal-out {
+  animation: modalSlideOut 0.3s cubic-bezier(0.55, 0.085, 0.68, 0.53) forwards;
+}
+
+.animate-dropdown-in {
+  animation: dropdownSlideIn 0.2s ease-out forwards;
+}
+
+.animate-page-fade-in {
+  animation: pageFadeIn 0.4s ease-out forwards;
+}
+
+.animate-page-fade-out {
+  animation: pageFadeOut 0.4s ease-in forwards;
 }

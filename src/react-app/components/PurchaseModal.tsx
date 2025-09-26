@@ -5,7 +5,8 @@ import {
   Plus,
   Trash2,
   Info,
-  Package
+  Package,
+  Building2
 } from 'lucide-react';
 import { useNotification } from '@/react-app/components/NotificationSystem';
 import { useTheme } from '@/react-app/hooks/useTheme';
@@ -229,6 +230,15 @@ export default function PurchaseModal({
   const [items, setItems] = useState<PurchaseItem[]>(editingPurchase?.items || []);
   const [additionalCost, setAdditionalCost] = useState(editingPurchase?.additionalCost || 0);
   const [isSupplierModalOpen, setIsSupplierModalOpen] = useState(false);
+  const [isAnimatingOut, setIsAnimatingOut] = useState(false);
+
+  const handleClose = () => {
+    setIsAnimatingOut(true);
+    setTimeout(() => {
+      onClose();
+      setIsAnimatingOut(false);
+    }, 300); // Match animation duration
+  };
 
   // Efeito para inicializar o formulário quando editingPurchase muda
   useEffect(() => {
@@ -444,18 +454,17 @@ export default function PurchaseModal({
       `${editingPurchase ? 'Compra atualizada' : isTradeIn ? 'Trade-in registrado' : 'Compra registrada'} com sucesso!`,
       `Localizador: ${locatorCode} - ${itemsWithSkus.length} itens ${editingPurchase ? 'atualizados' : 'registrados'}`
     );
-    onClose();
+    handleClose(); // Use the animated close
   };
 
-  if (!isOpen) return null;
+  if (!isOpen && !isAnimatingOut) return null;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div 
         className={`rounded-xl shadow-2xl max-w-6xl w-full max-h-[95vh] overflow-y-auto ${
           theme === 'dark' ? 'bg-slate-800' : 'bg-white'
-        }`}
-        style={{ animation: 'modalSlideIn 0.3s ease-out forwards' }}
+        } ${isAnimatingOut ? 'animate-modal-out' : 'animate-modal-in'}`}
       >
         {/* Header */}
         <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white p-3 flex justify-between items-center rounded-t-xl">
@@ -464,7 +473,7 @@ export default function PurchaseModal({
             {isTradeIn ? 'Trade-in: Entrada no Estoque' : editingPurchase ? 'Editar Compra' : 'Lançamento de Compras'}
           </h2>
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="hover:bg-white/20 p-2 rounded-lg transition-colors"
           >
             <X size={18} />
@@ -507,7 +516,7 @@ export default function PurchaseModal({
                         theme === 'dark' 
                           ? 'bg-slate-700 border-slate-600' 
                           : 'bg-white border-slate-300'
-                      }`}>
+                      } animate-dropdown-in`}>
                         {filteredSuppliers.map(supplier => (
                           <button
                             key={supplier.id}
@@ -561,7 +570,7 @@ export default function PurchaseModal({
                     }`}>
                       Para cadastrar Marcas, Categorias e Grades,{' '}
                       <button 
-                        type="button" // Adicionado type="button"
+                        type="button"
                         onClick={() => window.open('/administration/product-structure', '_blank')}
                         className={`underline font-medium transition-colors ${
                           theme === 'dark' 
@@ -846,7 +855,7 @@ export default function PurchaseModal({
                         }`}
                         disabled={!selectedModel || availableStorage.length === 0}
                       >
-                        <option value="">Armazenamento</option> {/* Alterado para exibir 'Armazenamento' */}
+                        <option value="">Armazenamento</option>
                         {availableStorage.map(storage => (
                           <option key={storage} value={storage}>{storage}</option>
                         ))}
@@ -869,7 +878,7 @@ export default function PurchaseModal({
                         }`}
                         disabled={!selectedModel || availableColors.length === 0}
                       >
-                        <option value="">Cor</option> {/* Alterado para exibir 'Cor' */}
+                        <option value="">Cor</option>
                         {availableColors.map(color => (
                           <option key={color} value={color}>{color}</option>
                         ))}
@@ -1239,7 +1248,7 @@ export default function PurchaseModal({
           {/* Action Buttons compactos */}
           <div className="flex justify-between gap-3">
             <button
-              onClick={onClose}
+              onClick={handleClose}
               className={`px-4 py-2 border rounded hover:bg-slate-50 transition-colors text-sm ${
                 theme === 'dark'
                   ? 'border-slate-600 text-slate-300 hover:bg-slate-700'

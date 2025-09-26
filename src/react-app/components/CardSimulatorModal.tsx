@@ -42,6 +42,15 @@ export default function CardSimulatorModal({ isOpen, onClose }: CardSimulatorMod
     totalWithInterest: 0,
     installmentValue: 0
   });
+  const [isAnimatingOut, setIsAnimatingOut] = useState(false);
+
+  const handleClose = () => {
+    setIsAnimatingOut(true);
+    setTimeout(() => {
+      onClose();
+      setIsAnimatingOut(false);
+    }, 300); // Match animation duration
+  };
 
   const handleCalculate = () => {
     const value = parseCurrencyBR(productValue);
@@ -89,15 +98,14 @@ export default function CardSimulatorModal({ isOpen, onClose }: CardSimulatorMod
     });
   };
 
-  if (!isOpen) return null;
+  if (!isOpen && !isAnimatingOut) return null;
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div 
         className={`rounded-2xl shadow-2xl max-w-md w-full transform transition-all duration-300 ${
           theme === 'dark' ? 'bg-slate-800' : 'bg-white'
-        }`}
-        style={{ animation: 'modalSlideIn 0.3s ease-out forwards' }}
+        } ${isAnimatingOut ? 'animate-modal-out' : 'animate-modal-in'}`}
       >
         {/* Header */}
         <div className="bg-gradient-to-r from-blue-500 to-purple-600 text-white p-6 rounded-t-2xl relative overflow-hidden">
@@ -113,7 +121,7 @@ export default function CardSimulatorModal({ isOpen, onClose }: CardSimulatorMod
               </div>
             </div>
             <button
-              onClick={onClose}
+              onClick={handleClose}
               className="p-2 hover:bg-white/20 rounded-lg transition-colors backdrop-blur-sm"
             >
               <X size={20} />

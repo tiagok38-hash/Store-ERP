@@ -23,15 +23,24 @@ export default function DeleteConfirmModal({
 }: DeleteConfirmModalProps) {
   const { theme } = useTheme();
   const [isConfirming, setIsConfirming] = useState(false);
+  const [isAnimatingOut, setIsAnimatingOut] = useState(false);
 
-  if (!isOpen) return null;
+  const handleClose = () => {
+    setIsAnimatingOut(true);
+    setTimeout(() => {
+      onClose();
+      setIsAnimatingOut(false);
+    }, 300); // Match animation duration
+  };
+
+  if (!isOpen && !isAnimatingOut) return null;
 
   const handleConfirm = async () => {
     setIsConfirming(true);
     await new Promise(resolve => setTimeout(resolve, 500)); // Simular operação
     onConfirm();
     setIsConfirming(false);
-    onClose();
+    handleClose(); // Use the animated close
   };
 
   const getColors = () => {
@@ -60,8 +69,7 @@ export default function DeleteConfirmModal({
       <div 
         className={`rounded-2xl shadow-2xl max-w-md w-full transform transition-all duration-300 ${
           theme === 'dark' ? 'bg-slate-800' : 'bg-white'
-        }`}
-        style={{ animation: 'modalSlideIn 0.3s ease-out forwards' }}
+        } ${isAnimatingOut ? 'animate-modal-out' : 'animate-modal-in'}`}
       >
         {/* Header com gradiente */}
         <div className={`bg-gradient-to-r ${colors.gradient} text-white p-6 rounded-t-2xl relative overflow-hidden`}>
@@ -81,7 +89,7 @@ export default function DeleteConfirmModal({
               </div>
             </div>
             <button
-              onClick={onClose}
+              onClick={handleClose}
               className="p-2 hover:bg-white/20 rounded-lg transition-colors backdrop-blur-sm"
               disabled={isConfirming}
             >
@@ -110,7 +118,7 @@ export default function DeleteConfirmModal({
 
           <div className="flex gap-3 justify-end">
             <button
-              onClick={onClose}
+              onClick={handleClose}
               disabled={isConfirming}
               className={`px-6 py-3 rounded-xl font-medium transition-all duration-200 ${
                 theme === 'dark'

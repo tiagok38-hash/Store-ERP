@@ -12,6 +12,15 @@ interface CashRegisterModalProps {
 export default function CashRegisterModal({ isOpen, onClose, type, currentAmount = 0, onStatusChange }: CashRegisterModalProps) {
   const [amount, setAmount] = useState(type === 'open' ? '' : currentAmount.toString());
   const [observations, setObservations] = useState('');
+  const [isAnimatingOut, setIsAnimatingOut] = useState(false);
+
+  const handleClose = () => {
+    setIsAnimatingOut(true);
+    setTimeout(() => {
+      onClose();
+      setIsAnimatingOut(false);
+    }, 300); // Match animation duration
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,16 +49,15 @@ export default function CashRegisterModal({ isOpen, onClose, type, currentAmount
 
     setAmount('');
     setObservations('');
-    onClose();
+    handleClose(); // Use the animated close
   };
 
-  if (!isOpen) return null;
+  if (!isOpen && !isAnimatingOut) return null;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div 
-        className="bg-white rounded-xl shadow-2xl max-w-md w-full"
-        style={{ animation: 'modalSlideIn 0.3s ease-out forwards' }}
+        className={`bg-white rounded-xl shadow-2xl max-w-md w-full ${isAnimatingOut ? 'animate-modal-out' : 'animate-modal-in'}`}
       >
         {/* Header */}
         <div className={`${type === 'open' ? 'bg-gradient-to-r from-green-600 to-green-700' : 'bg-gradient-to-r from-red-600 to-red-700'} text-white p-4 flex justify-between items-center rounded-t-xl`}>
@@ -67,7 +75,7 @@ export default function CashRegisterModal({ isOpen, onClose, type, currentAmount
             )}
           </h2>
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="hover:bg-white/20 p-2 rounded-lg transition-colors"
           >
             <X size={20} />
@@ -149,7 +157,7 @@ export default function CashRegisterModal({ isOpen, onClose, type, currentAmount
           <div className="flex gap-3">
             <button
               type="button"
-              onClick={onClose}
+              onClick={handleClose}
               className="flex-1 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors"
             >
               Cancelar

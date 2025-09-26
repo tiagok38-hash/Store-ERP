@@ -30,6 +30,15 @@ export default function CustomerModal({ isOpen, onClose, type, data, onCustomerS
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isAnimatingOut, setIsAnimatingOut] = useState(false);
+
+  const handleClose = () => {
+    setIsAnimatingOut(true);
+    setTimeout(() => {
+      onClose();
+      setIsAnimatingOut(false);
+    }, 300); // Match animation duration
+  };
 
   const isCustomer = type === 'customer';
   const title = isCustomer ? 'Cliente' : 'Fornecedor';
@@ -68,7 +77,7 @@ export default function CustomerModal({ isOpen, onClose, type, data, onCustomerS
     }
     
     alert(`${title} ${data ? 'atualizado' : 'criado'} com sucesso!`);
-    onClose();
+    handleClose(); // Use the animated close
   };
 
   const formatDocument = (value: string) => {
@@ -120,13 +129,12 @@ export default function CustomerModal({ isOpen, onClose, type, data, onCustomerS
     }
   };
 
-  if (!isOpen) return null;
+  if (!isOpen && !isAnimatingOut) return null;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div 
-        className="bg-white rounded-xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto"
-        style={{ animation: 'modalSlideIn 0.3s ease-out forwards' }}
+        className={`bg-white rounded-xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto ${isAnimatingOut ? 'animate-modal-out' : 'animate-modal-in'}`}
       >
         {/* Header */}
         <div className={`bg-gradient-to-r ${
@@ -139,7 +147,7 @@ export default function CustomerModal({ isOpen, onClose, type, data, onCustomerS
             {data ? `Editar ${title}` : `Novo ${title}`}
           </h2>
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="hover:bg-white/20 p-2 rounded-lg transition-colors"
           >
             <X size={20} />
@@ -345,7 +353,7 @@ export default function CustomerModal({ isOpen, onClose, type, data, onCustomerS
           <div className="flex justify-end gap-3 mt-8 pt-6 border-t border-slate-200">
             <button
               type="button"
-              onClick={onClose}
+              onClick={handleClose}
               className="px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors"
             >
               Cancelar

@@ -1,5 +1,6 @@
 import { X, FileText, User, CreditCard, Calendar, Package } from 'lucide-react';
 import { useTheme } from '@/react-app/hooks/useTheme';
+import { useState } from 'react';
 
 interface SaleViewModalProps {
   isOpen: boolean;
@@ -78,8 +79,17 @@ const mockSaleData = {
 
 export default function SaleViewModal({ isOpen, onClose, saleId }: SaleViewModalProps) {
   const { theme } = useTheme();
+  const [isAnimatingOut, setIsAnimatingOut] = useState(false);
+
+  const handleClose = () => {
+    setIsAnimatingOut(true);
+    setTimeout(() => {
+      onClose();
+      setIsAnimatingOut(false);
+    }, 300); // Match animation duration
+  };
   
-  if (!isOpen) return null;
+  if (!isOpen && !isAnimatingOut) return null;
 
   const sale = mockSaleData[saleId as keyof typeof mockSaleData];
 
@@ -88,7 +98,7 @@ export default function SaleViewModal({ isOpen, onClose, saleId }: SaleViewModal
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
         <div className={`rounded-xl shadow-2xl max-w-md w-full p-6 ${
           theme === 'dark' ? 'bg-slate-800' : 'bg-white'
-        }`}>
+        } ${isAnimatingOut ? 'animate-modal-out' : 'animate-modal-in'}`}>
           <div className="text-center">
             <h2 className={`text-xl font-bold mb-4 ${
               theme === 'dark' ? 'text-white' : 'text-slate-800'
@@ -96,7 +106,7 @@ export default function SaleViewModal({ isOpen, onClose, saleId }: SaleViewModal
               Venda não encontrada
             </h2>
             <button
-              onClick={onClose}
+              onClick={handleClose}
               className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors"
             >
               Fechar
@@ -111,7 +121,7 @@ export default function SaleViewModal({ isOpen, onClose, saleId }: SaleViewModal
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className={`rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden ${
         theme === 'dark' ? 'bg-slate-800' : 'bg-white'
-      }`}>
+      } ${isAnimatingOut ? 'animate-modal-out' : 'animate-modal-in'}`}>
         {/* Header */}
         <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-6 flex justify-between items-center">
           <div className="flex items-center">
@@ -122,7 +132,7 @@ export default function SaleViewModal({ isOpen, onClose, saleId }: SaleViewModal
             </div>
           </div>
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="hover:bg-white/20 p-2 rounded-lg transition-colors"
           >
             <X size={24} />
@@ -280,7 +290,7 @@ export default function SaleViewModal({ isOpen, onClose, saleId }: SaleViewModal
           {/* Actions */}
           <div className="flex justify-end gap-3">
             <button
-              onClick={onClose}
+              onClick={handleClose}
               className={`px-6 py-2 border rounded-lg transition-colors ${
                 theme === 'dark'
                   ? 'border-slate-600 hover:bg-slate-700 text-slate-300'

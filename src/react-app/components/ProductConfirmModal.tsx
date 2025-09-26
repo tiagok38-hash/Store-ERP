@@ -1,5 +1,6 @@
 import { X, Package, Barcode, Smartphone, Tag, DollarSign } from 'lucide-react';
 import { useTheme } from '@/react-app/hooks/useTheme';
+import { useState } from 'react';
 
 interface Product {
   id: string;
@@ -29,12 +30,21 @@ export default function ProductConfirmModal({
   product
 }: ProductConfirmModalProps) {
   const { theme } = useTheme();
+  const [isAnimatingOut, setIsAnimatingOut] = useState(false);
 
-  if (!isOpen || !product) return null;
+  const handleClose = () => {
+    setIsAnimatingOut(true);
+    setTimeout(() => {
+      onClose();
+      setIsAnimatingOut(false);
+    }, 300); // Match animation duration
+  };
+
+  if (!isOpen && !isAnimatingOut) return null;
 
   const handleConfirm = () => {
     onConfirm();
-    onClose();
+    handleClose(); // Use the animated close
   };
 
   return (
@@ -42,8 +52,7 @@ export default function ProductConfirmModal({
       <div 
         className={`rounded-2xl shadow-2xl max-w-md w-full transform transition-all duration-300 ${
           theme === 'dark' ? 'bg-slate-800' : 'bg-white'
-        }`}
-        style={{ animation: 'modalSlideIn 0.3s ease-out forwards' }}
+        } ${isAnimatingOut ? 'animate-modal-out' : 'animate-modal-in'}`}
       >
         {/* Header */}
         <div className="bg-gradient-to-r from-blue-500 to-purple-600 text-white p-6 rounded-t-2xl relative overflow-hidden">
@@ -59,7 +68,7 @@ export default function ProductConfirmModal({
               </div>
             </div>
             <button
-              onClick={onClose}
+              onClick={handleClose}
               className="p-2 hover:bg-white/20 rounded-lg transition-colors backdrop-blur-sm"
             >
               <X size={20} />
@@ -77,11 +86,11 @@ export default function ProductConfirmModal({
             <h3 className={`font-bold text-lg mb-3 ${
               theme === 'dark' ? 'text-white' : 'text-slate-800'
             }`}>
-              {product.name}
+              {product?.name}
             </h3>
             
             <div className="space-y-3">
-              {product.sku && (
+              {product?.sku && (
                 <div className="flex items-center">
                   <Tag className={`mr-2 ${theme === 'dark' ? 'text-blue-400' : 'text-blue-600'}`} size={16} />
                   <span className={`text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-slate-600'}`}>
@@ -90,7 +99,7 @@ export default function ProductConfirmModal({
                 </div>
               )}
               
-              {product.brand && (
+              {product?.brand && (
                 <div className="flex items-center">
                   <Package className={`mr-2 ${theme === 'dark' ? 'text-green-400' : 'text-green-600'}`} size={16} />
                   <span className={`text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-slate-600'}`}>
@@ -99,7 +108,7 @@ export default function ProductConfirmModal({
                 </div>
               )}
 
-              {product.barcode && (
+              {product?.barcode && (
                 <div className="flex items-center">
                   <Barcode className={`mr-2 ${theme === 'dark' ? 'text-purple-400' : 'text-purple-600'}`} size={16} />
                   <span className={`text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-slate-600'}`}>
@@ -113,12 +122,12 @@ export default function ProductConfirmModal({
                 <span className={`text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-slate-600'}`}>
                   Preço: 
                   <span className={`font-bold ml-1 ${theme === 'dark' ? 'text-green-400' : 'text-green-600'}`}>
-                    R$ {product.price.toFixed(2)}
+                    R$ {product?.price.toFixed(2)}
                   </span>
                 </span>
               </div>
 
-              {product.stock !== undefined && (
+              {product?.stock !== undefined && (
                 <div className="flex items-center">
                   <Package className={`mr-2 ${theme === 'dark' ? 'text-orange-400' : 'text-orange-600'}`} size={16} />
                   <span className={`text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-slate-600'}`}>
@@ -127,7 +136,7 @@ export default function ProductConfirmModal({
                 </div>
               )}
 
-              {product.requiresImei && (
+              {product?.requiresImei && (
                 <div className="flex items-center">
                   <Smartphone className={`mr-2 ${theme === 'dark' ? 'text-red-400' : 'text-red-600'}`} size={16} />
                   <span className={`text-sm ${theme === 'dark' ? 'text-red-300' : 'text-red-600'} font-medium`}>
@@ -140,7 +149,7 @@ export default function ProductConfirmModal({
 
           <div className="flex gap-3 justify-end">
             <button
-              onClick={onClose}
+              onClick={handleClose}
               className={`px-6 py-3 rounded-xl font-medium transition-all duration-200 ${
                 theme === 'dark'
                   ? 'bg-slate-700 hover:bg-slate-600 text-slate-200 border border-slate-600'

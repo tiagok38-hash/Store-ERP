@@ -27,6 +27,15 @@ interface ProductHistoryModalProps {
 export default function ProductHistoryModal({ isOpen, onClose, product }: ProductHistoryModalProps) {
   const [activeTab, setActiveTab] = useState<'all' | 'sales' | 'prices' | 'stock'>('all');
   const [sortBy, setSortBy] = useState<'date' | 'type'>('date');
+  const [isAnimatingOut, setIsAnimatingOut] = useState(false);
+
+  const handleClose = () => {
+    setIsAnimatingOut(true);
+    setTimeout(() => {
+      onClose();
+      setIsAnimatingOut(false);
+    }, 300); // Match animation duration
+  };
 
   // Mock data for product history
   const productHistory: HistoryItem[] = product ? [
@@ -307,13 +316,12 @@ export default function ProductHistoryModal({ isOpen, onClose, product }: Produc
     }
   };
 
-  if (!isOpen) return null;
+  if (!isOpen && !isAnimatingOut) return null;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div 
-        className="bg-white rounded-xl shadow-2xl max-w-7xl w-full max-h-[90vh] overflow-hidden"
-        style={{ animation: 'modalSlideIn 0.3s ease-out forwards' }}
+        className={`bg-white rounded-xl shadow-2xl max-w-7xl w-full max-h-[90vh] overflow-hidden ${isAnimatingOut ? 'animate-modal-out' : 'animate-modal-in'}`}
       >
         {/* Header */}
         <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-6 flex justify-between items-center">
@@ -327,7 +335,7 @@ export default function ProductHistoryModal({ isOpen, onClose, product }: Produc
             </p>
           </div>
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="hover:bg-white/20 p-2 rounded-lg transition-colors"
           >
             <X size={24} />
@@ -436,7 +444,7 @@ export default function ProductHistoryModal({ isOpen, onClose, product }: Produc
         {/* Footer */}
         <div className="bg-slate-50 px-6 py-4 flex justify-end">
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="px-6 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition-colors"
           >
             Fechar

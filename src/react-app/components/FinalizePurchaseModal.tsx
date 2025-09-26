@@ -38,6 +38,15 @@ export default function FinalizePurchaseModal({
   onFinalized 
 }: FinalizePurchaseModalProps) {
   const [itemUnits, setItemUnits] = useState<{[key: string]: ItemUnit[]}>({});
+  const [isAnimatingOut, setIsAnimatingOut] = useState(false);
+
+  const handleClose = () => {
+    setIsAnimatingOut(true);
+    setTimeout(() => {
+      onClose();
+      setIsAnimatingOut(false);
+    }, 300); // Match animation duration
+  };
 
   useEffect(() => {
     if (purchase && purchase.items) {
@@ -130,27 +139,26 @@ export default function FinalizePurchaseModal({
       onFinalized({ itemUnits, purchase });
     }
     
-    onClose();
+    handleClose(); // Use the animated close
   };
 
-  if (!isOpen || !purchase) return null;
+  if (!isOpen || !purchase && !isAnimatingOut) return null;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div 
-        className="bg-white rounded-lg shadow-2xl max-w-7xl w-full max-h-[90vh] overflow-hidden"
-        style={{ animation: 'modalSlideIn 0.3s ease-out forwards' }}
+        className={`bg-white rounded-lg shadow-2xl max-w-7xl w-full max-h-[90vh] overflow-hidden ${isAnimatingOut ? 'animate-modal-out' : 'animate-modal-in'}`}
       >
         {/* Header */}
         <div className="bg-blue-600 text-white px-4 py-3 flex justify-between items-center rounded-t-lg">
           <div className="text-center flex-1">
             <h2 className="text-lg font-semibold flex items-center justify-center">
               <Package className="mr-2" size={20} />
-              Lançar o estoque da compra #{purchase.locatorCode}
+              Lançar o estoque da compra #{purchase?.locatorCode}
             </h2>
           </div>
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="hover:bg-white/20 p-1 rounded transition-colors"
           >
             <X size={20} />
@@ -189,7 +197,7 @@ export default function FinalizePurchaseModal({
                 </tr>
               </thead>
               <tbody>
-                {purchase.items.map((item: PurchaseItem) => 
+                {purchase?.items.map((item: PurchaseItem) => 
                   itemUnits[item.id]?.map((unit, unitIndex) => (
                     <tr key={unit.unitId} className="hover:bg-slate-50">
                       <td className="border border-slate-300 px-2 py-2">
@@ -323,7 +331,7 @@ export default function FinalizePurchaseModal({
           {/* Action Buttons */}
           <div className="flex justify-between gap-4 mt-6">
             <button
-              onClick={onClose}
+              onClick={handleClose}
               className="px-6 py-2 border border-slate-300 text-slate-700 rounded hover:bg-slate-50 transition-colors"
             >
               Fechar

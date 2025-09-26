@@ -1,4 +1,5 @@
 import { X, FileText, User, Calendar, Package, DollarSign } from 'lucide-react';
+import { useState } from 'react';
 
 interface PurchaseViewModalProps {
   isOpen: boolean;
@@ -14,7 +15,17 @@ const mockUserData = {
 };
 
 export default function PurchaseViewModal({ isOpen, onClose, purchase }: PurchaseViewModalProps) {
-  if (!isOpen || !purchase) return null;
+  const [isAnimatingOut, setIsAnimatingOut] = useState(false);
+
+  const handleClose = () => {
+    setIsAnimatingOut(true);
+    setTimeout(() => {
+      onClose();
+      setIsAnimatingOut(false);
+    }, 300); // Match animation duration
+  };
+
+  if (!isOpen || !purchase && !isAnimatingOut) return null;
 
   const formatCurrency = (value: number): string => {
     return value.toLocaleString('pt-BR', { 
@@ -60,7 +71,7 @@ export default function PurchaseViewModal({ isOpen, onClose, purchase }: Purchas
             </div>
           </div>
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="hover:bg-white/20 p-2 rounded-lg transition-colors"
           >
             <X size={24} />
@@ -214,7 +225,7 @@ export default function PurchaseViewModal({ isOpen, onClose, purchase }: Purchas
           {/* Actions */}
           <div className="flex justify-end gap-3 mt-6">
             <button
-              onClick={onClose}
+              onClick={handleClose}
               className="px-6 py-2 border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors"
             >
               Fechar

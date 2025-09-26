@@ -32,6 +32,15 @@ interface CustomerHistoryModalProps {
 export default function CustomerHistoryModal({ isOpen, onClose, customer }: CustomerHistoryModalProps) {
   const [sortBy, setSortBy] = useState<'date' | 'amount'>('date');
   const [filterPeriod, setFilterPeriod] = useState<'all' | '30days' | '90days' | '1year'>('all');
+  const [isAnimatingOut, setIsAnimatingOut] = useState(false);
+
+  const handleClose = () => {
+    setIsAnimatingOut(true);
+    setTimeout(() => {
+      onClose();
+      setIsAnimatingOut(false);
+    }, 300); // Match animation duration
+  };
 
   // Mock data for customer history
   const customerHistory: CustomerHistoryItem[] = customer ? [
@@ -131,13 +140,12 @@ export default function CustomerHistoryModal({ isOpen, onClose, customer }: Cust
     return <DollarSign size={14} className="text-slate-500" />;
   };
 
-  if (!isOpen) return null;
+  if (!isOpen && !isAnimatingOut) return null;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div 
-        className="bg-white rounded-xl shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden"
-        style={{ animation: 'modalSlideIn 0.3s ease-out forwards' }}
+        className={`bg-white rounded-xl shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden ${isAnimatingOut ? 'animate-modal-out' : 'animate-modal-in'}`}
       >
         {/* Header */}
         <div className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white p-6 flex justify-between items-center">
@@ -151,7 +159,7 @@ export default function CustomerHistoryModal({ isOpen, onClose, customer }: Cust
             </p>
           </div>
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="hover:bg-white/20 p-2 rounded-lg transition-colors"
           >
             <X size={24} />
@@ -307,7 +315,7 @@ export default function CustomerHistoryModal({ isOpen, onClose, customer }: Cust
         {/* Footer */}
         <div className="bg-slate-50 px-6 py-4 flex justify-end">
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="px-6 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition-colors"
           >
             Fechar
