@@ -54,6 +54,7 @@ interface InventoryUnit {
   updatedAt: string;
   purchaseId?: string;
   locatorCode?: string;
+  warrantyTerm: string; // Added for consistency
 }
 
 interface CartItem extends InventoryUnit {
@@ -70,8 +71,7 @@ interface PaymentMethod {
   interestRate?: number; // Taxa de juros aplicada
   installmentValue?: number; // Valor de cada parcela
   taxesAmount?: number; // Valor das taxas (para crédito/débito)
-  tradeInValue?: number; // Valor do aparelho na troca
-  tradeInDevice?: string; // Descrição do aparelho na troca
+  tradeInItems?: InventoryUnit[]; // Add this for trade-in
 }
 
 interface Customer {
@@ -98,19 +98,19 @@ interface EnhancedSalesModalProps {
 
 const mockInventoryUnits: InventoryUnit[] = [
   {
-    id: 'unit-1', productSku: 'IPH13P128-TN', productDescription: 'iPhone 13 Pro 128GB Titânio Natural', brand: 'Apple', category: 'Smartphone', model: 'iPhone 13 Pro', color: 'Titânio Natural', storage: '128GB', condition: 'novo', location: 'Loja', imei1: '123456789012345', serialNumber: undefined, barcode: '7891234567890', costPrice: 2399.40, salePrice: 3200.00, status: 'available', createdAt: '2025-09-13', updatedAt: '2025-09-13', purchaseId: '1', locatorCode: 'LOC001234567'
+    id: 'unit-1', productSku: 'IPH13P128-TN', productDescription: 'iPhone 13 Pro 128GB Titânio Natural', brand: 'Apple', category: 'Smartphone', model: 'iPhone 13 Pro', color: 'Titânio Natural', storage: '128GB', condition: 'novo', location: 'Loja', imei1: '123456789012345', serialNumber: undefined, barcode: '7891234567890', costPrice: 2399.40, salePrice: 3200.00, status: 'available', createdAt: '2025-09-13', updatedAt: '2025-09-13', purchaseId: '1', locatorCode: 'LOC001234567', warrantyTerm: '1 ano (defeito de fábrica)'
   },
   {
-    id: 'unit-2', productSku: 'SGS22128-PB', productDescription: 'Samsung Galaxy S22 128GB Phantom Black', brand: 'Samsung', category: 'Smartphone', model: 'Galaxy S22', color: 'Phantom Black', storage: '128GB', condition: 'novo', location: 'Vitrine', imei1: '987654321098765', serialNumber: undefined, barcode: '7891234567891', costPrice: 2179.00, salePrice: 2800.00, status: 'available', createdAt: '2025-09-13', updatedAt: '2025-09-13', purchaseId: '2', locatorCode: 'LOC001234568'
+    id: 'unit-2', productSku: 'SGS22128-PB', productDescription: 'Samsung Galaxy S22 128GB Phantom Black', brand: 'Samsung', category: 'Smartphone', model: 'Galaxy S22', color: 'Phantom Black', storage: '128GB', condition: 'novo', location: 'Vitrine', imei1: '987654321098765', serialNumber: undefined, barcode: '7891234567891', costPrice: 2179.00, salePrice: 2800.00, status: 'available', createdAt: '2025-09-13', updatedAt: '2025-09-13', purchaseId: '2', locatorCode: 'LOC001234568', warrantyTerm: '1 ano (defeito de fábrica)'
   },
   {
-    id: 'unit-3', productSku: 'CIPH13P-TR', productDescription: 'Capinha iPhone 13 Pro Transparente', brand: 'Genérica', category: 'Acessórios', model: 'Capinha', color: 'Transparente', storage: undefined, condition: 'novo', location: 'Prateleira', imei1: undefined, serialNumber: undefined, barcode: '7891234567892', costPrice: 19.90, salePrice: 45.90, status: 'available', createdAt: '2025-09-13', updatedAt: '2025-09-13', purchaseId: '3', locatorCode: 'LOC001234569'
+    id: 'unit-3', productSku: 'CIPH13P-TR', productDescription: 'Capinha iPhone 13 Pro Transparente', brand: 'Genérica', category: 'Acessórios', model: 'Capinha', color: 'Transparente', storage: undefined, condition: 'novo', location: 'Prateleira', imei1: undefined, serialNumber: undefined, barcode: '7891234567892', costPrice: 19.90, salePrice: 45.90, status: 'available', createdAt: '2025-09-13', updatedAt: '2025-09-13', purchaseId: '3', locatorCode: 'LOC001234569', warrantyTerm: '3 meses (seminovos)'
   },
   {
-    id: 'unit-4', productSku: 'FJBL001-BL', productDescription: 'Fone Bluetooth JBL Wave Buds Azul', brand: 'JBL', category: 'Áudio', model: 'Wave Buds', color: 'Azul', storage: undefined, condition: 'novo', location: 'Prateleira', imei1: undefined, serialNumber: 'JBLWB0012345', barcode: '7891234567893', costPrice: 120.00, salePrice: 189.90, status: 'available', createdAt: '2025-09-13', updatedAt: '2025-09-13', purchaseId: '4', locatorCode: 'LOC001234570'
+    id: 'unit-4', productSku: 'FJBL001-BL', productDescription: 'Fone Bluetooth JBL Wave Buds Azul', brand: 'JBL', category: 'Áudio', model: 'Wave Buds', color: 'Azul', storage: undefined, condition: 'novo', location: 'Prateleira', imei1: undefined, serialNumber: 'JBLWB0012345', barcode: '7891234567893', costPrice: 120.00, salePrice: 189.90, status: 'available', createdAt: '2025-09-13', updatedAt: '2025-09-13', purchaseId: '4', locatorCode: 'LOC001234570', warrantyTerm: '1 ano (defeito de fábrica)'
   },
   {
-    id: 'unit-5', productSku: 'IPH13P128-TB', productDescription: 'iPhone 13 Pro 128GB Titânio Azul', brand: 'Apple', category: 'Smartphone', model: 'iPhone 13 Pro', color: 'Titânio Azul', storage: '128GB', condition: 'seminovo', location: 'Loja', imei1: '111222333444555', serialNumber: undefined, barcode: '7891234567894', costPrice: 2200.00, salePrice: 2900.00, status: 'available', createdAt: '2025-09-10', updatedAt: '2025-09-10', purchaseId: '5', locatorCode: 'LOC001234571'
+    id: 'unit-5', productSku: 'IPH13P128-TB', productDescription: 'iPhone 13 Pro 128GB Titânio Azul', brand: 'Apple', category: 'Smartphone', model: 'iPhone 13 Pro', color: 'Titânio Azul', storage: '128GB', condition: 'seminovo', location: 'Loja', imei1: '111222333444555', serialNumber: undefined, barcode: '7891234567894', costPrice: 2200.00, salePrice: 2900.00, status: 'available', createdAt: '2025-09-10', updatedAt: '2025-09-10', purchaseId: '5', locatorCode: 'LOC001234571', warrantyTerm: '6 meses (limitada)'
   }
 ];
 
@@ -381,6 +381,11 @@ export default function EnhancedSalesModal({ isOpen, onClose }: EnhancedSalesMod
 
   const removePaymentMethod = (index: number) => {
     if (paymentMethods.length > 0) {
+      const methodToRemove = paymentMethods[index];
+      // If the removed method was a trade-in, return its items to available inventory
+      if (methodToRemove.type === 'trade_in' && methodToRemove.tradeInItems) {
+        setAvailableInventory(prev => [...prev, ...methodToRemove.tradeInItems.map(item => ({...item, status: 'available'}))]);
+      }
       const newMethods = paymentMethods.filter((_, i) => i !== index);
       setPaymentMethods(newMethods);
     }
@@ -467,12 +472,45 @@ export default function EnhancedSalesModal({ isOpen, onClose }: EnhancedSalesMod
     return labels[type as keyof typeof labels] || type;
   };
 
-  const handleTradeInValue = (tradeInCost: number) => {
-    // Find the trade_in payment method and update its amount
-    setPaymentMethods(prev => prev.map(method => 
-      method.type === 'trade_in' ? { ...method, amount: tradeInCost } : method
-    ));
-    showSuccess('Trade-in registrado', `Valor de R$ ${formatCurrencyBR(tradeInCost)} adicionado como pagamento.`);
+  // New handler for trade-in data from PurchaseModal
+  const handleTradeInSaved = (result: { tradeInValue: number; newInventoryUnits: InventoryUnit[] }) => {
+    const { tradeInValue, newInventoryUnits } = result;
+
+    // Add new inventory units to availableInventory
+    setAvailableInventory(prev => [...prev, ...newInventoryUnits]);
+
+    // Find or create the trade_in payment method
+    setPaymentMethods(prev => {
+        const existingIndex = prev.findIndex(m => m.type === 'trade_in');
+        if (existingIndex !== -1) {
+            // Update existing trade_in payment
+            const updatedMethods = [...prev];
+            updatedMethods[existingIndex] = {
+                ...updatedMethods[existingIndex],
+                amount: tradeInValue,
+                tradeInItems: newInventoryUnits, // Store the actual items
+                installments: 1, 
+                withInterest: false,
+                interestRate: 0,
+                installmentValue: tradeInValue,
+                taxesAmount: 0
+            };
+            return updatedMethods;
+        } else {
+            // Add new trade_in payment
+            return [...prev, {
+                type: 'trade_in',
+                amount: tradeInValue,
+                tradeInItems: newInventoryUnits,
+                installments: 1, 
+                withInterest: false,
+                interestRate: 0,
+                installmentValue: tradeInValue,
+                taxesAmount: 0
+            }];
+        }
+    });
+    showSuccess('Trade-in registrado', `Valor de R$ ${formatCurrencyBR(tradeInValue)} adicionado como pagamento.`);
   };
 
   if (!isOpen && !isAnimatingOut) return null;
@@ -982,7 +1020,7 @@ export default function EnhancedSalesModal({ isOpen, onClose }: EnhancedSalesMod
         isOpen={isTradeInModalOpen}
         onClose={() => setIsTradeInModalOpen(false)}
         isTradeIn={true}
-        onTradeInValue={handleTradeInValue}
+        onTradeInSaved={handleTradeInSaved} // Use the new handler
         // Aumentar o z-index para garantir que ele apareça sobre o SalesModal
         style={{ zIndex: 60 }} 
       />

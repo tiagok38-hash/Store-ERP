@@ -30,13 +30,45 @@ interface PurchaseItem {
   hasImeiSerial?: boolean;
 }
 
+// Add InventoryUnit interface here for local use in trade-in logic
+interface InventoryUnitForTradeIn {
+  id: string;
+  productSku: string;
+  productDescription: string;
+  brand: string;
+  category: string;
+  model?: string;
+  color?: string;
+  storage?: string;
+  condition: 'novo' | 'seminovo' | 'usado';
+  location?: string;
+  imei1?: string;
+  imei2?: string;
+  serialNumber?: string;
+  barcode?: string;
+  costPrice: number; // This is the cost to the store (what they paid for trade-in)
+  salePrice: number; // For inventory, this is the value it's taken in at
+  status: 'available' | 'sold' | 'reserved' | 'defective';
+  createdAt: string;
+  updatedAt: string;
+  purchaseId?: string;
+  locatorCode?: string;
+  warrantyTerm: string; // Added for consistency
+}
+
+// New interface for trade-in data returned by PurchaseModal
+interface TradeInResult {
+  tradeInValue: number;
+  newInventoryUnits: InventoryUnitForTradeIn[];
+}
+
 interface PurchaseModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onPurchaseSaved?: (purchase: any) => void;
+  onPurchaseSaved?: (data: any) => void; // Keep as any for flexibility
+  onTradeInSaved?: (result: TradeInResult) => void; // New callback for trade-in specific data
   editingPurchase?: any;
   isTradeIn?: boolean;
-  onTradeInValue?: (value: number) => void;
 }
 
 const mockSuppliers = [
@@ -185,9 +217,9 @@ export default function PurchaseModal({
   isOpen, 
   onClose, 
   onPurchaseSaved, 
+  onTradeInSaved, // New prop
   editingPurchase, 
   isTradeIn = false,
-  onTradeInValue 
 }: PurchaseModalProps) {
   const { theme } = useTheme();
   const { showSuccess, showError } = useNotification();
@@ -380,11 +412,6 @@ export default function PurchaseModal({
 
     setItems([...items, newItem]);
     resetCurrentItem();
-
-    // Se for trade-in, passa o valor para o componente pai
-    if (isTradeIn && onTradeInValue) {
-      // This logic is now moved to handleSubmit to ensure all items are accounted for
-    }
   };
 
   const removeItem = (id: string) => {
@@ -422,6 +449,47 @@ export default function PurchaseModal({
     const supplierName = mockSuppliers.find(s => s.id === selectedSupplier)?.name || 'Fornecedor';
     const locatorCode = editingPurchase?.locatorCode || generateLocatorCode();
     
+    if (isTradeIn) {
+      const newInventoryUnits: InventoryUnitForTradeIn[] = [];
+      let totalTradeInValue = 0;
+
+      itemsWithSkus.forEach(item => {
+          const newUnitId = `tradein-unit-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
+          
+          const newInventoryUnit: InventoryUnitForTradeIn = {
+              id: newUnitId,
+              productSku: item.sku || 'TRADEIN-SKU',
+              productDescription: item.description,
+              brand: 'Trade-in', 
+              category: 'Trade-in', 
+              condition: item.condition as any,
+              location: item.location,
+              costPrice: item.costPrice, 
+              salePrice: item.costPrice, // Value it's taken in at
+              status: 'available',
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+              imei1: item.imei1,
+              imei2: item.imei2,
+              serialNumber: item.serialNumber,
+              barcode: item.barcode,
+              warrantyTerm: item.warranty
+          };
+          newInventoryUnits.push(newInventoryUnit);
+          totalTradeInValue += item.costPrice * item.quantity; 
+      });
+
+      if (onTradeInSaved) { // Use the new callback for trade-in
+          onTradeInSaved({
+              tradeInValue: totalTradeInValue,
+              newInventoryUnits: newInventoryUnits
+          });
+      }
+      showSuccess('Trade-in registrado', `Valor de R$ ${formatCurrencyBR(totalTradeInValue)} adicionado como pagamento.`);
+      handleClose();
+      return; 
+    }
+
     const purchaseData = {
       id: editingPurchase?.id || Date.now().toString(),
       locatorCode,
@@ -451,14 +519,9 @@ export default function PurchaseModal({
     if (onPurchaseSaved) {
       onPurchaseSaved(purchaseData);
     }
-
-    // Se for trade-in, passa o valor total da compra para o componente pai
-    if (isTradeIn && onTradeInValue) {
-      onTradeInValue(total); // Passa o valor total da compra de trade-in
-    }
     
     showSuccess(
-      `${editingPurchase ? 'Compra atualizada' : isTradeIn ? 'Trade-in registrado' : 'Compra registrada'} com sucesso!`,
+      `${editingPurchase ? 'Compra atualizada' : 'Compra registrada'} com sucesso!`,
       `Localizador: ${locatorCode} - ${itemsWithSkus.length} itens ${editingPurchase ? 'atualizados' : 'registrados'}`
     );
     handleClose(); // Use the animated close
