@@ -378,7 +378,7 @@ export default function EnhancedSalesModal({ isOpen, onClose }: EnhancedSalesMod
       updatedMethod.taxesAmount = calculatePaymentTaxes(updatedMethod, baseAmount); // Base tax on original amount
     } else {
       updatedMethod.interestRate = 0;
-      updatedatedMethod.installmentValue = updatedMethod.amount;
+      updatedMethod.installmentValue = updatedMethod.amount;
       updatedMethod.taxesAmount = calculatePaymentTaxes(updatedMethod, updatedMethod.amount);
     }
     
