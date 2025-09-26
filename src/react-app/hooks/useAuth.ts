@@ -121,7 +121,8 @@ export const useAuthState = () => {
   };
 
   const hasPermission = (permission: Permission): boolean => {
-    if (!userProfile) return false;
+    // Temporarily allow all permissions when no user is logged in (login screen bypassed)
+    if (!userProfile) return true; 
     if (userProfile.role === 'admin') return true; // Admin has all permissions
     return userProfile.permissions.includes(permission);
   };
