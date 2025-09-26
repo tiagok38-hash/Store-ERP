@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import { useNotification } from '@/react-app/components/NotificationSystem';
 import { useTheme } from '@/react-app/hooks/useTheme';
-import { formatCurrencyInput, parseCurrencyBR } from '@/react-app/utils/currency';
+import { formatCurrencyInput, parseCurrencyBR, formatCurrencyBR } from '@/react-app/utils/currency';
 import CustomerModal from '@/react-app/components/CustomerModal';
 
 interface PurchaseItem {
@@ -179,14 +179,6 @@ const mockProductDescriptions = [
   'Tablet Android',
   'Smartphone Android'
 ];
-
-// Função para formatar valores no padrão brasileiro
-const formatCurrency = (value: number): string => {
-  return value.toLocaleString('pt-BR', { 
-    minimumFractionDigits: 2, 
-    maximumFractionDigits: 2 
-  });
-};
 
 export default function PurchaseModal({ 
   isOpen, 
@@ -1146,8 +1138,8 @@ export default function PurchaseModal({
                             </div>
                           </td>
                           <td className="py-1.5 text-xs">{item.quantity}</td>
-                          <td className="py-1.5 text-xs">R$ {formatCurrency(item.costPrice)}</td>
-                          <td className="py-1.5 text-xs font-medium">R$ {formatCurrency(item.totalPrice)}</td>
+                          <td className="py-1.5 text-xs">R$ {formatCurrencyBR(item.costPrice)}</td>
+                          <td className="py-1.5 text-xs font-medium">R$ {formatCurrencyBR(item.totalPrice)}</td>
                           <td className="py-1.5 text-center">
                             <button
                               onClick={() => removeItem(item.id)}
@@ -1184,7 +1176,7 @@ export default function PurchaseModal({
               <div className={`px-3 py-1.5 rounded font-medium text-sm ${
                 theme === 'dark' ? 'bg-slate-700 text-white' : 'bg-slate-100 text-slate-800'
               }`}>
-                R$ {formatCurrency(subtotal)}
+                R$ {formatCurrencyBR(subtotal)}
               </div>
             </div>
 
@@ -1222,7 +1214,7 @@ export default function PurchaseModal({
                 Total
               </label>
               <div className="bg-green-100 text-green-800 px-3 py-1.5 rounded font-bold text-sm">
-                R$ {formatCurrency(total)}
+                R$ {formatCurrencyBR(total)}
               </div>
             </div>
           </div>
