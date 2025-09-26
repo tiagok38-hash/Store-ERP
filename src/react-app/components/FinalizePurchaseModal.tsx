@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { X, CheckCircle, Package } from 'lucide-react';
+import { formatCurrencyInput, parseCurrencyBR } from '@/react-app/utils/currency';
 
 interface PurchaseItem {
   id: string;
@@ -18,7 +19,7 @@ interface ItemUnit {
   condition: string;
   warranty: string;
   location: string;
-  markup?: number;
+  markup: number | null; // Pode ser null se não preenchido
   salePrice?: number;
 }
 
@@ -53,7 +54,7 @@ export default function FinalizePurchaseModal({
             condition: 'Seminovo',
             warranty: '1 ano',
             location: 'Loja',
-            markup: 0,
+            markup: null, // Inicializa como null
             salePrice: item.finalPrice
           });
         }
@@ -77,9 +78,15 @@ export default function FinalizePurchaseModal({
         const item = purchase.items.find((i: PurchaseItem) => i.id === itemId);
         if (item) {
           const costPrice = item.costPrice;
-          const markup = parseFloat(value) || 0;
-          const salePrice = costPrice + (costPrice * markup / 100);
-          newUnits[itemId][unitIndex].salePrice = salePrice;
+          const markup = value === null ? null : (parseFloat(value) || 0); // Armazena null se vazio
+          
+          if (markup !== null) {
+            const salePrice = costPrice + (costPrice * markup / 100);
+            newUnits[itemId][unitIndex].salePrice = salePrice;
+          } else {
+            newUnits[itemId][unitIndex].salePrice = item.finalPrice; // Volta ao preço original ou mantém o último
+          }
+          newUnits[itemId][unitIndex].markup = markup; // Atualiza o markup no estado
         }
       }
       
@@ -128,15 +135,12 @@ export default function FinalizePurchaseModal({
     onClose();
   };
 
-  const formatCurrency = (value: number): string => {
-    return new Intl.NumberFormat('pt-BR', {
+  // Função para formatar valores no padrão brasileiro para exibição
+  const formatCurrencyDisplay = (value: number): string => {
+    return value.toLocaleString('pt-BR', {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2
-    }).format(value);
-  };
-
-  const parseCurrency = (value: string): number => {
-    return parseFloat(value.replace(/[^\d,]/g, '').replace(',', '.')) || 0;
+    });
   };
 
   if (!isOpen || !purchase) return null;
@@ -276,16 +280,16 @@ export default function FinalizePurchaseModal({
                       </td>
                       <td className="border border-slate-300 px-1 py-2">
                         <div className="text-xs text-slate-700 bg-slate-100 px-1 py-1 rounded text-center">
-                          R$ {formatCurrency(item.costPrice)}
+                          R$ {formatCurrencyDisplay(item.costPrice)}
                         </div>
                       </td>
                       <td className="border border-slate-300 px-1 py-2">
                         <input
                           type="text"
-                          value={unit.markup || ''}
+                          value={unit.markup === null ? '' : unit.markup.toString()} // Exibe vazio se null
                           onChange={(e) => {
                             const value = e.target.value.replace(/[^\d,]/g, '');
-                            updateItemUnit(item.id, unitIndex, 'markup', value ? parseFloat(value.replace(',', '.')) : 0);
+                            updateItemUnit(item.id, unitIndex, 'markup', value === '' ? null : parseFloat(value.replace(',', '.')));
                           }}
                           className="w-full px-1 py-1 text-xs border border-slate-200 rounded focus:ring-1 focus:ring-blue-400 focus:border-blue-400 text-center"
                           placeholder="%"
@@ -293,15 +297,15 @@ export default function FinalizePurchaseModal({
                       </td>
                       <td className="border border-slate-300 px-1 py-2">
                         <div className="text-xs text-green-600 bg-green-50 px-1 py-1 rounded text-center">
-                          R$ {formatCurrency(item.costPrice + (item.costPrice * (unit.markup || 0) / 100))}
+                          {unit.markup === null ? '-' : `R$ ${formatCurrencyDisplay(item.costPrice + (item.costPrice * (unit.markup || 0) / 100))}`}
                         </div>
                       </td>
                       <td className="border border-slate-300 px-1 py-2 bg-red-50">
                         <input
                           type="text"
-                          value={unit.salePrice ? formatCurrency(unit.salePrice) : ''}
+                          value={unit.salePrice ? formatCurrencyInput(unit.salePrice.toString()) : ''}
                           onChange={(e) => {
-                            const numericValue = parseCurrency(e.target.value);
+                            const numericValue = parseCurrencyBR(e.target.value);
                             updateItemUnit(item.id, unitIndex, 'salePrice', numericValue);
                           }}
                           className="w-full px-1 py-1 text-xs border border-red-300 rounded focus:ring-1 focus:ring-red-400 focus:border-red-400 bg-white"
