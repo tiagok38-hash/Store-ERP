@@ -13,14 +13,15 @@ import {
   ChevronDown,
   ChevronRight,
   UserCheck,
-  Building2, // Adicionado o ícone Building2 aqui
+  Building2,
   History,
   LogOut,
   Menu,
   X,
   Sun,
   Moon,
-  Printer
+  Printer,
+  Clock // Adicionado o ícone Clock aqui
 } from 'lucide-react';
 import { useAuth } from '@/react-app/hooks/useAuth';
 import { useTheme } from '@/react-app/hooks/useTheme';
