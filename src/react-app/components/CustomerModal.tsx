@@ -5,7 +5,8 @@ import {
   User,
   Users,
   MapPin,
-  Building
+  Building,
+  Calendar
 } from 'lucide-react';
 
 interface CustomerModalProps {
@@ -22,11 +23,12 @@ export default function CustomerModal({ isOpen, onClose, type, data, onCustomerS
     email: data?.email || '',
     phone: data?.phone || '',
     document: data?.document || '',
+    dateOfBirth: data?.dateOfBirth || '', // Novo campo: Data de Nascimento
     address: data?.address || '',
-    houseNumber: data?.houseNumber || '', // Novo campo
-    neighborhood: data?.neighborhood || '', // Novo campo
-    city: data?.localidade || data?.city || '', // Prioriza ViaCEP, senão usa o mock
-    state: data?.uf || data?.state || '', // Prioriza ViaCEP, senão usa o mock
+    houseNumber: data?.houseNumber || '',
+    neighborhood: data?.neighborhood || '',
+    city: data?.localidade || data?.city || '',
+    state: data?.uf || data?.state || '',
     zipCode: data?.zipCode || '',
     observations: data?.observations || ''
   });
@@ -67,9 +69,10 @@ export default function CustomerModal({ isOpen, onClose, type, data, onCustomerS
       email: formData.email,
       phone: formData.phone,
       document: formData.document,
+      dateOfBirth: formData.dateOfBirth, // Incluir no objeto de dados
       address: formData.address,
-      houseNumber: formData.houseNumber, // Incluir no objeto de dados
-      neighborhood: formData.neighborhood, // Incluir no objeto de dados
+      houseNumber: formData.houseNumber,
+      neighborhood: formData.neighborhood,
       city: formData.city,
       state: formData.state,
       zipCode: formData.zipCode,
@@ -122,7 +125,7 @@ export default function CustomerModal({ isOpen, onClose, type, data, onCustomerS
           setFormData(prev => ({
             ...prev,
             address: data.logradouro || '',
-            neighborhood: data.bairro || '', // Preencher bairro
+            neighborhood: data.bairro || '',
             city: data.localidade || '',
             state: data.uf || '',
             zipCode: formatZipCode(cleanCep)
@@ -197,7 +200,6 @@ export default function CustomerModal({ isOpen, onClose, type, data, onCustomerS
                 />
               </div>
 
-              {/* Email e Telefone na mesma linha */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">
@@ -228,6 +230,23 @@ export default function CustomerModal({ isOpen, onClose, type, data, onCustomerS
                   />
                 </div>
               </div>
+
+              {isCustomer && ( // Apenas para clientes
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    Data de Nascimento
+                  </label>
+                  <div className="relative">
+                    <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={20} />
+                    <input
+                      type="date"
+                      value={formData.dateOfBirth}
+                      onChange={(e) => setFormData({ ...formData, dateOfBirth: e.target.value })}
+                      className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    />
+                  </div>
+                </div>
+              )}
 
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">
@@ -284,7 +303,6 @@ export default function CustomerModal({ isOpen, onClose, type, data, onCustomerS
                 />
               </div>
 
-              {/* Número e Bairro na mesma linha */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">
@@ -313,7 +331,6 @@ export default function CustomerModal({ isOpen, onClose, type, data, onCustomerS
                 </div>
               </div>
 
-              {/* Cidade e Estado na mesma linha */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">
