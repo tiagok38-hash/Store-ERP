@@ -320,7 +320,8 @@ export default function EnhancedSalesModal({ isOpen, onClose }: EnhancedSalesMod
     } else if (method.type === 'credit') {
       fee = creditCardFee;
       if (method.withInterest && method.installments && method.installments > 3) {
-        fee += (interestRates[method.installments as keyof typeof interestRates] || 0);
+        currentInterestRate = (interestRates[method.installments as keyof typeof interestRates] || 0);
+        fee += currentInterestRate;
       }
     }
     return itemAmount * (fee / 100);
