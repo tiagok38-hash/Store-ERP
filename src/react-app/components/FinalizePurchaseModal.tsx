@@ -55,7 +55,7 @@ export default function FinalizePurchaseModal({
             warranty: '1 ano',
             location: 'Loja',
             markup: null, // Inicializa como null
-            salePrice: item.finalPrice
+            salePrice: 0 // Inicializa com 0 para exibir R$ 0,00
           });
         }
         unitsMap[item.id] = units;
@@ -84,7 +84,7 @@ export default function FinalizePurchaseModal({
             const salePrice = costPrice + (costPrice * markup / 100);
             newUnits[itemId][unitIndex].salePrice = salePrice;
           } else {
-            newUnits[itemId][unitIndex].salePrice = item.finalPrice; // Volta ao preço original ou mantém o último
+            newUnits[itemId][unitIndex].salePrice = 0; // Volta a 0 se markup for nulo
           }
           newUnits[itemId][unitIndex].markup = markup; // Atualiza o markup no estado
         }
@@ -295,15 +295,10 @@ export default function FinalizePurchaseModal({
                       <td className="border border-slate-300 px-1 py-2 bg-red-50">
                         <input
                           type="text"
-                          value={unit.salePrice ? formatCurrencyBR(unit.salePrice) : ''}
+                          value={unit.salePrice !== undefined ? formatCurrencyBR(unit.salePrice) : ''}
                           onChange={(e) => {
-                            let inputValue = e.target.value;
-                            // Remove todos os caracteres que não são dígitos ou uma vírgula
-                            inputValue = inputValue.replace(/[^0-9,]/g, '');
-                            // Substitui a vírgula por ponto para parseFloat
-                            inputValue = inputValue.replace(',', '.');
-                            
-                            const numericValue = parseFloat(inputValue) || 0;
+                            const formattedValue = formatCurrencyInput(e.target.value);
+                            const numericValue = parseCurrencyBR(formattedValue);
                             updateItemUnit(item.id, unitIndex, 'salePrice', numericValue);
                           }}
                           className="w-full px-1 py-1 text-xs border border-red-300 rounded focus:ring-1 focus:ring-red-400 focus:border-red-400 bg-white"
