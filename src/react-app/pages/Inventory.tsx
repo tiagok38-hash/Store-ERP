@@ -60,6 +60,13 @@ interface Purchase {
   total: number;
   status: 'completed' | 'pending' | 'partial';
   createdAt: string;
+  // Adicionando campos para persistir o estado do modal de compra
+  productType?: 'apple' | 'product';
+  selectedBrand?: string;
+  selectedCategory?: string;
+  selectedModel?: string;
+  selectedStorage?: string;
+  selectedColor?: string;
 }
 
 export default function Inventory() {
@@ -219,14 +226,20 @@ export default function Inventory() {
         invoiceNumber: 'NF-001234',
         observations: 'Compra de produtos Apple para estoque principal',
         items: [
-          { description: 'iPhone 16 Pro Max 256GB Titânio-deserto', quantity: 1, costPrice: 3000, finalPrice: 3500 },
-          { description: 'Samsung Galaxy S24 Ultra 512GB Preto', quantity: 1, costPrice: 4200, finalPrice: 4800 }
+          { id: 'item1', description: 'iPhone 16 Pro Max 256GB Titânio-deserto', quantity: 1, costPrice: 3000, finalPrice: 3500, condition: 'seminovo', location: 'Loja', warranty: '1 ano', hasImeiSerial: true },
+          { id: 'item2', description: 'Samsung Galaxy S24 Ultra 512GB Preto', quantity: 1, costPrice: 4200, finalPrice: 4800, condition: 'novo', location: 'A1-B2', warranty: '1 ano', hasImeiSerial: true }
         ],
         subtotal: 8300.00,
         additionalCost: 0,
         total: 8300.00,
         status: 'completed',
-        createdAt: '2025-09-13T10:30:00Z'
+        createdAt: '2025-09-13T10:30:00Z',
+        productType: 'apple',
+        selectedBrand: '1',
+        selectedCategory: '1',
+        selectedModel: 'iPhone 16 Pro Max',
+        selectedStorage: '256GB',
+        selectedColor: 'Titânio-deserto'
       },
       {
         id: '2',
@@ -237,14 +250,19 @@ export default function Inventory() {
         invoiceNumber: 'NF-001235',
         observations: 'Compra de acessórios diversos',
         items: [
-          { description: 'Smartphone Xiaomi 13X 8GB/256GB Dourado', quantity: 1, costPrice: 500, finalPrice: 750 },
-          { description: 'Capinha iPhone 16 Pro Max Transparente', quantity: 10, costPrice: 15, finalPrice: 45 }
+          { id: 'item3', description: 'Smartphone Xiaomi 13X 8GB/256GB Dourado', quantity: 1, costPrice: 500, finalPrice: 750, condition: 'novo', location: 'Vitrine iS', warranty: '1 ano', hasImeiSerial: true },
+          { id: 'item4', description: 'Capinha iPhone 16 Pro Max Transparente', quantity: 10, costPrice: 15, finalPrice: 45, condition: 'novo', location: 'D1-A1', warranty: '3 meses', hasImeiSerial: false }
         ],
         subtotal: 1250.00,
         additionalCost: 50.00,
         total: 1300.00,
         status: 'completed',
-        createdAt: '2025-09-12T14:20:00Z'
+        createdAt: '2025-09-12T14:20:00Z',
+        productType: 'product',
+        selectedBrand: '3',
+        selectedCategory: '9',
+        selectedDescription: 'Smartphone Xiaomi 13X',
+        productVariations: ['8GB/256GB', 'Dourado']
       },
       {
         id: '3',
@@ -255,13 +273,19 @@ export default function Inventory() {
         invoiceNumber: 'NF-001236',
         observations: 'Notebooks para revenda',
         items: [
-          { description: 'MacBook Pro 14" M3 512GB Cinza Espacial', quantity: 1, costPrice: 8500, finalPrice: 9200 }
+          { id: 'item5', description: 'MacBook Pro 14" M3 512GB Cinza Espacial', quantity: 1, costPrice: 8500, finalPrice: 9200, condition: 'novo', location: 'B1-A3', warranty: '1 ano', hasImeiSerial: true }
         ],
         subtotal: 9200.00,
         additionalCost: 100.00,
         total: 9300.00,
         status: 'completed',
-        createdAt: '2025-09-11T09:15:00Z'
+        createdAt: '2025-09-11T09:15:00Z',
+        productType: 'apple',
+        selectedBrand: '1',
+        selectedCategory: '3',
+        selectedModel: 'MacBook Pro 14"',
+        selectedStorage: '512GB',
+        selectedColor: 'Cinza Espacial'
       },
       {
         id: '4',
@@ -272,13 +296,18 @@ export default function Inventory() {
         invoiceNumber: '',
         observations: 'Compra em processo de lançamento',
         items: [
-          { description: 'Galaxy Tab S9 256GB', quantity: 2, costPrice: 1200, finalPrice: 1500 }
+          { id: 'item6', description: 'Galaxy Tab S9 256GB', quantity: 2, costPrice: 1200, finalPrice: 1500, condition: 'novo', location: 'Loja', warranty: '1 ano', hasImeiSerial: true }
         ],
         subtotal: 3000.00,
         additionalCost: 0,
         total: 3000.00,
         status: 'pending',
-        createdAt: '2025-09-10T16:45:00Z'
+        createdAt: '2025-09-10T16:45:00Z',
+        productType: 'product',
+        selectedBrand: '2',
+        selectedCategory: '8',
+        selectedDescription: 'Galaxy Tab S9',
+        productVariations: ['256GB']
       }
     ]);
   }, []);

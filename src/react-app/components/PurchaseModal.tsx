@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   X, 
   Save, 
@@ -220,8 +220,8 @@ export default function PurchaseModal({
   const [selectedModel, setSelectedModel] = useState(editingPurchase?.selectedModel || '');
   const [selectedStorage, setSelectedStorage] = useState(editingPurchase?.selectedStorage || '');
   const [selectedColor, setSelectedColor] = useState(editingPurchase?.selectedColor || '');
-  const [selectedDescription, setSelectedDescription] = useState('');
-  const [productVariations, setProductVariations] = useState<string[]>([]);
+  const [selectedDescription, setSelectedDescription] = useState(editingPurchase?.selectedDescription || '');
+  const [productVariations, setProductVariations] = useState<string[]>(editingPurchase?.productVariations || []);
   const [currentVariation, setCurrentVariation] = useState('');
   const [hasImeiSn, setHasImeiSn] = useState<'sim' | 'nao'>('sim');
   
@@ -237,6 +237,51 @@ export default function PurchaseModal({
   const [items, setItems] = useState<PurchaseItem[]>(editingPurchase?.items || []);
   const [additionalCost, setAdditionalCost] = useState(editingPurchase?.additionalCost || 0);
   const [isSupplierModalOpen, setIsSupplierModalOpen] = useState(false);
+
+  // Efeito para inicializar o formulário quando editingPurchase muda
+  useEffect(() => {
+    if (editingPurchase) {
+      setFormData({
+        supplierId: editingPurchase.supplierId || '',
+        purchaseDate: editingPurchase.purchaseDate || new Date().toISOString().split('T')[0],
+        invoiceNumber: editingPurchase.invoiceNumber || '',
+        observations: editingPurchase.observations || ''
+      });
+      setProductType(editingPurchase.productType || 'apple');
+      setSelectedSupplier(editingPurchase.supplierId || '');
+      setSupplierSearchTerm(mockSuppliers.find(s => s.id === editingPurchase.supplierId)?.name || '');
+      setSelectedBrand(editingPurchase.selectedBrand || (editingPurchase.productType === 'apple' ? '1' : ''));
+      setSelectedCategory(editingPurchase.selectedCategory || '');
+      setSelectedModel(editingPurchase.selectedModel || '');
+      setSelectedStorage(editingPurchase.selectedStorage || '');
+      setSelectedColor(editingPurchase.selectedColor || '');
+      setSelectedDescription(editingPurchase.selectedDescription || '');
+      setProductVariations(editingPurchase.productVariations || []);
+      setItems(editingPurchase.items || []);
+      setAdditionalCost(editingPurchase.additionalCost || 0);
+    } else {
+      // Resetar formulário para nova compra
+      setFormData({
+        supplierId: '',
+        purchaseDate: new Date().toISOString().split('T')[0],
+        invoiceNumber: '',
+        observations: ''
+      });
+      setProductType('apple');
+      setSelectedSupplier('');
+      setSupplierSearchTerm('');
+      setSelectedBrand('1');
+      setSelectedCategory('');
+      setSelectedModel('');
+      setSelectedStorage('');
+      setSelectedColor('');
+      setSelectedDescription('');
+      setProductVariations([]);
+      setItems([]);
+      setAdditionalCost(0);
+    }
+  }, [editingPurchase]);
+
 
   const filteredSuppliers = mockSuppliers.filter(supplier => 
     supplier.name.toLowerCase().includes(supplierSearchTerm.toLowerCase())
@@ -379,7 +424,9 @@ export default function PurchaseModal({
       selectedCategory,
       selectedModel,
       selectedStorage,
-      selectedColor
+      selectedColor,
+      selectedDescription,
+      productVariations
     };
 
     // Callback para salvar a compra
@@ -1153,7 +1200,7 @@ export default function PurchaseModal({
                 }`}>R$</span>
                 <input
                   type="text"
-                  value={formatCurrency(additionalCost)}
+                  value={formatCurrencyInput(additionalCost.toString())}
                   onChange={(e) => {
                     const formattedValue = formatCurrencyInput(e.target.value);
                     setAdditionalCost(parseCurrencyBR(formattedValue));
