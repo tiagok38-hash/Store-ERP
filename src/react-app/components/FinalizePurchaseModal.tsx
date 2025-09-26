@@ -285,7 +285,7 @@ export default function FinalizePurchaseModal({
                       <td className="border border-slate-300 px-1 py-2 bg-red-50">
                         <input
                           type="text"
-                          value={unit.salePrice !== undefined ? formatCurrencyInput(unit.salePrice.toString()) : ''}
+                          value={unit.salePrice !== undefined ? formatCurrencyInput(unit.salePrice.toString().replace('.', ',')) : ''}
                           onChange={(e) => {
                             const formattedValue = formatCurrencyInput(e.target.value);
                             const numericValue = parseCurrencyBR(formattedValue);

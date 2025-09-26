@@ -15,33 +15,38 @@ export const formatCurrencyDisplay = (value: number): string => {
 
 // Formatar entrada de campo de texto para padrão brasileiro
 export const formatCurrencyInput = (value: string): string => {
-  // Remove tudo que não for dígito
-  const digits = value.replace(/\D/g, '');
-  
-  // Se não há dígitos, retorna vazio
-  if (!digits || digits === '0') return '';
-  
-  // Remove zeros à esquerda desnecessários
-  const cleanDigits = digits.replace(/^0+/, '') || '0';
-  
-  // Se tiver apenas 1 dígito
-  if (cleanDigits.length === 1) {
-    return `0,0${cleanDigits}`;
+  // Remove tudo que não for dígito ou vírgula
+  let cleanValue = value.replace(/[^0-9,]/g, '');
+
+  // Garante que haja apenas uma vírgula
+  const parts = cleanValue.split(',');
+  if (parts.length > 2) {
+    cleanValue = parts[0] + ',' + parts.slice(1).join('');
   }
-  
-  // Se tiver apenas 2 dígitos
-  if (cleanDigits.length === 2) {
-    return `0,${cleanDigits}`;
+
+  // Se a string estiver vazia, retorna vazio
+  if (!cleanValue) return '';
+
+  // Se a vírgula for o último caractere, mantém
+  if (cleanValue.endsWith(',')) {
+    const integerPart = parts[0].replace(/^0+/, '') || '0'; // Remove zeros à esquerda para a parte inteira
+    const formattedInteger = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    return `${formattedInteger},`;
   }
-  
-  // Separa centavos dos reais
-  const reais = cleanDigits.slice(0, -2);
-  const centavos = cleanDigits.slice(-2);
-  
-  // Adiciona pontos para milhares nos reais
-  const formattedReais = reais.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-  
-  return `${formattedReais},${centavos}`;
+
+  // Se não houver vírgula, formata como inteiro
+  if (!cleanValue.includes(',')) {
+    const integerPart = cleanValue.replace(/^0+/, '') || '0'; // Remove zeros à esquerda
+    return integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  }
+
+  // Se houver vírgula e parte decimal
+  const [integerPartRaw, decimalPartRaw] = cleanValue.split(',');
+  const integerPart = integerPartRaw.replace(/^0+/, '') || '0'; // Remove zeros à esquerda
+  const formattedInteger = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  const formattedDecimal = decimalPartRaw.slice(0, 2); // Limita a 2 casas decimais
+
+  return `${formattedInteger},${formattedDecimal}`;
 };
 
 // Converter entrada brasileira (1.234,56) para número
