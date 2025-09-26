@@ -505,7 +505,8 @@ export default function PurchaseModal({
                     }`}>
                       Para cadastrar Marcas, Categorias e Grades,{' '}
                       <button 
-                        onClick={() => window.open('/administration#product-structure', '_blank')}
+                        type="button" // Adicionado type="button"
+                        onClick={() => window.open('/administration/product-structure', '_blank')}
                         className={`underline font-medium transition-colors ${
                           theme === 'dark' 
                             ? 'hover:text-blue-200' 
@@ -789,7 +790,7 @@ export default function PurchaseModal({
                         }`}
                         disabled={!selectedModel || availableStorage.length === 0}
                       >
-                        <option value="">Armazenamento</option>
+                        <option value="">Armazenamento</option> {/* Alterado para exibir 'Armazenamento' */}
                         {availableStorage.map(storage => (
                           <option key={storage} value={storage}>{storage}</option>
                         ))}
@@ -812,7 +813,7 @@ export default function PurchaseModal({
                         }`}
                         disabled={!selectedModel || availableColors.length === 0}
                       >
-                        <option value="">Cor</option>
+                        <option value="">Cor</option> {/* Alterado para exibir 'Cor' */}
                         {availableColors.map(color => (
                           <option key={color} value={color}>{color}</option>
                         ))}
