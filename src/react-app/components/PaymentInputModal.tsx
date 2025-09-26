@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, DollarSign, CreditCard, Smartphone, FileText, RefreshCw, Building2, Calculator, Percent } from 'lucide-react';
+import { X, DollarSign, CreditCard, Smartphone, FileText, RefreshCw, Building2, Calculator, Percent, Check } from 'lucide-react';
 import { useTheme } from '@/react-app/hooks/useTheme';
 import { formatCurrencyInput, parseCurrencyBR, formatCurrencyBR } from '@/react-app/utils/currency';
 
