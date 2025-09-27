@@ -17,7 +17,8 @@ import {
   Clock,
   AlertTriangle, // Importar AlertTriangle para estoque baixo
   DollarSign, // Importar DollarSign para o botão de atualização de preços
-  Settings // Importar Settings para o novo botão
+  Settings, // Importar Settings para o novo botão
+  PackagePlus // Novo ícone para ajuste de estoque
 } from 'lucide-react';
 import { Link } from 'react-router-dom'; // Importar Link para navegação
 import PurchaseModal from '@/react-app/components/PurchaseModal';
@@ -26,6 +27,7 @@ import PurchaseViewModal from '@/react-app/components/PurchaseViewModal';
 import ProductHistoryModal from '@/react-app/components/ProductHistoryModal';
 import ProductModal from '@/react-app/components/ProductModal'; // Importar ProductModal
 import BulkPriceUpdateModal from '@/react-app/components/BulkPriceUpdateModal'; // Importar o novo modal
+import StockAdjustmentModal from '@/react-app/components/StockAdjustmentModal'; // Importar o novo modal de ajuste de estoque
 import { useNotification } from '@/react-app/components/NotificationSystem';
 
 interface InventoryUnit {
@@ -76,6 +78,12 @@ interface Purchase {
   selectedColor?: string;
 }
 
+// Mock audit log function (for demonstration purposes)
+const mockAuditLog = (logEntry: any) => {
+  console.log('AUDIT LOG:', logEntry);
+  // In a real application, this would send data to a backend audit log service
+};
+
 export default function Inventory() {
   const { showSuccess } = useNotification();
   const [activeTab, setActiveTab] = useState<'inventory' | 'purchases'>('inventory');
@@ -103,6 +111,11 @@ export default function Inventory() {
 
   // New state for BulkPriceUpdateModal
   const [isBulkPriceUpdateModalOpen, setIsBulkPriceUpdateModalOpen] = useState(false);
+
+  // New states for StockAdjustmentModal
+  const [isStockAdjustmentModalOpen, setIsStockAdjustmentModalOpen] = useState(false);
+  const [selectedProductForStockAdjustment, setSelectedProductForStockAdjustment] = useState<InventoryUnit | null>(null);
+  const [currentStockForAdjustment, setCurrentStockForAdjustment] = useState(0);
 
   // Purchase filters
   const [purchaseDateFrom, setPurchaseDateFrom] = useState('');
@@ -568,6 +581,111 @@ export default function Inventory() {
     setEditingProductUnit(null);
   };
 
+  // New functions for stock adjustment
+  const handleOpenStockAdjustmentModal = (unit: InventoryUnit) => {
+    setSelectedProductForStockAdjustment(unit);
+    // Calculate current stock for this specific SKU
+    const currentStockCount = inventoryUnits.filter(u => u.productSku === unit.productSku && u.status === 'available').length;
+    setCurrentStockForAdjustment(currentStockCount);
+    setIsStockAdjustmentModalOpen(true);
+  };
+
+  const handleConfirmStockAdjustment = (
+    productSku: string,
+    change: number,
+    reason: string,
+    newStock: number,
+    adjustmentType: 'add' | 'remove'
+  ) => {
+    // Find all units with the same SKU and update their status or add/remove dummy units
+    setInventoryUnits(prevUnits => {
+      let updatedUnits = [...prevUnits];
+      const unitsToAdjust = prevUnits.filter(u => u.productSku === productSku && u.status === 'available');
+      const productTemplate = unitsToAdjust.length > 0 ? unitsToAdjust[0] : prevUnits.find(u => u.productSku === productSku);
+
+      if (!productTemplate) {
+        console.error('Product template not found for SKU:', productSku);
+        return prevUnits; // Should not happen
+      }
+
+      if (adjustmentType === 'add') {
+        for (let i = 0; i < change; i++) {
+          // Create a new dummy unit for stock addition
+          const newUnit: InventoryUnit = {
+            ...productTemplate,
+            id: `stock-adj-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+            imei1: undefined, // Clear unique identifiers for generic stock
+            imei2: undefined,
+            serialNumber: undefined,
+            barcode: undefined,
+            status: 'available',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            purchaseId: 'stock-adjustment', // Mark as stock adjustment
+            locatorCode: 'STOCK-ADJ',
+          };
+          updatedUnits.push(newUnit);
+        }
+      } else { // remove
+        // Remove units from the end of the available list
+        for (let i = 0; i < Math.abs(change); i++) {
+          const indexToRemove = updatedUnits.findIndex(u => u.productSku === productSku && u.status === 'available');
+          if (indexToRemove !== -1) {
+            updatedUnits.splice(indexToRemove, 1);
+          } else {
+            break; // No more units to remove
+          }
+        }
+      }
+      return updatedUnits;
+    });
+
+    // Log to audit
+    mockAuditLog({
+      id: `AUDIT-${Date.now()}-STOCK-ADJ`,
+      userId: 'current_user_id', // Replace with actual user ID
+      userName: 'Current User', // Replace with actual user name
+      action: 'STOCK_ADJUSTMENT',
+      tableName: 'inventory_units',
+      recordId: productSku, // Use SKU as record ID for stock adjustments
+      newValues: {
+        productSku: productSku,
+        productDescription: selectedProductForStockAdjustment?.productDescription,
+        change: change,
+        reason: reason,
+        newStock: newStock,
+        adjustmentType: adjustmentType,
+      },
+      ipAddress: '127.0.0.1', // Mock IP
+      userAgent: navigator.userAgent,
+      createdAt: new Date().toISOString()
+    });
+
+    // Also add to product history (mocked for now)
+    // This would typically be handled by the backend when the audit log is processed
+    // For frontend mock, we can simulate it:
+    const historyEntry = {
+      id: `history-${Date.now()}`,
+      type: 'stock_change',
+      date: new Date().toISOString().split('T')[0],
+      time: new Date().toLocaleTimeString('pt-BR'),
+      details: {
+        user: 'Current User',
+        movementType: adjustmentType === 'add' ? 'entrada' : 'saída',
+        quantity: change,
+        oldStock: currentStock,
+        newStock: newStock,
+        reason: reason,
+      }
+    };
+    // This part would need to be integrated with how ProductHistoryModal fetches its data.
+    // For now, it's a console log to show the intent.
+    console.log('PRODUCT HISTORY ENTRY (STOCK ADJUSTMENT):', historyEntry);
+
+    setIsStockAdjustmentModalOpen(false);
+    setSelectedProductForStockAdjustment(null);
+  };
+
   return (
     <div className="p-6 bg-gradient-to-br from-slate-50 to-slate-100 min-h-screen">
       {/* Header */}
@@ -885,11 +1003,11 @@ export default function Inventory() {
                         <td className="py-3 px-4 text-center">
                           <div className="flex justify-center gap-2">
                             <button
-                              onClick={() => alert(`Visualizar item ${unit.id}`)}
+                              onClick={() => handleOpenStockAdjustmentModal(unit)} // Novo botão de ajuste de estoque
                               className="p-2 hover:bg-blue-100 rounded-lg transition-colors"
-                              title="Visualizar"
+                              title="Ajustar Estoque"
                             >
-                              <Eye size={16} className="text-blue-600" />
+                              <PackagePlus size={16} className="text-blue-600" />
                             </button>
                             <button
                               onClick={() => handleViewProductHistory(unit)}
@@ -1195,6 +1313,15 @@ export default function Inventory() {
         onClose={() => setIsBulkPriceUpdateModalOpen(false)}
         inventoryUnits={inventoryUnits}
         onUpdateInventoryUnits={setInventoryUnits}
+      />
+
+      {/* Stock Adjustment Modal */}
+      <StockAdjustmentModal
+        isOpen={isStockAdjustmentModalOpen}
+        onClose={() => setIsStockAdjustmentModalOpen(false)}
+        productUnit={selectedProductForStockAdjustment}
+        currentStock={currentStockForAdjustment}
+        onConfirmAdjustment={handleConfirmStockAdjustment}
       />
     </div>
   );

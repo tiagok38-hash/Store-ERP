@@ -7,7 +7,9 @@ import {
   Package,
   ShoppingCart,
   Edit,
-  Clock
+  Clock,
+  PlusCircle, // Ícone para adição de estoque
+  MinusCircle // Ícone para remoção de estoque
 } from 'lucide-react';
 
 interface HistoryItem {
@@ -127,6 +129,36 @@ export default function ProductHistoryModal({ isOpen, onClose, product }: Produc
         reason: 'Produto defeituoso - troca garantia',
         saleId: 'VND001089'
       }
+    },
+    { // Novo item de histórico para ajuste de estoque
+      id: '7',
+      type: 'stock_change',
+      date: '2025-09-14',
+      time: '10:00:00',
+      details: {
+        user: 'Usuário Admin',
+        movementType: 'entrada',
+        quantity: 3,
+        oldStock: 5,
+        newStock: 8,
+        reason: 'Correção de inventário',
+        adjustmentType: 'add'
+      }
+    },
+    { // Outro item de histórico para ajuste de estoque (remoção)
+      id: '8',
+      type: 'stock_change',
+      date: '2025-09-14',
+      time: '10:15:00',
+      details: {
+        user: 'Usuário Admin',
+        movementType: 'saída',
+        quantity: -2,
+        oldStock: 8,
+        newStock: 6,
+        reason: 'Item danificado',
+        adjustmentType: 'remove'
+      }
     }
   ] : [];
 
@@ -150,29 +182,38 @@ export default function ProductHistoryModal({ isOpen, onClose, product }: Produc
   const totalSales = salesHistory.length;
   const totalRevenue = salesHistory.reduce((sum, item) => sum + item.details.totalPrice, 0);
 
-  const getTypeIcon = (type: string) => {
+  const getTypeIcon = (type: string, details?: any) => {
     switch (type) {
       case 'sale': return <ShoppingCart size={16} className="text-green-500" />;
       case 'price_change': return <Edit size={16} className="text-blue-500" />;
-      case 'stock_change': return <Package size={16} className="text-purple-500" />;
+      case 'stock_change': 
+        if (details?.adjustmentType === 'add') return <PlusCircle size={16} className="text-green-500" />;
+        if (details?.adjustmentType === 'remove') return <MinusCircle size={16} className="text-red-500" />;
+        return <Package size={16} className="text-purple-500" />;
       default: return <Package size={16} className="text-slate-500" />;
     }
   };
 
-  const getTypeLabel = (type: string) => {
+  const getTypeLabel = (type: string, details?: any) => {
     switch (type) {
       case 'sale': return 'Venda';
       case 'price_change': return 'Alteração de Preço';
-      case 'stock_change': return 'Movimentação de Estoque';
+      case 'stock_change': 
+        if (details?.adjustmentType === 'add') return 'Ajuste de Estoque (Entrada)';
+        if (details?.adjustmentType === 'remove') return 'Ajuste de Estoque (Saída)';
+        return 'Movimentação de Estoque';
       default: return type;
     }
   };
 
-  const getTypeBadgeColor = (type: string) => {
+  const getTypeBadgeColor = (type: string, details?: any) => {
     switch (type) {
       case 'sale': return 'bg-green-100 text-green-800';
       case 'price_change': return 'bg-blue-100 text-blue-800';
-      case 'stock_change': return 'bg-purple-100 text-purple-800';
+      case 'stock_change': 
+        if (details?.adjustmentType === 'add') return 'bg-green-100 text-green-800';
+        if (details?.adjustmentType === 'remove') return 'bg-red-100 text-red-800';
+        return 'bg-purple-100 text-purple-800';
       default: return 'bg-slate-100 text-slate-800';
     }
   };
@@ -269,9 +310,9 @@ export default function ProductHistoryModal({ isOpen, onClose, product }: Produc
               <span className="text-slate-600">Quantidade:</span>
               <div className="flex items-center">
                 {isStockIncrease ? (
-                  <TrendingUp size={14} className="text-green-500 mr-1" />
+                  <PlusCircle size={14} className="text-green-500 mr-1" />
                 ) : (
-                  <TrendingDown size={14} className="text-red-500 mr-1" />
+                  <MinusCircle size={14} className="text-red-500 mr-1" />
                 )}
                 <p className={`font-semibold ${isStockIncrease ? 'text-green-600' : 'text-red-600'}`}>
                   {Math.abs(item.details.quantity)}
@@ -409,9 +450,9 @@ export default function ProductHistoryModal({ isOpen, onClose, product }: Produc
                 {/* Header */}
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-3">
-                    {getTypeIcon(item.type)}
+                    {getTypeIcon(item.type, item.details)}
                     <div>
-                      <h4 className="font-semibold text-slate-800">{getTypeLabel(item.type)}</h4>
+                      <h4 className="font-semibold text-slate-800">{getTypeLabel(item.type, item.details)}</h4>
                       <div className="flex items-center text-sm text-slate-600">
                         <Calendar size={14} className="mr-1" />
                         {new Date(item.date).toLocaleDateString('pt-BR')}
@@ -420,8 +461,8 @@ export default function ProductHistoryModal({ isOpen, onClose, product }: Produc
                       </div>
                     </div>
                   </div>
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${getTypeBadgeColor(item.type)}`}>
-                    {getTypeLabel(item.type)}
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${getTypeBadgeColor(item.type, item.details)}`}>
+                    {getTypeLabel(item.type, item.details)}
                   </span>
                 </div>
 

@@ -12,7 +12,9 @@ import {
   AlertTriangle,
   Trash2,
   Edit,
-  Info
+  Info,
+  PackagePlus, // Novo ícone para ajuste de estoque
+  PackageMinus // Ícone para remoção de estoque
 } from 'lucide-react';
 import { useTheme } from '@/react-app/hooks/useTheme';
 import { Link } from 'react-router-dom';
@@ -233,6 +235,44 @@ export default function AuditPage() {
         ipAddress: '192.168.1.115',
         userAgent: 'Mozilla/5.0 (Linux; Android 10; SM-G970F) AppleWebKit/537.36',
         createdAt: '2025-09-12T10:15:00Z'
+      },
+      { // Novo log de auditoria para ajuste de estoque (adição)
+        id: '12',
+        userId: '1',
+        userName: 'Admin Sistema',
+        action: 'STOCK_ADJUSTMENT',
+        tableName: 'inventory_units',
+        recordId: '#132', // SKU do produto
+        newValues: {
+          productSku: '#132',
+          productDescription: 'Capinha iPhone 16 Pro Max Transparente',
+          change: 5,
+          reason: 'Correção de inventário',
+          newStock: 15,
+          adjustmentType: 'add'
+        },
+        ipAddress: '192.168.1.100',
+        userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        createdAt: '2025-09-14T10:00:00Z'
+      },
+      { // Novo log de auditoria para ajuste de estoque (remoção)
+        id: '13',
+        userId: '1',
+        userName: 'Admin Sistema',
+        action: 'STOCK_ADJUSTMENT',
+        tableName: 'inventory_units',
+        recordId: '#128', // SKU do produto
+        newValues: {
+          productSku: '#128',
+          productDescription: 'iPhone 16 Pro Max 256GB',
+          change: -1,
+          reason: 'Item danificado',
+          newStock: 1,
+          adjustmentType: 'remove'
+        },
+        ipAddress: '192.168.1.100',
+        userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        createdAt: '2025-09-14T10:15:00Z'
       }
     ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())); // Sort by date descending
   }, []);
@@ -242,6 +282,7 @@ export default function AuditPage() {
       case 'CREATE':
       case 'SALE_FINALIZED':
       case 'PRODUCT_ADD':
+      case 'STOCK_ADJUSTMENT': // Adicionado
         return 'bg-green-100 text-green-800';
       case 'UPDATE': return 'bg-blue-100 text-blue-800';
       case 'DELETE':
@@ -252,7 +293,7 @@ export default function AuditPage() {
     }
   };
 
-  const getActionIcon = (action: string) => {
+  const getActionIcon = (action: string, newValues?: Record<string, any>) => {
     switch (action) {
       case 'CREATE':
       case 'SALE_FINALIZED':
@@ -263,11 +304,15 @@ export default function AuditPage() {
       case 'PRODUCT_DELETE':
         return <Trash2 size={16} className="text-red-600" />;
       case 'DISCOUNT_EXCEEDED': return <AlertTriangle size={16} className="text-orange-600" />;
+      case 'STOCK_ADJUSTMENT': // Adicionado
+        return newValues?.adjustmentType === 'add' 
+          ? <PackagePlus size={16} className="text-green-600" /> 
+          : <PackageMinus size={16} className="text-red-600" />;
       default: return <Info size={16} className="text-gray-600" />;
     }
   };
 
-  const getActionLabel = (action: string) => {
+  const getActionLabel = (action: string, newValues?: Record<string, any>) => {
     switch (action) {
       case 'CREATE': return 'Criação';
       case 'UPDATE': return 'Edição';
@@ -276,6 +321,8 @@ export default function AuditPage() {
       case 'DISCOUNT_EXCEEDED': return 'Desconto Excedido';
       case 'PRODUCT_ADD': return 'Produto Adicionado';
       case 'PRODUCT_DELETE': return 'Produto Excluído';
+      case 'STOCK_ADJUSTMENT': // Adicionado
+        return newValues?.adjustmentType === 'add' ? 'Ajuste de Estoque (Entrada)' : 'Ajuste de Estoque (Saída)';
       default: return action;
     }
   };
@@ -424,7 +471,7 @@ export default function AuditPage() {
         </div>
         <div className={`rounded-xl p-6 shadow-lg ${theme === 'dark' ? 'bg-slate-800' : 'bg-white'}`}>
           <h3 className={`text-lg font-semibold mb-2 ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>Criações</h3>
-          <p className="text-3xl font-bold text-green-600">{auditLogs.filter(l => l.action === 'CREATE' || l.action === 'SALE_FINALIZED' || l.action === 'PRODUCT_ADD').length}</p>
+          <p className="text-3xl font-bold text-green-600">{auditLogs.filter(l => l.action === 'CREATE' || l.action === 'SALE_FINALIZED' || l.action === 'PRODUCT_ADD' || l.action === 'STOCK_ADJUSTMENT').length}</p>
         </div>
         <div className={`rounded-xl p-6 shadow-lg ${theme === 'dark' ? 'bg-slate-800' : 'bg-white'}`}>
           <h3 className={`text-lg font-semibold mb-2 ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>Edições</h3>
@@ -550,9 +597,9 @@ export default function AuditPage() {
                       <div className={`absolute -left-8 sm:-left-20 top-1/2 transform -translate-y-1/2 w-4 h-4 rounded-full ${theme === 'dark' ? 'bg-slate-600' : 'bg-slate-300'} border-2 ${theme === 'dark' ? 'border-slate-800' : 'border-white'}`}></div>
                       <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-2">
-                          {getActionIcon(log.action)}
+                          {getActionIcon(log.action, log.newValues)}
                           <span className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>
-                            {getActionLabel(log.action)} em {getTableLabel(log.tableName)}
+                            {getActionLabel(log.action, log.newValues)} em {getTableLabel(log.tableName)}
                           </span>
                           {log.recordId && (
                             <span className={`text-xs font-mono px-2 py-0.5 rounded ${theme === 'dark' ? 'bg-slate-600 text-slate-300' : 'bg-slate-100 text-slate-600'}`}>
