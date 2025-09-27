@@ -15,22 +15,17 @@ import {
   FileText,
   CheckCircle,
   Clock,
-  AlertTriangle,
-  Image as ImageIcon // Importar ImageIcon para exibir no lugar da imagem
+  AlertTriangle // Importar AlertTriangle para estoque baixo
 } from 'lucide-react';
 import PurchaseModal from '@/react-app/components/PurchaseModal';
 import FinalizePurchaseModal from '@/react-app/components/FinalizePurchaseModal';
 import PurchaseViewModal from '@/react-app/components/PurchaseViewModal';
 import ProductHistoryModal from '@/react-app/components/ProductHistoryModal';
-import ProductModal from '@/react-app/components/ProductModal';
+import ProductModal from '@/react-app/components/ProductModal'; // Importar ProductModal
 import { useNotification } from '@/react-app/components/NotificationSystem';
-import { supabase } from '@/integrations/supabase/client'; // Importar supabase
-import { useAuth } from '@/react-app/hooks/useAuth'; // Importar useAuth
-import DeleteConfirmModal from '@/react-app/components/DeleteConfirmModal';
 
 interface InventoryUnit {
   id: string;
-  product_id: string;
   productSku: string;
   productDescription: string;
   brand: string;
@@ -51,44 +46,34 @@ interface InventoryUnit {
   updatedAt: string;
   purchaseId?: string;
   locatorCode?: string;
-  minStock?: number;
-  image_url?: string; // Adicionado image_url
+  minStock?: number; // Adicionado minStock
 }
 
 interface Purchase {
   id: string;
-  locator_code: string;
-  supplier_id: string;
-  supplier_name: string;
-  purchase_date: string;
-  invoice_number: string;
+  locatorCode: string;
+  supplierId: string;
+  supplierName: string;
+  purchaseDate: string;
+  invoiceNumber: string;
   observations: string;
-  items: any[]; // purchase_items
+  items: any[];
   subtotal: number;
-  additional_cost: number;
+  additionalCost: number;
   total: number;
   status: 'completed' | 'pending' | 'partial';
-  created_at: string;
-}
-
-interface Brand {
-  id: string;
-  name: string;
-}
-
-interface Category {
-  id: string;
-  name: string;
-}
-
-interface StockCondition {
-  id: string;
-  name: string;
+  createdAt: string;
+  // Adicionando campos para persistir o estado do modal de compra
+  productType?: 'apple' | 'product';
+  selectedBrand?: string;
+  selectedCategory?: string;
+  selectedModel?: string;
+  selectedStorage?: string;
+  selectedColor?: string;
 }
 
 export default function Inventory() {
-  const { showSuccess, showError } = useNotification();
-  const { user } = useAuth(); // Obter o usuário logado
+  const { showSuccess } = useNotification();
   const [activeTab, setActiveTab] = useState<'inventory' | 'purchases'>('inventory');
   const [inventoryUnits, setInventoryUnits] = useState<InventoryUnit[]>([]);
   const [purchases, setPurchases] = useState<Purchase[]>([]);
@@ -108,153 +93,244 @@ export default function Inventory() {
   const [isProductHistoryModalOpen, setIsProductHistoryModalOpen] = useState(false);
   const [selectedProductForHistory, setSelectedProductForHistory] = useState<InventoryUnit | null>(null);
   
+  // New states for ProductModal (editing inventory units)
   const [isProductEditModalOpen, setIsProductEditModalOpen] = useState(false);
   const [editingProductUnit, setEditingProductUnit] = useState<InventoryUnit | null>(null);
 
+  // Purchase filters
   const [purchaseDateFrom, setPurchaseDateFrom] = useState('');
   const [purchaseDateTo, setPurchaseDateTo] = useState('');
   const [purchaseStatusFilter, setPurchaseStatusFilter] = useState('all');
-  const [isLoading, setIsLoading] = useState(true);
-
-  const [brands, setBrands] = useState<Brand[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [stockConditions, setStockConditions] = useState<StockCondition[]>([]);
 
   useEffect(() => {
-    if (user) {
-      fetchAdminData();
-      fetchInventoryUnits();
-      fetchPurchases();
-    } else {
-      setInventoryUnits([]);
-      setPurchases([]);
-      setIsLoading(false);
-    }
-  }, [user]);
+    // Mock data com produtos únicos por IMEI/Serial
+    setInventoryUnits([
+      {
+        id: '1',
+        productSku: '#128',
+        productDescription: 'iPhone 16 Pro Max 256GB',
+        brand: 'Apple',
+        category: 'Smartphone',
+        model: 'iPhone 16 Pro Max',
+        color: 'Titânio-deserto',
+        storage: '256GB',
+        condition: 'seminovo',
+        location: 'Loja',
+        imei1: '123456789012345',
+        imei2: '123456789012346',
+        serialNumber: undefined,
+        barcode: '7899123456789',
+        costPrice: 3000.00,
+        salePrice: 3500.00,
+        status: 'available',
+        createdAt: '2025-09-13',
+        updatedAt: '2025-09-13',
+        purchaseId: '1',
+        locatorCode: 'LOC001234567',
+        minStock: 2 // Adicionado minStock
+      },
+      {
+        id: '2',
+        productSku: '#129',
+        productDescription: 'Smartphone Xiaomi 13X 8GB/256GB Dourado',
+        brand: 'Xiaomi',
+        category: 'Smartphone',
+        model: '13X',
+        color: 'Dourado',
+        storage: '8GB/256GB',
+        condition: 'novo',
+        location: 'Vitrine iS',
+        imei1: '987654321098765',
+        imei2: undefined,
+        serialNumber: undefined,
+        barcode: '7899987654321',
+        costPrice: 500.00,
+        salePrice: 750.00,
+        status: 'available',
+        createdAt: '2025-09-13',
+        updatedAt: '2025-09-13',
+        purchaseId: '2',
+        locatorCode: 'LOC001234568',
+        minStock: 1 // Adicionado minStock
+      },
+      {
+        id: '3',
+        productSku: '#130',
+        productDescription: 'Samsung Galaxy S24 Ultra 512GB',
+        brand: 'Samsung',
+        category: 'Smartphone',
+        model: 'Galaxy S24 Ultra',
+        color: 'Preto',
+        storage: '512GB',
+        condition: 'novo',
+        location: 'A1-B2',
+        imei1: '555666777888999',
+        imei2: '555666777888998',
+        serialNumber: undefined,
+        barcode: '7899555666777',
+        costPrice: 4200.00,
+        salePrice: 4800.00,
+        status: 'available',
+        createdAt: '2025-09-13',
+        updatedAt: '2025-09-13',
+        purchaseId: '1',
+        locatorCode: 'LOC001234567',
+        minStock: 3 // Adicionado minStock
+      },
+      {
+        id: '4',
+        productSku: '#131',
+        productDescription: 'MacBook Pro 14" M3 512GB',
+        brand: 'Apple',
+        category: 'Notebook',
+        model: 'MacBook Pro 14"',
+        color: 'Cinza Espacial',
+        storage: '512GB',
+        condition: 'novo',
+        location: 'B1-A3',
+        imei1: undefined,
+        imei2: undefined,
+        serialNumber: 'FVFH3LL/A12345',
+        barcode: '7899111222333',
+        costPrice: 8500.00,
+        salePrice: 9200.00,
+        status: 'available',
+        createdAt: '2025-09-13',
+        updatedAt: '2025-09-13',
+        purchaseId: '3',
+        locatorCode: 'LOC001234569',
+        minStock: 1 // Adicionado minStock
+      },
+      {
+        id: '5',
+        productSku: '#132',
+        productDescription: 'Capinha iPhone 16 Pro Max Transparente',
+        brand: 'Genérica',
+        category: 'Acessórios',
+        model: 'Capinha',
+        color: 'Transparente',
+        storage: undefined,
+        condition: 'novo',
+        location: 'D1-A1',
+        imei1: undefined,
+        imei2: undefined,
+        serialNumber: undefined,
+        barcode: '7899444555666',
+        costPrice: 15.00,
+        salePrice: 45.00,
+        status: 'available',
+        createdAt: '2025-09-13',
+        updatedAt: '2025-09-13',
+        purchaseId: '2',
+        locatorCode: 'LOC001234568',
+        minStock: 10 // Adicionado minStock
+      }
+    ]);
 
-  const fetchAdminData = async () => {
-    if (!user) return;
+    // Mock data para compras
+    setPurchases([
+      {
+        id: '1',
+        locatorCode: 'LOC001234567',
+        supplierId: '1',
+        supplierName: 'Apple Brasil',
+        purchaseDate: '2025-09-13',
+        invoiceNumber: 'NF-001234',
+        observations: 'Compra de produtos Apple para estoque principal',
+        items: [
+          { id: 'item1', description: 'iPhone 16 Pro Max 256GB Titânio-deserto', quantity: 1, costPrice: 3000, finalPrice: 3500, condition: 'seminovo', location: 'Loja', warranty: '1 ano', hasImeiSerial: true },
+          { id: 'item2', description: 'Samsung Galaxy S24 Ultra 512GB Preto', quantity: 1, costPrice: 4200, finalPrice: 4800, condition: 'novo', location: 'A1-B2', warranty: '1 ano', hasImeiSerial: true }
+        ],
+        subtotal: 8300.00,
+        additionalCost: 0,
+        total: 8300.00,
+        status: 'completed',
+        createdAt: '2025-09-13T10:30:00Z',
+        productType: 'apple',
+        selectedBrand: '1',
+        selectedCategory: '1',
+        selectedModel: 'iPhone 16 Pro Max',
+        selectedStorage: '256GB',
+        selectedColor: 'Titânio-deserto'
+      },
+      {
+        id: '2',
+        locatorCode: 'LOC001234568',
+        supplierId: '3',
+        supplierName: 'Tech Distribuidora',
+        purchaseDate: '2025-09-12',
+        invoiceNumber: 'NF-001235',
+        observations: 'Compra de acessórios diversos',
+        items: [
+          { id: 'item3', description: 'Smartphone Xiaomi 13X 8GB/256GB Dourado', quantity: 1, costPrice: 500, finalPrice: 750, condition: 'novo', location: 'Vitrine iS', warranty: '1 ano', hasImeiSerial: true },
+          { id: 'item4', description: 'Capinha iPhone 16 Pro Max Transparente', quantity: 10, costPrice: 15, finalPrice: 45, condition: 'novo', location: 'D1-A1', warranty: '3 meses', hasImeiSerial: false }
+        ],
+        subtotal: 1250.00,
+        additionalCost: 50.00,
+        total: 1300.00,
+        status: 'completed',
+        createdAt: '2025-09-12T14:20:00Z',
+        productType: 'product',
+        selectedBrand: '3',
+        selectedCategory: '9',
+        selectedDescription: 'Smartphone Xiaomi 13X',
+        productVariations: ['8GB/256GB', 'Dourado']
+      },
+      {
+        id: '3',
+        locatorCode: 'LOC001234569',
+        supplierId: '1',
+        supplierName: 'Apple Brasil',
+        purchaseDate: '2025-09-11',
+        invoiceNumber: 'NF-001236',
+        observations: 'Notebooks para revenda',
+        items: [
+          { id: 'item5', description: 'MacBook Pro 14" M3 512GB Cinza Espacial', quantity: 1, costPrice: 8500, finalPrice: 9200, condition: 'novo', location: 'B1-A3', warranty: '1 ano', hasImeiSerial: true }
+        ],
+        subtotal: 9200.00,
+        additionalCost: 100.00,
+        total: 9300.00,
+        status: 'completed',
+        createdAt: '2025-09-11T09:15:00Z',
+        productType: 'apple',
+        selectedBrand: '1',
+        selectedCategory: '3',
+        selectedModel: 'MacBook Pro 14"',
+        selectedStorage: '512GB',
+        selectedColor: 'Cinza Espacial'
+      },
+      {
+        id: '4',
+        locatorCode: 'LOC001234570',
+        supplierId: '2',
+        supplierName: 'Samsung Eletrônica',
+        purchaseDate: '2025-09-10',
+        invoiceNumber: '',
+        observations: 'Compra em processo de lançamento',
+        items: [
+          { id: 'item6', description: 'Galaxy Tab S9 256GB', quantity: 2, costPrice: 1200, finalPrice: 1500, condition: 'novo', location: 'Loja', warranty: '1 ano', hasImeiSerial: true }
+        ],
+        subtotal: 3000.00,
+        additionalCost: 0,
+        total: 3000.00,
+        status: 'pending',
+        createdAt: '2025-09-10T16:45:00Z',
+        productType: 'product',
+        selectedBrand: '2',
+        selectedCategory: '8',
+        selectedDescription: 'Galaxy Tab S9',
+        productVariations: ['256GB']
+      }
+    ]);
+  }, []);
 
-    const { data: brandsData, error: brandsError } = await supabase
-      .from('brands')
-      .select('id, name')
-      .eq('user_id', user.id)
-      .eq('is_active', true);
-    if (brandsError) console.error('Error fetching brands:', brandsError);
-    else setBrands(brandsData || []);
-
-    const { data: categoriesData, error: categoriesError } = await supabase
-      .from('categories')
-      .select('id, name')
-      .eq('user_id', user.id)
-      .eq('is_active', true);
-    if (categoriesError) console.error('Error fetching categories:', categoriesError);
-    else setCategories(categoriesData || []);
-
-    const { data: conditionsData, error: conditionsError } = await supabase
-      .from('stock_conditions')
-      .select('id, name')
-      .eq('user_id', user.id)
-      .eq('is_active', true);
-    if (conditionsError) console.error('Error fetching stock conditions:', conditionsError);
-    else setStockConditions(conditionsData || []);
-  };
-
-  const fetchInventoryUnits = async () => {
-    setIsLoading(true);
-    const { data, error } = await supabase
-      .from('inventory_units')
-      .select(`
-        *,
-        products (
-          sku,
-          description,
-          brand_id,
-          category_id,
-          min_stock,
-          image_url
-        ),
-        brands (name),
-        categories (name),
-        stock_conditions (name)
-      `)
-      .eq('user_id', user?.id);
-
-    if (error) {
-      showError('Erro ao carregar unidades de estoque', error.message);
-      console.error('Error fetching inventory units:', error);
-    } else {
-      const units: InventoryUnit[] = data.map((unit: any) => ({
-        id: unit.id,
-        product_id: unit.product_id,
-        productSku: unit.products?.sku || 'N/A',
-        productDescription: unit.products?.description || 'N/A',
-        brand: unit.brands?.name || 'N/A',
-        category: unit.categories?.name || 'N/A',
-        model: unit.model, // Assuming these are stored directly or derived
-        color: unit.color,
-        storage: unit.storage,
-        condition: unit.stock_conditions?.name || 'N/A', // Use name from joined table
-        location: unit.location, // Assuming location is stored directly
-        imei1: unit.imei1,
-        imei2: unit.imei2,
-        serialNumber: unit.serial_number,
-        barcode: unit.barcode,
-        costPrice: unit.cost_price,
-        salePrice: unit.sale_price,
-        status: unit.status,
-        createdAt: unit.created_at,
-        updatedAt: unit.updated_at,
-        purchaseId: unit.purchase_id,
-        locatorCode: unit.locator_code,
-        minStock: unit.products?.min_stock,
-        image_url: unit.products?.image_url,
-      }));
-      setInventoryUnits(units);
-    }
-    setIsLoading(false);
-  };
-
-  const fetchPurchases = async () => {
-    setIsLoading(true);
-    const { data, error } = await supabase
-      .from('purchases')
-      .select(`
-        *,
-        suppliers (name),
-        purchase_items (*)
-      `)
-      .eq('user_id', user?.id);
-
-    if (error) {
-      showError('Erro ao carregar compras', error.message);
-      console.error('Error fetching purchases:', error);
-    } else {
-      const mappedPurchases: Purchase[] = data.map((p: any) => ({
-        id: p.id,
-        locator_code: p.locator_code,
-        supplier_id: p.supplier_id,
-        supplier_name: p.suppliers?.name || 'N/A',
-        purchase_date: p.purchase_date,
-        invoice_number: p.invoice_number,
-        observations: p.observations,
-        items: p.purchase_items,
-        subtotal: p.subtotal,
-        additional_cost: p.additional_cost,
-        total: p.total,
-        status: p.status,
-        created_at: p.created_at,
-      }));
-      setPurchases(mappedPurchases);
-    }
-    setIsLoading(false);
-  };
-
+  // Filtrar unidades do estoque por localizador
   const filteredByLocator = locatorSearch ? 
     inventoryUnits.filter(unit => 
       unit.locatorCode?.toLowerCase().includes(locatorSearch.toLowerCase())
     ) : inventoryUnits;
 
+  // Show locator search results message
   const locatorSearchResults = locatorSearch ? filteredByLocator.length : null;
 
   const filteredUnits = filteredByLocator.filter(unit => {
@@ -271,10 +347,10 @@ export default function Inventory() {
       (unit.serialNumber && unit.serialNumber.toLowerCase().includes(searchTermLower)) ||
       (unit.barcode && unit.barcode.includes(searchTerm));
     
-    const matchesBrand = filterBrand === 'all' || filterBrand === '' || unit.brand === brands.find(b => b.id === filterBrand)?.name;
-    const matchesCategory = filterCategory === 'all' || filterCategory === '' || unit.category === categories.find(c => c.id === filterCategory)?.name;
+    const matchesBrand = filterBrand === '' || unit.brand === filterBrand;
+    const matchesCategory = filterCategory === '' || unit.category === filterCategory;
     const matchesStatus = filterStatus === 'all' || unit.status === filterStatus;
-    const matchesCondition = filterCondition === 'all' || unit.condition === stockConditions.find(sc => sc.id === filterCondition)?.name;
+    const matchesCondition = filterCondition === 'all' || unit.condition === filterCondition;
     
     return matchesSearch && matchesBrand && matchesCategory && matchesStatus && matchesCondition;
   });
@@ -294,6 +370,7 @@ export default function Inventory() {
     }
   });
 
+  // Helper function to get current month dates
   const getCurrentMonthDates = () => {
     const now = new Date();
     const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -304,6 +381,7 @@ export default function Inventory() {
     };
   };
 
+  // Get effective date range (current month if no filter set)
   const getEffectiveDateRange = () => {
     if (purchaseDateFrom && purchaseDateTo) {
       return { from: purchaseDateFrom, to: purchaseDateTo };
@@ -311,25 +389,31 @@ export default function Inventory() {
     return getCurrentMonthDates();
   };
 
+  // Filtrar compras
   const filteredPurchases = purchases.filter(purchase => {
     const searchTermLower = searchTerm.toLowerCase();
-    const matchesSearch = purchase.locator_code.toLowerCase().includes(searchTermLower) ||
-                         purchase.supplier_name.toLowerCase().includes(searchTermLower) ||
-                         purchase.invoice_number.toLowerCase().includes(searchTermLower);
+    const matchesSearch = purchase.locatorCode.toLowerCase().includes(searchTermLower) ||
+                         purchase.supplierName.toLowerCase().includes(searchTermLower) ||
+                         purchase.invoiceNumber.toLowerCase().includes(searchTermLower);
     
     const matchesStatus = purchaseStatusFilter === 'all' || purchase.status === purchaseStatusFilter;
     
+    // Date filtering
     const dateRange = getEffectiveDateRange();
-    const purchaseDate = purchase.purchase_date;
+    const purchaseDate = purchase.purchaseDate;
     const matchesDate = purchaseDate >= dateRange.from && purchaseDate <= dateRange.to;
     
     return matchesSearch && matchesStatus && matchesDate;
   });
 
+  const brands = [...new Set(inventoryUnits.map(u => u.brand))];
+  const categories = [...new Set(inventoryUnits.map(u => u.category))];
+
+  // Update summary stats for inventory to use current month purchases when no date filter is set
   const getInventoryValueForPeriod = () => {
     const dateRange = getEffectiveDateRange();
     const periodPurchases = purchases.filter(purchase => {
-      const purchaseDate = purchase.purchase_date;
+      const purchaseDate = purchase.purchaseDate;
       return purchaseDate >= dateRange.from && purchaseDate <= dateRange.to;
     });
     return periodPurchases.reduce((sum, p) => sum + p.total, 0);
@@ -345,13 +429,13 @@ export default function Inventory() {
     return badges[status as keyof typeof badges] || badges.available;
   };
 
-  const getConditionBadge = (conditionName: string) => {
+  const getConditionBadge = (condition: string) => {
     const badges = {
-      'Novo': { label: 'Novo', color: 'bg-green-100 text-green-800' },
-      'Seminovo': { label: 'Seminovo', color: 'bg-yellow-100 text-yellow-800' },
-      'Usado': { label: 'Usado', color: 'bg-orange-100 text-orange-800' }
+      novo: { label: 'Novo', color: 'bg-green-100 text-green-800' },
+      seminovo: { label: 'Seminovo', color: 'bg-yellow-100 text-yellow-800' },
+      usado: { label: 'Usado', color: 'bg-orange-100 text-orange-800' }
     };
-    return badges[conditionName as keyof typeof badges] || { label: conditionName, color: 'bg-gray-100 text-gray-800' };
+    return badges[condition as keyof typeof badges] || badges.novo;
   };
 
   const getPurchaseStatusBadge = (status: string) => {
@@ -363,10 +447,12 @@ export default function Inventory() {
     return badges[status as keyof typeof badges] || badges.completed;
   };
 
+  // Calculate low stock items
   const lowStockItems = inventoryUnits.filter(unit => 
     unit.status === 'available' && 
     unit.minStock !== undefined && 
     unit.minStock > 0 && 
+    // To get the current stock for a product, we need to count available units for that productSku
     inventoryUnits.filter(u => u.productSku === unit.productSku && u.status === 'available').length <= unit.minStock
   );
 
@@ -375,12 +461,13 @@ export default function Inventory() {
     available: inventoryUnits.filter(u => u.status === 'available').length,
     sold: inventoryUnits.filter(u => u.status === 'sold').length,
     defective: inventoryUnits.filter(u => u.status === 'defective').length,
-    lowStock: lowStockItems.length,
+    lowStock: lowStockItems.length, // Adicionado lowStock
     totalValue: activeTab === 'inventory' ? getInventoryValueForPeriod() : inventoryUnits
       .filter(u => u.status === 'available')
       .reduce((sum, u) => sum + u.costPrice, 0)
   };
 
+  // Purchase stats based on current filtering
   const purchaseStats = {
     total: filteredPurchases.length,
     completed: filteredPurchases.filter(p => p.status === 'completed').length,
@@ -395,9 +482,25 @@ export default function Inventory() {
       setPurchases([purchase, ...purchases]);
     }
     
+    // Se todos os itens não precisam de IMEI/Serial, já finalizar automaticamente
+    const allItemsNoImeiSerial = purchase.items.every((item: any) => item.hasImeiSerial === false);
+    if (allItemsNoImeiSerial) {
+      // Atualizar status para completed automaticamente
+      const updatedPurchases = purchases.map(p => 
+        p.id === purchase.id ? { ...purchase, status: 'completed' as const } : p
+      );
+      if (!editingPurchase) {
+        updatedPurchases.unshift({ ...purchase, status: 'completed' as const });
+      }
+      setPurchases(updatedPurchases);
+      
+      showSuccess(
+        'Compra finalizada automaticamente!',
+        `${purchase.items.length} itens adicionados ao estoque sem necessidade de IMEI/Serial.`
+      );
+    }
+    
     setEditingPurchase(null);
-    fetchInventoryUnits(); // Refresh inventory after purchase saved
-    fetchPurchases(); // Refresh purchases list
   };
 
   const handleEditPurchase = (purchase: Purchase) => {
@@ -416,6 +519,7 @@ export default function Inventory() {
   };
 
   const handlePurchaseFinalized = (finalizedItems: any[]) => {
+    // Update purchase status to completed
     if (finalizingPurchase) {
       const updatedPurchases = purchases.map(p => 
         p.id === finalizingPurchase.id 
@@ -430,8 +534,6 @@ export default function Inventory() {
       );
     }
     setFinalizingPurchase(null);
-    fetchInventoryUnits(); // Refresh inventory after finalizing
-    fetchPurchases(); // Refresh purchases list
   };
 
   const handleViewPurchase = (purchase: Purchase) => {
@@ -444,6 +546,7 @@ export default function Inventory() {
     setIsProductHistoryModalOpen(true);
   };
 
+  // New functions for editing inventory units
   const handleEditProductUnit = (unit: InventoryUnit) => {
     setEditingProductUnit(unit);
     setIsProductEditModalOpen(true);
@@ -456,74 +559,7 @@ export default function Inventory() {
     showSuccess('Produto Atualizado', `O item ${updatedUnit.productDescription} foi atualizado com sucesso.`);
     setIsProductEditModalOpen(false);
     setEditingProductUnit(null);
-    fetchInventoryUnits(); // Refresh inventory after product unit saved
   };
-
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [itemToDelete, setItemToDelete] = useState<any>(null);
-  const [deleteType, setDeleteType] = useState<'unit' | 'purchase' | 'product' | null>(null);
-
-  const openDeleteModal = (item: any, type: 'unit' | 'purchase' | 'product') => {
-    setItemToDelete(item);
-    setDeleteType(type);
-    setIsDeleteModalOpen(true);
-  };
-
-  const deleteItem = async () => {
-    if (!itemToDelete || !deleteType) return;
-
-    let error;
-    let successMessage = '';
-    let errorMessage = '';
-
-    if (deleteType === 'unit') {
-      const { error: deleteError } = await supabase
-        .from('inventory_units')
-        .delete()
-        .eq('id', itemToDelete.id);
-      error = deleteError;
-      successMessage = 'Unidade de estoque excluída com sucesso!';
-      errorMessage = 'Erro ao excluir unidade de estoque';
-    } else if (deleteType === 'purchase') {
-      const { error: deleteError } = await supabase
-        .from('purchases')
-        .delete()
-        .eq('id', itemToDelete.id);
-      error = deleteError;
-      successMessage = 'Compra excluída com sucesso!';
-      errorMessage = 'Erro ao excluir compra';
-    } else if (deleteType === 'product') {
-      // This would delete the product definition, which might affect inventory units
-      // For now, we'll just show an error or prevent it if there are associated units
-      showError('Ação não permitida', 'Não é possível excluir a definição de um produto diretamente se houver unidades em estoque.');
-      setIsDeleteModalOpen(false);
-      return;
-    }
-
-    if (error) {
-      showError(errorMessage, error.message);
-      console.error(`Error deleting ${deleteType}:`, error);
-    } else {
-      showSuccess(successMessage);
-      if (deleteType === 'unit') {
-        setInventoryUnits(inventoryUnits.filter(u => u.id !== itemToDelete.id));
-      } else if (deleteType === 'purchase') {
-        setPurchases(purchases.filter(p => p.id !== itemToDelete.id));
-        fetchInventoryUnits(); // Refresh inventory as units might be linked to this purchase
-      }
-    }
-    setIsDeleteModalOpen(false);
-    setItemToDelete(null);
-    setDeleteType(null);
-  };
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
 
   return (
     <div className="p-6 bg-gradient-to-br from-slate-50 to-slate-100 min-h-screen">
@@ -638,9 +674,9 @@ export default function Inventory() {
                 onChange={(e) => setFilterBrand(e.target.value)}
                 className="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
-                <option value="all">Todas as Marcas</option>
+                <option value="">Todas as Marcas</option>
                 {brands.map(brand => (
-                  <option key={brand.id} value={brand.id}>{brand.name}</option>
+                  <option key={brand} value={brand}>{brand}</option>
                 ))}
               </select>
               
@@ -649,9 +685,9 @@ export default function Inventory() {
                 onChange={(e) => setFilterCategory(e.target.value)}
                 className="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
-                <option value="all">Todas as Categorias</option>
+                <option value="">Todas as Categorias</option>
                 {categories.map(category => (
-                  <option key={category.id} value={category.id}>{category.name}</option>
+                  <option key={category} value={category}>{category}</option>
                 ))}
               </select>
 
@@ -673,9 +709,9 @@ export default function Inventory() {
                 className="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
                 <option value="all">Todas Condições</option>
-                {stockConditions.map(condition => (
-                  <option key={condition.id} value={condition.id}>{condition.name}</option>
-                ))}
+                <option value="novo">Novo</option>
+                <option value="seminovo">Seminovo</option>
+                <option value="usado">Usado</option>
               </select>
 
               <div className="flex items-center text-sm text-slate-600">
@@ -704,7 +740,6 @@ export default function Inventory() {
               <table className="w-full">
                 <thead className="bg-slate-50">
                   <tr>
-                    <th className="text-left py-3 px-4 font-semibold text-slate-700">Foto</th>
                     <th className="text-left py-3 px-4 font-semibold text-slate-700">SKU</th>
                     <th className="text-left py-3 px-4 font-semibold text-slate-700">Produto</th>
                     <th className="text-left py-3 px-4 font-semibold text-slate-700">Marca/Categoria</th>
@@ -712,7 +747,7 @@ export default function Inventory() {
                     <th className="text-left py-3 px-4 font-semibold text-slate-700">Condição</th>
                     <th className="text-left py-3 px-4 font-semibold text-slate-700">Preços</th>
                     <th className="text-left py-3 px-4 font-semibold text-slate-700">Localização</th>
-                    <th className="text-left py-3 px-4 font-semibold text-slate-700">Estoque Mín.</th>
+                    <th className="text-left py-3 px-4 font-semibold text-slate-700">Estoque Mín.</th> {/* Adicionado */}
                     <th className="text-left py-3 px-4 font-semibold text-slate-700">Status</th>
                     <th className="text-center py-3 px-4 font-semibold text-slate-700">Ações</th>
                   </tr>
@@ -726,19 +761,6 @@ export default function Inventory() {
                     
                     return (
                       <tr key={unit.id} className="border-b border-slate-100 hover:bg-slate-50">
-                        <td className="py-3 px-4">
-                          {unit.image_url ? (
-                            <img 
-                              src={unit.image_url} 
-                              alt={unit.productDescription} 
-                              className="w-10 h-10 object-cover rounded-md" 
-                            />
-                          ) : (
-                            <div className="w-10 h-10 bg-slate-100 rounded-md flex items-center justify-center text-slate-400">
-                              <ImageIcon size={20} />
-                            </div>
-                          )}
-                        </td>
                         <td className="py-3 px-4">
                           <div className="font-mono text-sm font-bold text-blue-600">
                             {unit.productSku}
@@ -826,7 +848,7 @@ export default function Inventory() {
                           )}
                         </td>
 
-                        <td className="py-3 px-4">
+                        <td className="py-3 px-4"> {/* Coluna de Estoque Mínimo */}
                           {unit.minStock !== undefined && unit.minStock > 0 ? (
                             <div className={`flex items-center text-sm ${isLowStock ? 'text-orange-600 font-bold' : 'text-slate-700'}`}>
                               {isLowStock && <AlertTriangle size={14} className="mr-1" />}
@@ -860,14 +882,14 @@ export default function Inventory() {
                               <Clock size={16} className="text-purple-600" />
                             </button>
                             <button
-                              onClick={() => handleEditProductUnit(unit)}
+                              onClick={() => handleEditProductUnit(unit)} // Updated to open ProductModal
                               className="p-2 hover:bg-green-100 rounded-lg transition-colors"
                               title="Editar"
                             >
                               <Edit size={16} className="text-green-600" />
                             </button>
                             <button
-                              onClick={() => openDeleteModal(unit, 'unit')}
+                              onClick={() => alert(`Excluir item ${unit.id}`)}
                               className="p-2 hover:bg-red-100 rounded-lg transition-colors"
                               title="Excluir"
                             >
@@ -1004,26 +1026,26 @@ export default function Inventory() {
                       <tr key={purchase.id} className="border-b border-slate-100 hover:bg-slate-50">
                         <td className="py-3 px-4">
                           <div className="font-mono text-sm font-bold text-blue-600">
-                            {purchase.locator_code}
+                            {purchase.locatorCode}
                           </div>
                         </td>
                         
                         <td className="py-3 px-4">
-                          <div className="font-medium text-slate-800">{purchase.supplier_name}</div>
+                          <div className="font-medium text-slate-800">{purchase.supplierName}</div>
                         </td>
                         
                         <td className="py-3 px-4">
                           <div className="flex items-center text-sm">
                             <Calendar size={14} className="mr-1 text-slate-500" />
-                            {new Date(purchase.purchase_date).toLocaleDateString('pt-BR')}
+                            {new Date(purchase.purchaseDate).toLocaleDateString('pt-BR')}
                           </div>
                         </td>
                         
                         <td className="py-3 px-4">
-                          {purchase.invoice_number ? (
+                          {purchase.invoiceNumber ? (
                             <div className="flex items-center text-sm">
                               <FileText size={14} className="mr-1 text-slate-500" />
-                              {purchase.invoice_number}
+                              {purchase.invoiceNumber}
                             </div>
                           ) : (
                             <span className="text-slate-400">-</span>
@@ -1074,7 +1096,12 @@ export default function Inventory() {
                               </button>
                             )}
                             <button
-                              onClick={() => openDeleteModal(purchase, 'purchase')}
+                              onClick={() => {
+                                if (confirm('Tem certeza que deseja excluir esta compra?')) {
+                                  setPurchases(purchases.filter(p => p.id !== purchase.id));
+                                  showSuccess('Compra excluída com sucesso!');
+                                }
+                              }}
                               className="p-2 hover:bg-red-100 rounded-lg transition-colors"
                               title="Excluir"
                             >
@@ -1141,18 +1168,8 @@ export default function Inventory() {
           setIsProductEditModalOpen(false);
           setEditingProductUnit(null);
         }}
-        product={editingProductUnit}
-        onProductSaved={handleProductUnitSaved}
-      />
-
-      {/* Delete Confirmation Modal */}
-      <DeleteConfirmModal
-        isOpen={isDeleteModalOpen}
-        onClose={() => setIsDeleteModalOpen(false)}
-        onConfirm={deleteItem}
-        title="Confirmar Exclusão"
-        message={`Tem certeza que deseja excluir ${deleteType === 'unit' ? 'esta unidade de estoque' : 'esta compra'}? Esta ação não pode ser desfeita.`}
-        itemName={itemToDelete?.productDescription || itemToDelete?.locator_code || itemToDelete?.name}
+        product={editingProductUnit} // Pass the selected unit for editing
+        onProductSaved={handleProductUnitSaved} // Handle saving updates
       />
     </div>
   );

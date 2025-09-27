@@ -4,7 +4,7 @@ import AuthProvider from "@/react-app/components/AuthProvider";
 import ProtectedRoute from "@/react-app/components/ProtectedRoute";
 import Sidebar from "@/react-app/components/Sidebar";
 import { NotificationProvider } from "@/react-app/components/NotificationSystem";
-import { ThemeProvider, useTheme } from "@/react-app/hooks/useTheme";
+import { ThemeProvider, useTheme } from "@/react-app/hooks/useTheme"; // Importar useTheme
 import { SessionContextProvider, useSession } from "@/react-app/components/SessionContextProvider";
 import Dashboard from "@/react-app/pages/Dashboard";
 import Sales from "@/react-app/pages/Sales";
@@ -31,7 +31,7 @@ function AppContent() {
   const location = useLocation();
   const navigate = useNavigate();
   const { session, isLoading } = useSession();
-  const { theme } = useTheme();
+  const { theme } = useTheme(); // Usar o tema para aplicar classes de fundo
 
   // --- INÍCIO DA REMOÇÃO TEMPORÁRIA DA LÓGICA DE LOGIN ---
   // Comentando o useEffect que lida com redirecionamentos de autenticação

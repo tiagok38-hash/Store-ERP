@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   X, 
   Save, 
@@ -6,24 +6,15 @@ import {
   Trash2,
   Info,
   Package,
-  Building2,
-  Tag,
-  Smartphone,
-  Barcode,
-  Clock,
-  MapPin,
-  Image as ImageIcon // Importar o ícone Image
+  Building2
 } from 'lucide-react';
 import { useNotification } from '@/react-app/components/NotificationSystem';
 import { useTheme } from '@/react-app/hooks/useTheme';
 import { formatCurrencyInput, parseCurrencyBR, formatCurrencyBR } from '@/react-app/utils/currency';
 import CustomerModal from '@/react-app/components/CustomerModal';
-import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/react-app/hooks/useAuth';
 
 interface PurchaseItem {
   id: string;
-  product_id: string; // Changed to product_id
   description: string;
   quantity: number;
   costPrice: number;
@@ -33,10 +24,10 @@ interface PurchaseItem {
   imei2?: string;
   serialNumber?: string;
   condition: string;
-  location_id: string; // Changed to location_id
-  warranty_term_id: string; // Changed to warranty_term_id
+  location: string;
+  warranty: string;
   sku?: string;
-  hasImeiSerial: boolean; // Ensure this is always present
+  hasImeiSerial?: boolean;
 }
 
 // Add InventoryUnit interface here for local use in trade-in logic
@@ -79,45 +70,6 @@ interface Customer {
   phone?: string;
 }
 
-interface Supplier {
-  id: string;
-  name: string;
-}
-
-interface Brand {
-  id: string;
-  name: string;
-}
-
-interface Category {
-  id: string;
-  name: string;
-  brand_id: string;
-}
-
-interface Subcategory {
-  id: string;
-  name: string;
-  category_id: string;
-}
-
-interface Variation {
-  id: string;
-  name: string;
-  subcategory_id: string;
-}
-
-interface StockLocation {
-  id: string;
-  name: string;
-}
-
-interface WarrantyTerm {
-  id: string;
-  name: string;
-  months: number;
-}
-
 interface PurchaseModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -127,6 +79,148 @@ interface PurchaseModalProps {
   isTradeIn?: boolean;
   tradeInCustomer?: Customer | null; // New prop for trade-in customer
 }
+
+const mockSuppliers = [
+  { id: '1', name: 'Fornecedor ABC Ltda' },
+  { id: '2', name: 'Tech Distribuidora' },
+  { id: '3', name: 'Acessórios & Cia' },
+  { id: '4', name: 'Apple Brasil' },
+  { id: '5', name: 'Samsung Eletrônica' },
+  { id: '6', name: 'Xiaomi Global' }
+];
+
+const mockStockLocations = [
+  'Vitrine Principal',
+  'Vitrine iS',
+  'Estoque A1-B2',
+  'Estoque B1-A3',
+  'Estoque C1-D2',
+  'Depósito',
+  'Loja',
+  'Balcão',
+  'Sala Técnica'
+];
+
+const mockBrands = [
+  { id: '1', name: 'Apple' },
+  { id: '2', name: 'Samsung' },
+  { id: '3', name: 'Xiaomi' },
+  { id: '4', name: 'Genérica' }
+];
+
+// Filtrar marcas baseado no tipo de produto
+const getAvailableBrands = (productType: 'apple' | 'product') => {
+  if (productType === 'apple') {
+    return mockBrands.filter(brand => brand.name === 'Apple');
+  }
+  return mockBrands;
+};
+
+const mockCategories = {
+  '1': [
+    { id: '1', name: 'iPhone' },
+    { id: '2', name: 'iPad' },
+    { id: '3', name: 'MacBook' },
+    { id: '4', name: 'AirPods' },
+    { id: '5', name: 'Apple Watch' }
+  ],
+  '2': [
+    { id: '6', name: 'Galaxy S' },
+    { id: '7', name: 'Galaxy A' },
+    { id: '8', name: 'Galaxy Tab' }
+  ],
+  '3': [
+    { id: '9', name: 'Redmi' },
+    { id: '10', name: 'POCO' },
+    { id: '11', name: 'Mi' }
+  ],
+  '4': [
+    { id: '12', name: 'Capinhas' },
+    { id: '13', name: 'Películas' },
+    { id: '14', name: 'Carregadores' }
+  ]
+};
+
+// Modelos específicos por categoria
+const mockModels = {
+  '1': ['iPhone 15 Pro Max', 'iPhone 15 Pro', 'iPhone 15 Plus', 'iPhone 15', 'iPhone 14 Pro Max', 'iPhone 14 Pro', 'iPhone 14', 'iPhone 13'],
+  '2': ['iPad Pro 12.9"', 'iPad Pro 11"', 'iPad Air 5ª Geração', 'iPad 10ª Geração', 'iPad Mini'],
+  '3': ['MacBook Pro 16"', 'MacBook Pro 14"', 'MacBook Air 15"', 'MacBook Air 13"'],
+  '4': ['AirPods Pro 2ª Geração', 'AirPods 3ª Geração', 'AirPods Max'],
+  '5': ['Apple Watch Ultra 2', 'Apple Watch Series 9', 'Apple Watch SE'],
+  '6': ['Galaxy S24 Ultra', 'Galaxy S24+', 'Galaxy S24'],
+  '7': ['Galaxy A54', 'Galaxy A34', 'Galaxy A24'],
+  '9': ['Redmi Note 13 Pro+', 'Redmi Note 13 Pro', 'Redmi Note 13'],
+  '12': ['Capinha Silicone', 'Capinha Transparente', 'Capinha Couro']
+};
+
+// Armazenamento por modelo (para Apple)
+const mockStorage = {
+  'iPhone 15 Pro Max': ['128GB', '256GB', '512GB', '1TB'],
+  'iPhone 15 Pro': ['128GB', '256GB', '512GB', '1TB'],
+  'iPhone 15 Plus': ['128GB', '256GB', '512GB'],
+  'iPhone 15': ['128GB', '256GB', '512GB'],
+  'iPhone 14 Pro Max': ['128GB', '256GB', '512GB', '1TB'],
+  'iPhone 14 Pro': ['128GB', '256GB', '512GB', '1TB'],
+  'iPhone 14': ['128GB', '256GB', '512GB'],
+  'iPhone 13': ['128GB', '256GB', '512GB'],
+  'iPad Pro 12.9"': ['128GB', '256GB', '512GB', '1TB', '2TB'],
+  'iPad Pro 11"': ['128GB', '256GB', '512GB', '1TB', '2TB'],
+  'iPad Air 5ª Geração': ['64GB', '256GB'],
+  'iPad 10ª Geração': ['64GB', '256GB'],
+  'MacBook Pro 16"': ['512GB', '1TB', '2TB', '4TB', '8TB'],
+  'MacBook Pro 14"': ['512GB', '1TB', '2TB', '4TB'],
+  'MacBook Air 15"': ['256GB', '512GB', '1TB', '2TB'],
+  'MacBook Air 13"': ['256GB', '512GB', '1TB', '2TB']
+};
+
+// Cores por modelo e armazenamento (para Apple)
+const mockColors = {
+  'iPhone 15 Pro Max': ['Titânio Natural', 'Titânio Azul', 'Titânio Branco', 'Titânio Preto'],
+  'iPhone 15 Pro': ['Titânio Natural', 'Titânio Azul', 'Titânio Branco', 'Titânio Preto'],
+  'iPhone 15 Plus': ['Rosa', 'Amarelo', 'Verde', 'Azul', 'Preto'],
+  'iPhone 15': ['Rosa', 'Amarelo', 'Verde', 'Azul', 'Preto'],
+  'iPhone 14 Pro Max': ['Roxo Profundo', 'Dourado', 'Prata', 'Preto Espacial'],
+  'iPhone 14 Pro': ['Roxo Profundo', 'Dourado', 'Prata', 'Preto Espacial'],
+  'iPhone 14': ['Roxo', 'Azul', 'Midnight', 'Starlight', 'Product Red'],
+  'iPhone 13': ['Rosa', 'Azul', 'Midnight', 'Starlight', 'Product Red'],
+  'iPad Pro 12.9"': ['Cinza Espacial', 'Prata'],
+  'iPad Pro 11"': ['Cinza Espacial', 'Prata'],
+  'iPad Air 5ª Geração': ['Cinza Espacial', 'Rosa', 'Roxo', 'Azul', 'Starlight'],
+  'iPad 10ª Geração': ['Azul', 'Rosa', 'Amarelo', 'Prata'],
+  'MacBook Pro 16"': ['Cinza Espacial', 'Prata'],
+  'MacBook Pro 14"': ['Cinza Espacial', 'Prata'],
+  'MacBook Air 15"': ['Midnight', 'Starlight', 'Cinza Espacial', 'Prata'],
+  'MacBook Air 13"': ['Midnight', 'Starlight', 'Cinza Espacial', 'Prata'],
+  'AirPods Pro 2ª Geração': ['Branco'],
+  'AirPods 3ª Geração': ['Branco'],
+  'AirPods Max': ['Cinza Espacial', 'Prata', 'Rosa', 'Verde', 'Azul Céu'],
+  'Apple Watch Ultra 2': ['Titânio Natural'],
+  'Apple Watch Series 9': ['Midnight', 'Starlight', 'Rosa', 'Product Red'],
+  'Apple Watch SE': ['Midnight', 'Starlight', 'Prata']
+};
+
+// Descrições pré-cadastradas para produtos genéricos
+const mockProductDescriptions = [
+  'Capinha Silicone Premium',
+  'Capinha Transparente Anti-Impacto',
+  'Capinha Couro Magnética',
+  'Película Vidro Temperado',
+  'Película Hidrogel',
+  'Película Privacidade',
+  'Carregador USB-C 20W',
+  'Carregador Lightning',
+  'Carregador Wireless',
+  'Power Bank 10000mAh',
+  'Cabo USB-C para Lightning',
+  'Cabo USB-C para USB-C',
+  'Adaptador Lightning para P2',
+  'Suporte Veicular Magnético',
+  'Fone de Ouvido Bluetooth',
+  'Smartwatch',
+  'Tablet Android',
+  'Smartphone Android'
+];
 
 export default function PurchaseModal({ 
   isOpen, 
@@ -139,57 +233,46 @@ export default function PurchaseModal({
 }: PurchaseModalProps) {
   const { theme } = useTheme();
   const { showSuccess, showError } = useNotification();
-  const { user } = useAuth();
-
   const [formData, setFormData] = useState({
-    supplierId: editingPurchase?.supplier_id || '',
-    purchaseDate: editingPurchase?.purchase_date || new Date().toISOString().split('T')[0],
-    invoiceNumber: editingPurchase?.invoice_number || '',
+    supplierId: editingPurchase?.supplierId || '',
+    purchaseDate: editingPurchase?.purchaseDate || new Date().toISOString().split('T')[0],
+    invoiceNumber: editingPurchase?.invoiceNumber || '',
     observations: editingPurchase?.observations || ''
   });
 
-  const [selectedSupplier, setSelectedSupplier] = useState(editingPurchase?.supplier_id || '');
-  const [supplierSearchTerm, setSupplierSearchTerm] = useState('');
+  const [productType, setProductType] = useState<'apple' | 'product'>(
+    editingPurchase?.productType || 'apple'
+  );
+  const [selectedSupplier, setSelectedSupplier] = useState(editingPurchase?.supplierId || '');
+  const [supplierSearchTerm, setSupplierSearchTerm] = useState(
+    editingPurchase ? mockSuppliers.find(s => s.id === editingPurchase.supplierId)?.name || '' : ''
+  );
   const [showSupplierDropdown, setShowSupplierDropdown] = useState(false);
-
-  // Dynamic data from Supabase
-  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
-  const [brands, setBrands] = useState<Brand[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
-  const [variations, setVariations] = useState<Variation[]>([]);
-  const [stockLocations, setStockLocations] = useState<StockLocation[]>([]);
-  const [warrantyTerms, setWarrantyTerms] = useState<WarrantyTerm[]>([]);
-
-  // Product selection states
-  const [selectedBrandId, setSelectedBrandId] = useState('');
-  const [selectedCategoryId, setSelectedCategoryId] = useState('');
-  const [selectedSubcategoryId, setSelectedSubcategoryId] = useState('');
-  const [selectedVariationId, setSelectedVariationId] = useState('');
-  
-  // States for generic product custom description and variations
-  const [customProductDescription, setCustomProductDescription] = useState('');
-  const [currentVariationInput, setCurrentVariationInput] = useState('');
-  const [genericProductVariations, setGenericProductVariations] = useState<string[]>([]);
-  
+  const [selectedBrand, setSelectedBrand] = useState(
+    editingPurchase?.selectedBrand || (editingPurchase?.productType === 'apple' ? '1' : '')
+  );
+  const [selectedCategory, setSelectedCategory] = useState(editingPurchase?.selectedCategory || '');
+  const [selectedModel, setSelectedModel] = useState(editingPurchase?.selectedModel || '');
+  const [selectedStorage, setSelectedStorage] = useState(editingPurchase?.selectedStorage || '');
+  const [selectedColor, setSelectedColor] = useState(editingPurchase?.selectedColor || '');
+  const [selectedDescription, setSelectedDescription] = useState(editingPurchase?.selectedDescription || '');
+  const [productVariations, setProductVariations] = useState<string[]>(editingPurchase?.productVariations || []);
+  const [currentVariation, setCurrentVariation] = useState('');
   const [hasImeiSn, setHasImeiSn] = useState<'sim' | 'nao'>('sim');
   
   const [currentItem, setCurrentItem] = useState({
-    warranty_term_id: '',
-    location_id: '',
-    condition: 'novo',
+    warranty: '1 ano',
+    location: '',
+    condition: 'Novo',
     quantity: 1,
     costPrice: '',
     additionalCost: ''
   });
 
   const [items, setItems] = useState<PurchaseItem[]>(editingPurchase?.items || []);
-  const [additionalCost, setAdditionalCost] = useState(editingPurchase?.additional_cost || 0);
+  const [additionalCost, setAdditionalCost] = useState(editingPurchase?.additionalCost || 0);
   const [isSupplierModalOpen, setIsSupplierModalOpen] = useState(false);
   const [isAnimatingOut, setIsAnimatingOut] = useState(false);
-
-  // New state for product type selection
-  const [productTypeSelection, setProductTypeSelection] = useState<'apple' | 'generic'>('apple');
 
   const handleClose = () => {
     setIsAnimatingOut(true);
@@ -199,285 +282,140 @@ export default function PurchaseModal({
     }, 300); // Match animation duration
   };
 
-  // Fetch initial data from Supabase
+  // Efeito para inicializar o formulário quando editingPurchase ou tradeInCustomer muda
   useEffect(() => {
-    if (!isOpen || !user) return;
-
-    const fetchInitialData = async () => {
-      // Fetch Suppliers
-      const { data: suppliersData, error: suppliersError } = await supabase
-        .from('suppliers')
-        .select('id, name')
-        .eq('user_id', user.id)
-        .eq('is_active', true);
-      if (suppliersError) console.error('Error fetching suppliers:', suppliersError);
-      else setSuppliers(suppliersData || []);
-
-      // Fetch Brands
-      const { data: brandsData, error: brandsError } = await supabase
-        .from('brands')
-        .select('id, name')
-        .eq('user_id', user.id)
-        .eq('is_active', true);
-      if (brandsError) console.error('Error fetching brands:', brandsError);
-      else setBrands(brandsData || []);
-
-      // Fetch Categories
-      const { data: categoriesData, error: categoriesError } = await supabase
-        .from('categories')
-        .select('id, name, brand_id')
-        .eq('user_id', user.id)
-        .eq('is_active', true);
-      if (categoriesError) console.error('Error fetching categories:', categoriesError);
-      else setCategories(categoriesData || []);
-
-      // Fetch Subcategories
-      const { data: subcategoriesData, error: subcategoriesError } = await supabase
-        .from('subcategories')
-        .select('id, name, category_id')
-        .eq('user_id', user.id)
-        .eq('is_active', true);
-      if (subcategoriesError) console.error('Error fetching subcategories:', subcategoriesError);
-      else setSubcategories(subcategoriesData || []);
-
-      // Fetch Variations
-      const { data: variationsData, error: variationsError } = await supabase
-        .from('variations')
-        .select('id, name, subcategory_id')
-        .eq('user_id', user.id)
-        .eq('is_active', true);
-      if (variationsError) console.error('Error fetching variations:', variationsError);
-      else setVariations(variationsData || []);
-
-      // Fetch Stock Locations
-      const { data: locationsData, error: locationsError } = await supabase
-        .from('stock_locations')
-        .select('id, name')
-        .eq('user_id', user.id)
-        .eq('is_active', true);
-      if (locationsError) console.error('Error fetching stock locations:', locationsError);
-      else setStockLocations(locationsData || []);
-
-      // Fetch Warranty Terms
-      const { data: warrantyData, error: warrantyError } = await supabase
-        .from('warranty_terms')
-        .select('id, name, months')
-        .eq('user_id', user.id)
-        .eq('is_active', true);
-      if (warrantyError) console.error('Error fetching warranty terms:', warrantyError);
-      else setWarrantyTerms(warrantyData || []);
-    };
-
-    fetchInitialData();
-  }, [isOpen, user]);
-
-  // Effect to initialize form data when modal opens or editingPurchase/tradeInCustomer changes
-  useEffect(() => {
-    if (isOpen) {
-      // Determine default brand ID for Apple
-      const appleBrandId = brands.find(b => b.name === 'Apple')?.id || '';
-
+    if (isOpen) { // Only reset if modal is opening
       if (isTradeIn && tradeInCustomer) {
+        // Pre-fill supplier with trade-in customer
         setFormData(prev => ({
           ...prev,
           supplierId: tradeInCustomer.id,
-          purchaseDate: new Date().toISOString().split('T')[0],
-          invoiceNumber: '',
+          purchaseDate: new Date().toISOString().split('T')[0], // Always current date for trade-in
+          invoiceNumber: '', // No invoice for trade-in
           observations: `Aparelho recebido em troca do cliente: ${tradeInCustomer.name}`
         }));
         setSelectedSupplier(tradeInCustomer.id);
         setSupplierSearchTerm(tradeInCustomer.name);
-        setProductTypeSelection('apple'); // Default to Apple for trade-in
-        setSelectedBrandId(appleBrandId); 
-        setSelectedCategoryId('');
-        setSelectedSubcategoryId('');
-        setSelectedVariationId('');
-        setCustomProductDescription('');
-        setGenericProductVariations([]);
+        setProductType('apple'); // Default to apple for trade-in, usually phones
+        setSelectedBrand('1'); // Default to Apple brand ID
+        setSelectedCategory('');
+        setSelectedModel('');
+        setSelectedStorage('');
+        setSelectedColor('');
+        setSelectedDescription('');
+        setProductVariations([]);
         setItems([]);
         setAdditionalCost(0);
       } else if (editingPurchase) {
         setFormData({
-          supplierId: editingPurchase.supplier_id || '',
-          purchaseDate: editingPurchase.purchase_date || new Date().toISOString().split('T')[0],
-          invoiceNumber: editingPurchase.invoice_number || '',
+          supplierId: editingPurchase.supplierId || '',
+          purchaseDate: editingPurchase.purchaseDate || new Date().toISOString().split('T')[0],
+          invoiceNumber: editingPurchase.invoiceNumber || '',
           observations: editingPurchase.observations || ''
         });
-        setSelectedSupplier(editingPurchase.supplier_id || '');
-        const foundSupplierName = suppliers.find(s => s.id === editingPurchase.supplier_id)?.name;
-        setSupplierSearchTerm(foundSupplierName || editingPurchase.supplier_name || '');
-        setItems(editingPurchase.items || []);
-        setAdditionalCost(editingPurchase.additional_cost || 0);
-        // Re-populate product selection fields if editing an existing item
-        if (editingPurchase.items && editingPurchase.items.length > 0) {
-          const firstItem = editingPurchase.items[0]; // Assuming all items in a purchase share product structure
-          setSelectedBrandId(firstItem.brand_id || '');
-          setSelectedCategoryId(firstItem.category_id || '');
-          setSelectedSubcategoryId(firstItem.subcategory_id || '');
-          setSelectedVariationId(firstItem.variation_id || '');
-          // Determine if it's an Apple product based on the first item's brand
-          if (firstItem.brand_id === appleBrandId) {
-            setProductTypeSelection('apple');
-          } else {
-            setProductTypeSelection('generic');
-            // Note: Custom description and generic variations are not automatically re-populated
-            // from a single description string when editing a generic product.
-            // User would need to re-enter if modifying.
-            setCustomProductDescription(''); 
-            setGenericProductVariations([]);
-          }
-        }
+        setProductType(editingPurchase.productType || 'apple');
+        setSelectedSupplier(editingPurchase.supplierId || '');
+        setSupplierSearchTerm(mockSuppliers.find(s => s.id === editingPurchase.supplierId)?.name || '');
+        setSelectedBrand(editingPurchase.selectedBrand || (editingPurchase.productType === 'apple' ? '1' : ''));
+        setSelectedCategory(editingPurchase.selectedCategory || '');
+        setSelectedModel(editingPurchase.selectedModel || '');
+        setSelectedStorage(editingPurchase.selectedStorage || '');
+        setSelectedColor(editingPurchase.selectedColor || '');
+        setSelectedDescription(editingPurchase.selectedDescription || '');
+        setProductVariations(editingPurchase.productVariations || []);
+
+        // Inicializa items corretamente, calculando totalPrice para itens existentes
+        const initializedItems = editingPurchase.items.map((item: any) => {
+          const quantity = item.quantity || 0;
+          const finalPrice = item.finalPrice || 0;
+          return {
+            ...item,
+            quantity: quantity,
+            costPrice: item.costPrice || 0,
+            finalPrice: finalPrice,
+            totalPrice: finalPrice * quantity, // Calcula totalPrice para itens existentes
+          };
+        });
+        setItems(initializedItems);
+        setAdditionalCost(editingPurchase.additionalCost || 0);
       } else {
-        // Reset form for new purchase
+        // Resetar formulário para nova compra
         setFormData({
           supplierId: '',
           purchaseDate: new Date().toISOString().split('T')[0],
           invoiceNumber: '',
           observations: ''
         });
+        setProductType('apple');
         setSelectedSupplier('');
         setSupplierSearchTerm('');
-        setProductTypeSelection('apple'); // Default to Apple for new purchase
-        setSelectedBrandId(appleBrandId); 
-        setSelectedCategoryId('');
-        setSelectedSubcategoryId('');
-        setSelectedVariationId('');
-        setCustomProductDescription('');
-        setGenericProductVariations([]);
+        setSelectedBrand('1'); // Default to Apple brand ID
+        setSelectedCategory('');
+        setSelectedModel('');
+        setSelectedStorage('');
+        setSelectedColor('');
+        setSelectedDescription('');
+        setProductVariations([]);
         setItems([]);
         setAdditionalCost(0);
       }
-      // Set default location and warranty if available
-      if (stockLocations.length > 0 && !currentItem.location_id) {
-        setCurrentItem(prev => ({ ...prev, location_id: stockLocations[0].id }));
-      }
-      if (warrantyTerms.length > 0 && !currentItem.warranty_term_id) {
-        setCurrentItem(prev => ({ ...prev, warranty_term_id: warrantyTerms[0].id }));
-      }
     }
-  }, [isOpen, editingPurchase, isTradeIn, tradeInCustomer, suppliers, stockLocations, warrantyTerms, brands]); // Added brands to dependency array
+  }, [isOpen, editingPurchase, isTradeIn, tradeInCustomer]);
 
-  // Effect to handle product type selection changes
-  useEffect(() => {
-    const appleBrandId = brands.find(b => b.name === 'Apple')?.id || '';
-    if (productTypeSelection === 'apple') {
-      setSelectedBrandId(appleBrandId);
-    } else {
-      setSelectedBrandId(''); // Clear brand for generic selection
-    }
-    setSelectedCategoryId('');
-    setSelectedSubcategoryId('');
-    setSelectedVariationId('');
-    setCustomProductDescription(''); // Clear custom description
-    setGenericProductVariations([]); // Clear generic variations
-    setCurrentVariationInput(''); // Clear current variation input
-  }, [productTypeSelection, brands]);
 
-  const filteredSuppliers = suppliers.filter(supplier => 
+  const filteredSuppliers = mockSuppliers.filter(supplier => 
     supplier.name.toLowerCase().includes(supplierSearchTerm.toLowerCase())
   );
   
-  const appleBrandId = brands.find(b => b.name === 'Apple')?.id;
-  const appleCategories = categories.filter(cat => cat.brand_id === appleBrandId);
-
-  const availableCategories = productTypeSelection === 'apple' 
-    ? appleCategories 
-    : categories.filter(cat => cat.brand_id === selectedBrandId);
-
-  const availableSubcategories = subcategories.filter(subcat => subcat.category_id === selectedCategoryId);
-  const availableVariations = variations.filter(v => v.subcategory_id === selectedSubcategoryId);
-
-  const addGenericVariation = () => {
-    if (currentVariationInput.trim()) {
-      setGenericProductVariations([...genericProductVariations, currentVariationInput.trim()]);
-      setCurrentVariationInput('');
-    }
-  };
+  const availableCategories = selectedBrand ? mockCategories[selectedBrand as keyof typeof mockCategories] || [] : [];
+  const availableModels = selectedCategory ? mockModels[selectedCategory as keyof typeof mockModels] || [] : [];
+  const availableStorage = selectedModel ? mockStorage[selectedModel as keyof typeof mockStorage] || [] : [];
+  const availableColors = selectedModel ? mockColors[selectedModel as keyof typeof mockColors] || [] : [];
 
   const resetCurrentItem = () => {
+    // Preservar seleções feitas para facilitar cadastro de produtos similares
     setCurrentItem({
-      ...currentItem,
-      quantity: 1,
-      costPrice: '',
-      additionalCost: ''
+      ...currentItem,  // Manter configurações atuais
+      quantity: 1,     // Resetar apenas quantidade
+      costPrice: '',   // Resetar apenas preço
+      additionalCost: '' // Resetar apenas custo adicional
     });
-    // Reset product selection fields based on current productTypeSelection
-    if (productTypeSelection === 'apple') {
-      const appleBrandId = brands.find(b => b.name === 'Apple')?.id || '';
-      setSelectedBrandId(appleBrandId);
-    } else {
-      setSelectedBrandId('');
+    
+    // Para produtos não-Apple, resetar descrição e variações
+    if (productType !== 'apple') {
+      setSelectedDescription('');
+      setProductVariations([]);
+      setCurrentVariation('');
     }
-    setSelectedCategoryId('');
-    setSelectedSubcategoryId('');
-    setSelectedVariationId('');
-    setCustomProductDescription(''); // Reset custom description
-    setGenericProductVariations([]); // Reset generic variations
-    setCurrentVariationInput(''); // Reset current variation input
   };
 
   const getProductDescription = () => {
-    let description = '';
-    const brandName = brands.find(b => b.id === selectedBrandId)?.name;
-    const categoryName = categories.find(c => c.id === selectedCategoryId)?.name;
-    const subcategoryName = subcategories.find(s => s.id === selectedSubcategoryId)?.name;
-    const variationName = variations.find(v => v.id === selectedVariationId)?.name;
-
-    // Prioritize custom description for generic products if provided
-    if (productTypeSelection === 'generic' && customProductDescription) {
-      description = customProductDescription;
-      if (genericProductVariations.length > 0) {
-        description += ` - ${genericProductVariations.join(', ')}`;
+    if (productType === 'apple') {
+      if (!selectedModel) return '';
+      let description = selectedModel;
+      if (selectedStorage) description += ` ${selectedStorage}`;
+      if (selectedColor) description += ` ${selectedColor}`;
+      return description;
+    } else {
+      if (!selectedDescription) return '';
+      let description = selectedDescription;
+      if (productVariations.length > 0) {
+        description += ` - ${productVariations.join(', ')}`;
       }
-    } else { // Structured flow (Apple or Generic using structured fields)
-      if (brandName) description += brandName;
-      if (categoryName) description += ` ${categoryName}`;
-      if (subcategoryName) description += ` ${subcategoryName}`;
-      if (variationName) description += ` ${variationName}`;
+      return description;
     }
-    
-    return description.trim();
   };
 
-  const getProductSku = () => {
-    let sku = '';
-    const brandName = brands.find(b => b.id === selectedBrandId)?.name;
-    const categoryName = categories.find(c => c.id === selectedCategoryId)?.name;
-    const subcategoryName = subcategories.find(s => s.id === selectedSubcategoryId)?.name;
-    const variationName = variations.find(v => v.id === selectedVariationId)?.name;
-
-    // Prioritize custom description for generic products if provided
-    if (productTypeSelection === 'generic' && customProductDescription) {
-      sku = customProductDescription
-        .replace(/[^a-zA-Z0-9\s]/g, '')
-        .split(' ')
-        .map((word: string) => word.substring(0, 2))
-        .join('')
-        .toUpperCase()
-        .substring(0, 6);
-      if (genericProductVariations.length > 0) {
-        sku += genericProductVariations.map(v => v.replace(/[^a-zA-Z0-9]/g, '').substring(0, 3)).join('').toUpperCase();
-      }
-    } else { // Structured flow
-      if (brandName) sku += brandName.substring(0, 3).toUpperCase();
-      if (categoryName) sku += categoryName.substring(0, 3).toUpperCase();
-      if (subcategoryName) sku += subcategoryName.replace(/[^a-zA-Z0-9]/g, '').substring(0, 3).toUpperCase();
-      if (variationName) sku += variationName.replace(/[^a-zA-Z0-9]/g, '').substring(0, 3).toUpperCase();
-    }
-    return sku.trim();
-  };
-
-  const addItem = async () => {
+  const addItem = () => {
     const description = getProductDescription();
-    const sku = getProductSku();
     
-    if (!description || !currentItem.costPrice || !selectedSupplier || !currentItem.location_id || !currentItem.warranty_term_id) {
-      showError('Campos obrigatórios', 'Preencha todos os campos obrigatórios: fornecedor, marca, categoria, descrição do produto, preço de custo, localização e garantia.');
+    if (!description || !currentItem.costPrice || !selectedSupplier) {
+      showError('Campos obrigatórios', 'Preencha todos os campos obrigatórios: fornecedor, descrição do produto e preço de custo');
       return;
     }
 
     const costPrice = parseCurrencyBR(currentItem.costPrice);
-    const itemSpecificAdditionalCost = parseCurrencyBR(currentItem.additionalCost);
+    const itemSpecificAdditionalCost = parseCurrencyBR(currentItem.additionalCost); // Renomeado para clareza
     const quantity = currentItem.quantity;
 
     if (costPrice <= 0) {
@@ -485,76 +423,25 @@ export default function PurchaseModal({
       return;
     }
 
-    const finalPrice = costPrice + itemSpecificAdditionalCost;
-    const totalPrice = finalPrice * quantity;
+    const finalPrice = costPrice + itemSpecificAdditionalCost; // Preço final unitário
+    const totalPrice = finalPrice * quantity; // Total para esta linha de item
 
     const hasImeiSerial = hasImeiSn === 'sim';
 
-    // Find or create product in `products` table
-    let productId = '';
-    const { data: existingProducts, error: productSearchError } = await supabase
-      .from('products')
-      .select('id')
-      .eq('user_id', user?.id)
-      .eq('sku', sku)
-      .eq('description', description)
-      .single();
-
-    if (productSearchError && productSearchError.code !== 'PGRST116') { // PGRST116 means no rows found
-      showError('Erro ao buscar produto', productSearchError.message);
-      console.error('Error searching product:', productSearchError);
-      return;
-    }
-
-    if (existingProducts) {
-      productId = existingProducts.id;
-    } else {
-      const { data: newProduct, error: productInsertError } = await supabase
-        .from('products')
-        .insert({
-          user_id: user?.id,
-          sku: sku,
-          description: description,
-          brand_id: selectedBrandId || null,
-          category_id: selectedCategoryId || null,
-          subcategory_id: selectedSubcategoryId || null,
-          variation_id: selectedVariationId || null,
-          cost_price: costPrice,
-          sale_price: finalPrice, // Default sale price to finalPrice
-          min_stock: 0, // Default min_stock
-          location_id: currentItem.location_id, // Default location
-          requires_imei: hasImeiSerial,
-          requires_serial: hasImeiSerial,
-          warranty_term_id: currentItem.warranty_term_id,
-          is_active: true,
-        })
-        .select('id')
-        .single();
-
-      if (productInsertError) {
-        showError('Erro ao criar produto', productInsertError.message);
-        console.error('Error creating product:', productInsertError);
-        return;
-      }
-      productId = newProduct.id;
-    }
-
     const newItem: PurchaseItem = {
-      id: Date.now().toString(), // Temporary client-side ID
-      product_id: productId,
+      id: Date.now().toString(),
       description,
       quantity,
       costPrice,
-      finalPrice,
+      finalPrice, // Usar o finalPrice calculado
       totalPrice,
       condition: currentItem.condition,
-      location_id: currentItem.location_id,
-      warranty_term_id: currentItem.warranty_term_id,
+      location: currentItem.location,
+      warranty: currentItem.warranty,
       hasImeiSerial
     };
 
     setItems([...items, newItem]);
-    showSuccess('Item adicionado', `${description} adicionado à compra.`);
     resetCurrentItem();
   };
 
@@ -563,9 +450,10 @@ export default function PurchaseModal({
   };
 
   const subtotal = items.reduce((sum, item) => sum + item.totalPrice, 0);
-  const additionalCostTotal = parseCurrencyBR(formatCurrencyInput(additionalCost.toString()));
+  const additionalCostTotal = parseCurrencyBR(formatCurrencyInput(additionalCost.toString())); // Ensure additionalCost is parsed
   const total = subtotal + additionalCostTotal;
 
+  // Gerar código localizador único
   const generateLocatorCode = (): string => {
     const prefix = 'LOC';
     const timestamp = new Date().getTime().toString().slice(-6);
@@ -573,7 +461,7 @@ export default function PurchaseModal({
     return `${prefix}${timestamp}${random}`;
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = () => {
     if (items.length === 0) {
       showError('Nenhum item', 'Adicione pelo menos um item');
       return;
@@ -584,29 +472,30 @@ export default function PurchaseModal({
       return;
     }
 
-    if (!user) {
-      showError('Erro', 'Usuário não autenticado.');
-      return;
-    }
+    // Generate unique SKUs for each item following the #1, #2, #3 pattern
+    const itemsWithSkus = items.map((item, index) => ({
+      ...item,
+      sku: item.sku || `#${index + 1}` // Use existing SKU or generate #1, #2, etc.
+    }));
 
-    const supplierName = suppliers.find(s => s.id === selectedSupplier)?.name || 'Fornecedor Desconhecido';
-    const locatorCode = editingPurchase?.locator_code || generateLocatorCode();
+    const supplierName = mockSuppliers.find(s => s.id === selectedSupplier)?.name || 'Fornecedor';
+    const locatorCode = editingPurchase?.locatorCode || generateLocatorCode();
     
     if (isTradeIn) {
       const newInventoryUnits: InventoryUnitForTradeIn[] = [];
       let totalTradeInValue = 0;
 
-      for (const item of items) {
+      itemsWithSkus.forEach(item => {
           const newUnitId = `tradein-unit-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
           
           const newInventoryUnit: InventoryUnitForTradeIn = {
               id: newUnitId,
-              productSku: item.sku || getProductSku(), // Use item's SKU or generate
+              productSku: item.sku || 'TRADEIN-SKU',
               productDescription: item.description,
-              brand: brands.find(b => b.id === selectedBrandId)?.name || 'N/A', 
-              category: categories.find(c => c.id === selectedCategoryId)?.name || 'N/A', 
+              brand: 'Trade-in', 
+              category: 'Trade-in', 
               condition: item.condition as any,
-              location: stockLocations.find(loc => loc.id === item.location_id)?.name || 'N/A',
+              location: item.location,
               costPrice: item.costPrice, 
               salePrice: item.costPrice, // Value it's taken in at
               status: 'available',
@@ -615,14 +504,14 @@ export default function PurchaseModal({
               imei1: item.imei1,
               imei2: item.imei2,
               serialNumber: item.serialNumber,
-              barcode: undefined, // Barcode not typically used for trade-in
-              warrantyTerm: warrantyTerms.find(w => w.id === item.warranty_term_id)?.name || 'Sem garantia'
+              barcode: item.barcode,
+              warrantyTerm: item.warranty
           };
           newInventoryUnits.push(newInventoryUnit);
           totalTradeInValue += item.costPrice * item.quantity; 
-      }
+      });
 
-      if (onTradeInSaved) {
+      if (onTradeInSaved) { // Use the new callback for trade-in
           onTradeInSaved({
               tradeInValue: totalTradeInValue,
               newInventoryUnits: newInventoryUnits
@@ -633,136 +522,41 @@ export default function PurchaseModal({
       return; 
     }
 
-    // Determine purchase status
-    const requiresFinalization = items.some(item => item.hasImeiSerial);
-    const purchaseStatus = requiresFinalization ? 'pending' : 'completed';
-
     const purchaseData = {
-      user_id: user.id,
-      locator_code: locatorCode,
-      supplier_id: selectedSupplier,
-      purchase_date: formData.purchaseDate,
-      invoice_number: formData.invoiceNumber || null,
-      observations: formData.observations || null,
-      subtotal: subtotal,
-      additional_cost: additionalCostTotal,
-      total: total,
-      status: purchaseStatus,
+      id: editingPurchase?.id || Date.now().toString(),
+      locatorCode,
+      supplierId: selectedSupplier,
+      supplierName,
+      purchaseDate: formData.purchaseDate,
+      invoiceNumber: formData.invoiceNumber,
+      observations: formData.observations,
+      items: itemsWithSkus,
+      subtotal,
+      additionalCost: additionalCostTotal, // Use the parsed value
+      total,
+      status: editingPurchase?.status || 'partial',
+      createdAt: editingPurchase?.createdAt || new Date().toISOString(),
+      // Salvar seleções para edição
+      productType,
+      selectedBrand,
+      selectedCategory,
+      selectedModel,
+      selectedStorage,
+      selectedColor,
+      selectedDescription,
+      productVariations
     };
 
-    let purchaseId = editingPurchase?.id;
-    let savedPurchase;
-
-    if (editingPurchase) {
-      // Update existing purchase
-      const { data, error } = await supabase
-        .from('purchases')
-        .update(purchaseData)
-        .eq('id', editingPurchase.id)
-        .select()
-        .single();
-
-      if (error) {
-        showError('Erro ao atualizar compra', error.message);
-        console.error('Error updating purchase:', error);
-        return;
-      }
-      savedPurchase = data;
-      purchaseId = data.id;
-
-      // Delete existing purchase items and re-insert
-      const { error: deleteItemsError } = await supabase
-        .from('purchase_items')
-        .delete()
-        .eq('purchase_id', purchaseId);
-      if (deleteItemsError) {
-        showError('Erro ao limpar itens da compra', deleteItemsError.message);
-        console.error('Error deleting old purchase items:', deleteItemsError);
-        return;
-      }
-    } else {
-      // Insert new purchase
-      const { data, error } = await supabase
-        .from('purchases')
-        .insert(purchaseData)
-        .select()
-        .single();
-
-      if (error) {
-        showError('Erro ao criar compra', error.message);
-        console.error('Error creating purchase:', error);
-        return;
-      }
-      savedPurchase = data;
-      purchaseId = data.id;
-    }
-
-    // Insert purchase items
-    const purchaseItemsToInsert = items.map(item => ({
-      user_id: user.id,
-      purchase_id: purchaseId,
-      product_id: item.product_id,
-      description: item.description,
-      quantity: item.quantity,
-      cost_price: item.costPrice,
-      final_price: item.finalPrice,
-      total_price: item.totalPrice,
-      condition_id: item.condition, // Assuming condition is an ID
-      location_id: item.location_id,
-      warranty_term_id: item.warranty_term_id,
-      has_imei_serial: item.hasImeiSerial,
-    }));
-
-    const { error: insertItemsError } = await supabase
-      .from('purchase_items')
-      .insert(purchaseItemsToInsert);
-
-    if (insertItemsError) {
-      showError('Erro ao inserir itens da compra', insertItemsError.message);
-      console.error('Error inserting purchase items:', insertItemsError);
-      return;
-    }
-
-    // If purchase does not require finalization, create inventory units directly
-    if (!requiresFinalization) {
-      const inventoryUnitsToInsert = items.flatMap(item => {
-        const units = [];
-        for (let i = 0; i < item.quantity; i++) {
-          units.push({
-            user_id: user.id,
-            product_id: item.product_id,
-            condition_id: item.condition,
-            location_id: item.location_id,
-            warranty_term_id: item.warranty_term_id,
-            cost_price: item.costPrice,
-            sale_price: item.finalPrice,
-            status: 'available',
-            purchase_id: purchaseId,
-          });
-        }
-        return units;
-      });
-
-      const { error: insertUnitsError } = await supabase
-        .from('inventory_units')
-        .insert(inventoryUnitsToInsert);
-
-      if (insertUnitsError) {
-        showError('Erro ao criar unidades de estoque', insertUnitsError.message);
-        console.error('Error inserting inventory units:', insertUnitsError);
-        return;
-      }
-    }
-
+    // Callback para salvar a compra
     if (onPurchaseSaved) {
-      onPurchaseSaved({ ...savedPurchase, items: purchaseItemsToInsert });
+      onPurchaseSaved(purchaseData);
     }
     
     showSuccess(
       `${editingPurchase ? 'Compra atualizada' : 'Compra registrada'} com sucesso!`,
-      `Localizador: ${locatorCode} - ${items.length} itens ${editingPurchase ? 'atualizados' : 'registrados'}`
+      `Localizador: ${locatorCode} - ${itemsWithSkus.length} itens ${editingPurchase ? 'atualizados' : 'registrados'}`
     );
-    handleClose();
+    handleClose(); // Use the animated close
   };
 
   if (!isOpen && !isAnimatingOut) return null;
@@ -815,7 +609,7 @@ export default function PurchaseModal({
                         }
                       }}
                       onFocus={() => setShowSupplierDropdown(true)}
-                      disabled={isSupplierInputDisabled}
+                      disabled={isSupplierInputDisabled} // Disable if pre-filled by trade-in
                       className={`w-full px-2 py-1.5 text-xs border rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
                         theme === 'dark'
                           ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-400'
@@ -852,7 +646,7 @@ export default function PurchaseModal({
                   <button
                     type="button"
                     onClick={() => setIsSupplierModalOpen(true)}
-                    disabled={isSupplierInputDisabled}
+                    disabled={isSupplierInputDisabled} // Disable if pre-filled by trade-in
                     className={`px-2 py-1.5 bg-green-500 text-white rounded hover:bg-green-600 transition-colors flex items-center justify-center ${isSupplierInputDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
                     title="Adicionar novo fornecedor"
                   >
@@ -881,9 +675,9 @@ export default function PurchaseModal({
                       theme === 'dark' ? 'text-blue-300' : 'text-blue-800'
                     }`}>
                       Para cadastrar Marcas, Categorias e Grades,{' '}
-                      <a 
-                        href="/administration/product-structure" 
-                        target="_blank"
+                      <button 
+                        type="button"
+                        onClick={() => window.open('/administration/product-structure', '_blank')}
                         className={`underline font-medium transition-colors ${
                           theme === 'dark' 
                             ? 'hover:text-blue-200' 
@@ -891,12 +685,64 @@ export default function PurchaseModal({
                         }`}
                       >
                         clique aqui
-                      </a>
+                      </button>
                       .
                     </div>
                   </div>
                 </div>
               </div>
+            </div>
+          </div>
+
+          {/* Product Type Selection */}
+          <div className="mb-3">
+            <div className="flex gap-4">
+              <label className="flex items-center">
+                <input
+                  type="radio"
+                  name="productType"
+                  value="apple"
+                  checked={productType === 'apple'}
+                  onChange={(e) => {
+                    setProductType(e.target.value as 'apple' | 'product');
+                    if (e.target.value === 'apple') {
+                      setSelectedBrand('1'); // Apple ID
+                      setSelectedCategory(''); // Resetar categoria para mostrar opções
+                    } else {
+                      setSelectedBrand('');
+                      setSelectedDescription('');
+                      setProductVariations([]);
+                    }
+                  }}
+                  className="mr-1"
+                />
+                <span className={`font-medium text-xs ${
+                  theme === 'dark' ? 'text-slate-200' : 'text-slate-800'
+                }`}>Apple</span>
+              </label>
+              <label className="flex items-center">
+                <input
+                  type="radio"
+                  name="productType"
+                  value="product"
+                  checked={productType === 'product'}
+                  onChange={(e) => {
+                    setProductType(e.target.value as 'apple' | 'product');
+                    if (e.target.value === 'apple') {
+                      setSelectedBrand('1'); // Apple ID
+                      setSelectedCategory(''); // Resetar categoria para mostrar opções
+                    } else {
+                      setSelectedBrand('');
+                      setSelectedDescription('');
+                      setProductVariations([]);
+                    }
+                  }}
+                  className="mr-1"
+                />
+                <span className={`font-medium text-xs ${
+                  theme === 'dark' ? 'text-slate-200' : 'text-slate-800'
+                }`}>Produto</span>
+              </label>
             </div>
           </div>
 
@@ -906,21 +752,21 @@ export default function PurchaseModal({
               <label className={`block text-xs font-medium mb-1 ${
                 theme === 'dark' ? 'text-slate-300' : 'text-slate-700'
               }`}>
-                Garantia *
+                Garantia
               </label>
               <select
-                value={currentItem.warranty_term_id}
-                onChange={(e) => setCurrentItem({...currentItem, warranty_term_id: e.target.value})}
+                value={currentItem.warranty}
+                onChange={(e) => setCurrentItem({...currentItem, warranty: e.target.value})}
                 className={`w-full px-1.5 py-1 text-xs border rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
                   theme === 'dark'
                     ? 'bg-slate-700 border-slate-600 text-white'
                     : 'bg-white border-slate-300 text-slate-900'
                 }`}
               >
-                <option value="">Selecione</option>
-                {warrantyTerms.map(term => (
-                  <option key={term.id} value={term.id}>{term.name} ({term.months} meses)</option>
-                ))}
+                <option value="1 ano">1 ano</option>
+                <option value="6 meses">6 meses</option>
+                <option value="3 meses">3 meses</option>
+                <option value="Sem garantia">Sem garantia</option>
               </select>
             </div>
 
@@ -928,11 +774,11 @@ export default function PurchaseModal({
               <label className={`block text-xs font-medium mb-1 ${
                 theme === 'dark' ? 'text-slate-300' : 'text-slate-700'
               }`}>
-                Local estoque *
+                Local estoque
               </label>
               <select
-                value={currentItem.location_id}
-                onChange={(e) => setCurrentItem({...currentItem, location_id: e.target.value})}
+                value={currentItem.location}
+                onChange={(e) => setCurrentItem({...currentItem, location: e.target.value})}
                 className={`w-full px-1.5 py-1 text-xs border rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
                   theme === 'dark'
                     ? 'bg-slate-700 border-slate-600 text-white'
@@ -940,8 +786,8 @@ export default function PurchaseModal({
                 }`}
               >
                 <option value="">Selecione</option>
-                {stockLocations.map(location => (
-                  <option key={location.id} value={location.id}>{location.name}</option>
+                {mockStockLocations.map(location => (
+                  <option key={location} value={location}>{location}</option>
                 ))}
               </select>
             </div>
@@ -954,16 +800,16 @@ export default function PurchaseModal({
               </label>
               <select
                 value={currentItem.condition}
-                onChange={(e) => setCurrentItem({...currentItem, condition: e.target.value as 'novo' | 'seminovo' | 'usado'})}
+                onChange={(e) => setCurrentItem({...currentItem, condition: e.target.value})}
                 className={`w-full px-1.5 py-1 text-xs border rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
                   theme === 'dark'
                     ? 'bg-slate-700 border-slate-600 text-white'
                     : 'bg-white border-slate-300 text-slate-900'
                 }`}
               >
-                <option value="novo">Novo</option>
-                <option value="seminovo">Seminovo</option>
-                <option value="usado">Usado</option>
+                <option value="Novo">Novo</option>
+                <option value="Seminovo">Seminovo</option>
+                <option value="Usado">Usado</option>
               </select>
             </div>
 
@@ -1004,217 +850,283 @@ export default function PurchaseModal({
             </div>
           </div>
 
-          {/* Product Type Selection */}
-          <div className={`mb-4 p-2 rounded-lg ${theme === 'dark' ? 'bg-slate-700' : 'bg-slate-100'}`}>
-            <div className="flex justify-center gap-2">
-              <button
-                type="button"
-                onClick={() => setProductTypeSelection('apple')}
-                className={`flex-1 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                  productTypeSelection === 'apple'
-                    ? 'bg-blue-500 text-white shadow-sm'
-                    : theme === 'dark'
-                      ? 'text-slate-300 hover:bg-slate-600'
-                      : 'text-slate-700 hover:bg-slate-200'
-                }`}
-              >
-                Produto Apple
-              </button>
-              <button
-                type="button"
-                onClick={() => setProductTypeSelection('generic')}
-                className={`flex-1 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                  productTypeSelection === 'generic'
-                    ? 'bg-blue-500 text-white shadow-sm'
-                    : theme === 'dark'
-                      ? 'text-slate-300 hover:bg-slate-600'
-                      : 'text-slate-700 hover:bg-slate-200'
-                }`}
-              >
-                Produto Genérico
-              </button>
-            </div>
-          </div>
-
-          {/* Product Form (always structured, but with conditional generic fields) */}
+          {/* Product Form */}
           <div className="space-y-3 mb-4">
+            {/* Product Registration */}
             <div className="space-y-3">
-              {/* Linha única compacta - Marca, Categoria, Subcategoria, Variação */}
-              <div className="grid grid-cols-4 gap-2 mb-2">
-                <div>
-                  <label className={`block text-xs font-medium mb-1 ${
-                    theme === 'dark' ? 'text-slate-300' : 'text-slate-700'
-                  }`}>
-                    Marca*
-                  </label>
-                  <select
-                    value={selectedBrandId}
-                    onChange={(e) => {
-                      setSelectedBrandId(e.target.value);
-                      setSelectedCategoryId('');
-                      setSelectedSubcategoryId('');
-                      setSelectedVariationId('');
-                    }}
-                    className={`w-full px-1.5 py-1 text-xs border rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                      theme === 'dark'
-                        ? 'bg-slate-700 border-slate-600 text-white'
-                        : 'bg-white border-slate-300 text-slate-900'
-                    }`}
-                    disabled={productTypeSelection === 'apple'}
-                  >
-                    <option value="">Marca</option>
-                    {brands.map(brand => (
-                      <option key={brand.id} value={brand.id}>{brand.name}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className={`block text-xs font-medium mb-1 ${
-                    theme === 'dark' ? 'text-slate-300' : 'text-slate-700'
-                  }`}>
-                    Categoria*
-                  </label>
-                  <select
-                    value={selectedCategoryId}
-                    onChange={(e) => {
-                      setSelectedCategoryId(e.target.value);
-                      setSelectedSubcategoryId('');
-                      setSelectedVariationId('');
-                    }}
-                    className={`w-full px-1.5 py-1 text-xs border rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                      theme === 'dark'
-                        ? 'bg-slate-700 border-slate-600 text-white'
-                        : 'bg-white border-slate-300 text-slate-900'
-                    }`}
-                    disabled={!selectedBrandId}
-                  >
-                    <option value="">Categoria</option>
-                    {availableCategories.map(category => (
-                      <option key={category.id} value={category.id}>{category.name}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className={`block text-xs font-medium mb-1 ${
-                    theme === 'dark' ? 'text-slate-300' : 'text-slate-700'
-                  }`}>
-                    Subcategoria*
-                  </label>
-                  <select
-                    value={selectedSubcategoryId}
-                    onChange={(e) => {
-                      setSelectedSubcategoryId(e.target.value);
-                      setSelectedVariationId('');
-                    }}
-                    className={`w-full px-1.5 py-1 text-xs border rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                      theme === 'dark'
-                        ? 'bg-slate-700 border-slate-600 text-white'
-                        : 'bg-white border-slate-300 text-slate-900'
-                    }`}
-                    disabled={!selectedCategoryId}
-                  >
-                    <option value="">Subcategoria</option>
-                    {availableSubcategories.map(subcategory => (
-                      <option key={subcategory.id} value={subcategory.id}>{subcategory.name}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className={`block text-xs font-medium mb-1 ${
-                    theme === 'dark' ? 'text-slate-300' : 'text-slate-700'
-                  }`}>
-                    Variação
-                  </label>
-                  <select
-                    value={selectedVariationId}
-                    onChange={(e) => setSelectedVariationId(e.target.value)}
-                    className={`w-full px-1.5 py-1 text-xs border rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                      theme === 'dark'
-                        ? 'bg-slate-700 border-slate-600 text-white'
-                        : 'bg-white border-slate-300 text-slate-900'
-                    }`}
-                    disabled={!selectedSubcategoryId || availableVariations.length === 0}
-                  >
-                    <option value="">Variação</option>
-                    {availableVariations.map(variation => (
-                      <option key={variation.id} value={variation.id}>{variation.name}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              {/* Generic Product Custom Description and Variations (conditional) */}
-              {productTypeSelection === 'generic' && (
+              {productType === 'apple' ? (
+                // Fluxo Apple - todos os filtros em uma única linha
                 <>
-                  <div className="mb-2">
-                    <label className={`block text-xs font-medium mb-1 ${
-                      theme === 'dark' ? 'text-slate-300' : 'text-slate-700'
-                    }`}>
-                      Descrição Customizada (Opcional)
-                    </label>
-                    <input
-                      type="text"
-                      value={customProductDescription}
-                      onChange={(e) => setCustomProductDescription(e.target.value)}
-                      className={`w-full px-1.5 py-1 text-xs border rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                        theme === 'dark'
-                          ? 'bg-slate-700 border-slate-600 text-white'
-                          : 'bg-white border-slate-300 text-slate-900'
-                      }`}
-                      placeholder="Ex: Capinha de Silicone"
-                    />
-                  </div>
-
-                  <div className="mb-2">
-                    <label className={`block text-xs font-medium mb-1 ${
-                      theme === 'dark' ? 'text-slate-300' : 'text-slate-700'
-                    }`}>
-                      Variações Genéricas (Opcional)
-                    </label>
-                    <div className="flex gap-2">
-                      <input
-                        type="text"
-                        value={currentVariationInput}
-                        onChange={(e) => setCurrentVariationInput(e.target.value)}
-                        className={`flex-1 px-1.5 py-1 text-xs border rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                  {/* Linha única compacta - Marca, Categoria, Modelos, Armazenamento, Cor */}
+                  <div className="grid grid-cols-5 gap-2 mb-2">
+                    <div>
+                      <label className={`block text-xs font-medium mb-1 ${
+                        theme === 'dark' ? 'text-slate-300' : 'text-slate-700'
+                      }`}>
+                        Marca*
+                      </label>
+                      <select
+                        value={selectedBrand}
+                        onChange={(e) => {
+                          setSelectedBrand(e.target.value);
+                          setSelectedCategory('');
+                          setSelectedModel('');
+                          setSelectedStorage('');
+                          setSelectedColor('');
+                        }}
+                        className={`w-full px-1.5 py-1 text-xs border rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
                           theme === 'dark'
                             ? 'bg-slate-700 border-slate-600 text-white'
                             : 'bg-white border-slate-300 text-slate-900'
                         }`}
-                        placeholder="Ex: 128GB, Azul"
-                      />
-                      <button
-                        type="button"
-                        onClick={addGenericVariation}
-                        className="px-2 py-1 bg-green-500 text-white rounded hover:bg-green-600 transition-colors"
                       >
-                        <Plus size={12} />
-                      </button>
-                    </div>
-                    
-                    {genericProductVariations.length > 0 && (
-                      <div className="mt-1 flex flex-wrap gap-1">
-                        {genericProductVariations.map((variation, index) => (
-                          <span
-                            key={index}
-                            className="bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded text-xs flex items-center gap-1"
-                          >
-                            {variation}
-                            <button
-                              type="button"
-                              onClick={() => setGenericProductVariations(genericProductVariations.filter((_, i) => i !== index))}
-                              className="text-blue-600 hover:text-blue-800"
-                            >
-                              <X size={8} />
-                            </button>
-                          </span>
+                        <option value="">Marca</option>
+                        {getAvailableBrands(productType).map(brand => (
+                          <option key={brand.id} value={brand.id}>{brand.name}</option>
                         ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className={`block text-xs font-medium mb-1 ${
+                        theme === 'dark' ? 'text-slate-300' : 'text-slate-700'
+                      }`}>
+                        Categoria*
+                      </label>
+                      <select
+                        value={selectedCategory}
+                        onChange={(e) => {
+                          setSelectedCategory(e.target.value);
+                          setSelectedModel('');
+                          setSelectedStorage('');
+                          setSelectedColor('');
+                        }}
+                        className={`w-full px-1.5 py-1 text-xs border rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                          theme === 'dark'
+                            ? 'bg-slate-700 border-slate-600 text-white'
+                            : 'bg-white border-slate-300 text-slate-900'
+                        }`}
+                        disabled={!selectedBrand}
+                      >
+                        <option value="">Categoria</option>
+                        {availableCategories.map(category => (
+                          <option key={category.id} value={category.id}>{category.name}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className={`block text-xs font-medium mb-1 ${
+                        theme === 'dark' ? 'text-slate-300' : 'text-slate-700'
+                      }`}>
+                        Modelos*
+                      </label>
+                      <select
+                        value={selectedModel}
+                        onChange={(e) => {
+                          setSelectedModel(e.target.value);
+                          setSelectedStorage('');
+                          setSelectedColor('');
+                        }}
+                        className={`w-full px-1.5 py-1 text-xs border rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                          theme === 'dark'
+                            ? 'bg-slate-700 border-slate-600 text-white'
+                            : 'bg-white border-slate-300 text-slate-900'
+                        }`}
+                        disabled={!selectedCategory}
+                      >
+                        <option value="">Modelo</option>
+                        {availableModels.map(model => (
+                          <option key={model} value={model}>{model}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className={`block text-xs font-medium mb-1 ${
+                        theme === 'dark' ? 'text-slate-300' : 'text-slate-700'
+                      }`}>
+                        Armazenamento
+                      </label>
+                      <select
+                        value={selectedStorage}
+                        onChange={(e) => {
+                          setSelectedStorage(e.target.value);
+                          setSelectedColor('');
+                        }}
+                        className={`w-full px-1.5 py-1 text-xs border rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                          theme === 'dark'
+                            ? 'bg-slate-700 border-slate-600 text-white'
+                            : 'bg-white border-slate-300 text-slate-900'
+                        }`}
+                        disabled={!selectedModel || availableStorage.length === 0}
+                      >
+                        <option value="">Armazenamento</option>
+                        {availableStorage.map(storage => (
+                          <option key={storage} value={storage}>{storage}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className={`block text-xs font-medium mb-1 ${
+                        theme === 'dark' ? 'text-slate-300' : 'text-slate-700'
+                      }`}>
+                        Cor
+                      </label>
+                      <select
+                        value={selectedColor}
+                        onChange={(e) => setSelectedColor(e.target.value)}
+                        className={`w-full px-1.5 py-1 text-xs border rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                          theme === 'dark'
+                            ? 'bg-slate-700 border-slate-600 text-white'
+                            : 'bg-white border-slate-300 text-slate-900'
+                        }`}
+                        disabled={!selectedModel || availableColors.length === 0}
+                      >
+                        <option value="">Cor</option>
+                        {availableColors.map(color => (
+                          <option key={color} value={color}>{color}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                // Fluxo Produto compacto
+                <>
+                  {/* Primeira linha compacta - Marca, Categoria, Descrição */}
+                  <div className="grid grid-cols-3 gap-2 mb-2">
+                    <div>
+                      <label className={`block text-xs font-medium mb-1 ${
+                        theme === 'dark' ? 'text-slate-300' : 'text-slate-700'
+                      }`}>
+                        Marca*
+                      </label>
+                      <select
+                        value={selectedBrand}
+                        onChange={(e) => {
+                          setSelectedBrand(e.target.value);
+                          setSelectedCategory('');
+                          setSelectedDescription('');
+                          setProductVariations([]);
+                        }}
+                        className={`w-full px-1.5 py-1 text-xs border rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                          theme === 'dark'
+                            ? 'bg-slate-700 border-slate-600 text-white'
+                            : 'bg-white border-slate-300 text-slate-900'
+                        }`}
+                      >
+                        <option value="">Marca</option>
+                        {getAvailableBrands(productType).map(brand => (
+                          <option key={brand.id} value={brand.id}>{brand.name}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {selectedBrand && (
+                      <div>
+                        <label className={`block text-xs font-medium mb-1 ${
+                          theme === 'dark' ? 'text-slate-300' : 'text-slate-700'
+                        }`}>
+                          Categoria*
+                        </label>
+                        <select
+                          value={selectedCategory}
+                          onChange={(e) => {
+                            setSelectedCategory(e.target.value);
+                            setSelectedDescription('');
+                            setProductVariations([]);
+                          }}
+                          className={`w-full px-1.5 py-1 text-xs border rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                            theme === 'dark'
+                              ? 'bg-slate-700 border-slate-600 text-white'
+                              : 'bg-white border-slate-300 text-slate-900'
+                          }`}
+                        >
+                          <option value="">Categoria</option>
+                          {availableCategories.map(category => (
+                            <option key={category.id} value={category.id}>{category.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+
+                    {selectedCategory && (
+                      <div>
+                        <label className={`block text-xs font-medium mb-1 ${
+                          theme === 'dark' ? 'text-slate-300' : 'text-slate-700'
+                        }`}>
+                          Descrição*
+                        </label>
+                        <select
+                          value={selectedDescription}
+                          onChange={(e) => setSelectedDescription(e.target.value)}
+                          className={`w-full px-1.5 py-1 text-xs border rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                            theme === 'dark'
+                              ? 'bg-slate-700 border-slate-600 text-white'
+                              : 'bg-white border-slate-300 text-slate-900'
+                          }`}
+                        >
+                          <option value="">Descrição</option>
+                          {mockProductDescriptions.map(description => (
+                            <option key={description} value={description}>{description}</option>
+                          ))}
+                        </select>
                       </div>
                     )}
                   </div>
+
+                  {/* Variações compactas */}
+                  {selectedDescription && (
+                    <div className="mb-2">
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={currentVariation}
+                          onChange={(e) => setCurrentVariation(e.target.value)}
+                          className={`flex-1 px-1.5 py-1 text-xs border rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                            theme === 'dark'
+                              ? 'bg-slate-700 border-slate-600 text-white'
+                              : 'bg-white border-slate-300 text-slate-900'
+                          }`}
+                          placeholder="Variação (ex: 128GB, Azul)"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (currentVariation.trim()) {
+                              setProductVariations([...productVariations, currentVariation.trim()]);
+                              setCurrentVariation('');
+                            }
+                          }}
+                          className="px-2 py-1 bg-green-500 text-white rounded hover:bg-green-600 transition-colors"
+                        >
+                          <Plus size={12} />
+                        </button>
+                      </div>
+                      
+                      {productVariations.length > 0 && (
+                        <div className="mt-1 flex flex-wrap gap-1">
+                          {productVariations.map((variation, index) => (
+                            <span
+                              key={index}
+                              className="bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded text-xs flex items-center gap-1"
+                            >
+                              {variation}
+                              <button
+                                type="button"
+                                onClick={() => setProductVariations(productVariations.filter((_, i) => i !== index))}
+                                className="text-blue-600 hover:text-blue-800"
+                              >
+                                <X size={8} />
+                              </button>
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </>
               )}
 
@@ -1297,7 +1209,6 @@ export default function PurchaseModal({
 
               {/* Botão Adicionar Item compacto */}
               <button
-                type="button"
                 onClick={addItem}
                 className="w-full bg-gradient-to-r from-blue-500 to-blue-600 text-white py-1.5 rounded hover:shadow-lg transition-all duration-200 flex items-center justify-center font-medium text-xs"
               >
@@ -1354,7 +1265,7 @@ export default function PurchaseModal({
                               <div className={`text-xs ${
                                 theme === 'dark' ? 'text-slate-400' : 'text-slate-600'
                               }`}>
-                                {item.condition} • {warrantyTerms.find(w => w.id === item.warranty_term_id)?.name || 'N/A'}
+                                {item.condition} • {item.warranty}
                               </div>
                             </div>
                           </td>
@@ -1443,7 +1354,6 @@ export default function PurchaseModal({
           {/* Action Buttons compactos */}
           <div className="flex justify-between gap-3">
             <button
-              type="button"
               onClick={handleClose}
               className={`px-4 py-2 border rounded hover:bg-slate-50 transition-colors text-sm ${
                 theme === 'dark'
@@ -1454,7 +1364,6 @@ export default function PurchaseModal({
               Voltar
             </button>
             <button
-              type="button"
               onClick={handleSubmit}
               className="px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white rounded hover:shadow-lg transition-all duration-200 flex items-center text-sm"
             >
@@ -1470,11 +1379,6 @@ export default function PurchaseModal({
         isOpen={isSupplierModalOpen}
         onClose={() => setIsSupplierModalOpen(false)}
         type="supplier"
-        onCustomerSaved={(newSupplier) => {
-          setSuppliers(prev => [...prev, newSupplier]);
-          setSelectedSupplier(newSupplier.id);
-          setSupplierSearchTerm(newSupplier.name);
-        }}
       />
     </div>
   );
