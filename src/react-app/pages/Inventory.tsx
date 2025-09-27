@@ -1,1335 +1,821 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { 
-  Package, 
+  Plus, 
   Search, 
-  Edit, 
-  Trash2, 
-  Eye,
-  ShoppingBag,
-  Hash,
-  Smartphone,
-  Barcode,
-  Filter,
-  ShoppingCart,
-  Calendar,
-  FileText,
-  CheckCircle,
-  Clock,
-  AlertTriangle, // Importar AlertTriangle para estoque baixo
-  DollarSign, // Importar DollarSign para o botão de atualização de preços
-  Settings, // Importar Settings para o novo botão
-  PackagePlus, // Novo ícone para ajuste de estoque
-  MoreVertical // Importar MoreVertical para o dropdown
+  Package, 
+  ShoppingCart, 
+  History, 
+  DollarSign, 
+  Tag, 
+  MapPin, 
+  Clock, 
+  X, 
+  Check,
+  RotateCcw // Icon for revert
 } from 'lucide-react';
-import { Link } from 'react-router-dom'; // Importar Link para navegação
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/react-app/hooks/useAuth';
+import { useTheme } from '@/react-app/hooks/useTheme';
+import { useNotification } from '@/react-app/components/NotificationSystem';
+import ProductModal from '@/react-app/components/ProductModal';
 import PurchaseModal from '@/react-app/components/PurchaseModal';
 import FinalizePurchaseModal from '@/react-app/components/FinalizePurchaseModal';
-import PurchaseViewModal from '@/react-app/components/PurchaseViewModal';
-import ProductHistoryModal from '@/react-app/components/ProductHistoryModal';
-import ProductModal from '@/react-app/components/ProductModal'; // Importar ProductModal
-import BulkPriceUpdateModal from '@/react-app/components/BulkPriceUpdateModal'; // Importar o novo modal
-import StockAdjustmentModal from '@/react-app/components/StockAdjustmentModal'; // Importar o novo modal de ajuste de estoque
-import ProductActionsDropdown from '@/react-app/components/ProductActionsDropdown'; // Importar o novo dropdown
-import { useNotification } from '@/react-app/components/NotificationSystem';
+import ProductActionsDropdown from '@/react-app/components/ProductActionsDropdown';
+import PurchaseActionsDropdown from '@/react-app/components/PurchaseActionsDropdown'; // Import the new dropdown
+import { Product, InventoryUnit, Purchase, PurchaseItem, StockLocation, WarrantyTerm } from '@/shared/types'; // Ensure these types are defined in shared/types.ts
+import { formatCurrencyBR } from '@/react-app/utils/currency';
 
-interface InventoryUnit {
-  id: string;
-  productSku: string;
-  productDescription: string;
-  brand: string;
-  category: string;
-  model?: string;
-  color?: string;
-  storage?: string;
-  condition: 'novo' | 'seminovo' | 'usado';
-  location?: string;
-  imei1?: string;
-  imei2?: string;
-  serialNumber?: string;
-  barcode?: string;
-  costPrice: number;
-  salePrice: number;
-  status: 'available' | 'sold' | 'reserved' | 'defective';
-  createdAt: string;
-  updatedAt: string;
-  purchaseId?: string;
-  locatorCode?: string;
-  minStock?: number; // Adicionado minStock
-}
-
-interface Purchase {
-  id: string;
-  locatorCode: string;
-  supplierId: string;
-  supplierName: string;
-  purchaseDate: string;
-  invoiceNumber: string;
-  observations: string;
-  items: any[];
-  subtotal: number;
-  additionalCost: number;
-  total: number;
-  status: 'completed' | 'pending' | 'partial';
-  createdAt: string;
-  // Adicionando campos para persistir o estado do modal de compra
-  productType?: 'apple' | 'product';
-  selectedBrand?: string;
-  selectedCategory?: string;
-  selectedModel?: string;
-  selectedStorage?: string;
-  selectedColor?: string;
-}
-
-// Mock audit log function (for demonstration purposes)
-const mockAuditLog = (logEntry: any) => {
-  console.log('AUDIT LOG:', logEntry);
-  // In a real application, this would send data to a backend audit log service
-};
+// Define local types if not already in shared/types.ts
+// (Assuming these are already in shared/types.ts as per previous turns)
+// interface Product { ... }
+// interface InventoryUnit { ... }
+// interface Purchase { ... }
+// interface PurchaseItem { ... }
+// interface StockLocation { ... }
+// interface WarrantyTerm { ... }
 
 export default function Inventory() {
+  const { user } = useAuth();
+  const { theme } = useTheme();
   const { showSuccess, showError } = useNotification();
-  const [activeTab, setActiveTab] = useState<'inventory' | 'purchases'>('inventory');
+
   const [inventoryUnits, setInventoryUnits] = useState<InventoryUnit[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [purchases, setPurchases] = useState<Purchase[]>([]);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [locatorSearch, setLocatorSearch] = useState('');
-  const [filterBrand, setFilterBrand] = useState('');
-  const [filterCategory, setFilterCategory] = useState('');
-  const [filterStatus, setFilterStatus] = useState('all');
-  const [filterCondition, setFilterCondition] = useState('all');
-  const [sortBy] = useState('description');
+  const [stockLocations, setStockLocations] = useState<StockLocation[]>([]);
+  const [warrantyTerms, setWarrantyTerms] = useState<WarrantyTerm[]>([]);
+
+  const [isProductModalOpen, setIsProductModalOpen] = useState(false);
   const [isPurchaseModalOpen, setIsPurchaseModalOpen] = useState(false);
-  const [editingPurchase, setEditingPurchase] = useState<Purchase | null>(null);
   const [isFinalizePurchaseModalOpen, setIsFinalizePurchaseModalOpen] = useState(false);
-  const [finalizingPurchase, setFinalizingPurchase] = useState<Purchase | null>(null);
-  const [isPurchaseViewModalOpen, setIsPurchaseViewModalOpen] = useState(false);
-  const [viewingPurchase, setViewingPurchase] = useState<Purchase | null>(null);
-  const [isProductHistoryModalOpen, setIsProductHistoryModalOpen] = useState(false);
-  const [selectedProductForHistory, setSelectedProductForHistory] = useState<InventoryUnit | null>(null);
-  
-  // New states for ProductModal (editing inventory units)
-  const [isProductEditModalOpen, setIsProductEditModalOpen] = useState(false);
-  const [editingProductUnit, setEditingProductUnit] = useState<InventoryUnit | null>(null);
+  const [selectedProduct, setSelectedProduct] = useState<Product | undefined>(undefined);
+  const [purchaseToFinalize, setPurchaseToFinalize] = useState<Purchase | undefined>(undefined);
+  const [purchaseToEdit, setPurchaseToEdit] = useState<Purchase | undefined>(undefined); // New state for editing purchase
+  const [purchaseToView, setPurchaseToView] = useState<Purchase | undefined>(undefined); // New state for viewing purchase
 
-  // New state for BulkPriceUpdateModal
-  const [isBulkPriceUpdateModalOpen, setIsBulkPriceUpdateModalOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [activeTab, setActiveTab] = useState<'inventory' | 'products' | 'purchases'>('inventory');
+  const [loading, setLoading] = useState(true);
 
-  // New states for StockAdjustmentModal
-  const [isStockAdjustmentModalOpen, setIsStockAdjustmentModalOpen] = useState(false);
-  const [selectedProductForStockAdjustment, setSelectedProductForStockAdjustment] = useState<InventoryUnit | null>(null);
-  const [currentStockForAdjustment, setCurrentStockForAdjustment] = useState(0);
-
-  // Purchase filters
-  const [purchaseDateFrom, setPurchaseDateFrom] = useState('');
-  const [purchaseDateTo, setPurchaseDateTo] = useState('');
-  const [purchaseStatusFilter, setPurchaseStatusFilter] = useState('all');
-
+  // --- Data Fetching ---
   useEffect(() => {
-    // Mock data com produtos únicos por IMEI/Serial
-    setInventoryUnits([
-      {
-        id: '1',
-        productSku: '#128',
-        productDescription: 'iPhone 16 Pro Max 256GB',
-        brand: 'Apple',
-        category: 'Smartphone',
-        model: 'iPhone 16 Pro Max',
-        color: 'Titânio-deserto',
-        storage: '256GB',
-        condition: 'seminovo',
-        location: 'Loja',
-        imei1: '123456789012345',
-        imei2: '123456789012346',
-        serialNumber: undefined,
-        barcode: '7899123456789',
-        costPrice: 3000.00,
-        salePrice: 3500.00,
-        status: 'available',
-        createdAt: '2025-09-13',
-        updatedAt: '2025-09-13',
-        purchaseId: '1',
-        locatorCode: 'LOC001234567',
-        minStock: 2 // Adicionado minStock
-      },
-      {
-        id: '2',
-        productSku: '#129',
-        productDescription: 'Smartphone Xiaomi 13X 8GB/256GB Dourado',
-        brand: 'Xiaomi',
-        category: 'Smartphone',
-        model: '13X',
-        color: 'Dourado',
-        storage: '8GB/256GB',
-        condition: 'novo',
-        location: 'Vitrine iS',
-        imei1: '987654321098765',
-        imei2: undefined,
-        serialNumber: undefined,
-        barcode: '7899987654321',
-        costPrice: 500.00,
-        salePrice: 750.00,
-        status: 'available',
-        createdAt: '2025-09-13',
-        updatedAt: '2025-09-13',
-        purchaseId: '2',
-        locatorCode: 'LOC001234568',
-        minStock: 1 // Adicionado minStock
-      },
-      {
-        id: '3',
-        productSku: '#130',
-        productDescription: 'Samsung Galaxy S24 Ultra 512GB',
-        brand: 'Samsung',
-        category: 'Smartphone',
-        model: 'Galaxy S24 Ultra',
-        color: 'Preto',
-        storage: '512GB',
-        condition: 'novo',
-        location: 'A1-B2',
-        imei1: '555666777888999',
-        imei2: '555666777888998',
-        serialNumber: undefined,
-        barcode: '7899555666777',
-        costPrice: 4200.00,
-        salePrice: 4800.00,
-        status: 'available',
-        createdAt: '2025-09-13',
-        updatedAt: '2025-09-13',
-        purchaseId: '1',
-        locatorCode: 'LOC001234567',
-        minStock: 3 // Adicionado minStock
-      },
-      {
-        id: '4',
-        productSku: '#131',
-        productDescription: 'MacBook Pro 14" M3 512GB',
-        brand: 'Apple',
-        category: 'Notebook',
-        model: 'MacBook Pro 14"',
-        color: 'Cinza Espacial',
-        storage: '512GB',
-        condition: 'novo',
-        location: 'B1-A3',
-        imei1: undefined,
-        imei2: undefined,
-        serialNumber: 'FVFH3LL/A12345',
-        barcode: '7899111222333',
-        costPrice: 8500.00,
-        salePrice: 9200.00,
-        status: 'available',
-        createdAt: '2025-09-13',
-        updatedAt: '2025-09-13',
-        purchaseId: '3',
-        locatorCode: 'LOC001234569',
-        minStock: 1 // Adicionado minStock
-      },
-      {
-        id: '5',
-        productSku: '#132',
-        productDescription: 'Capinha iPhone 16 Pro Max Transparente',
-        brand: 'Genérica',
-        category: 'Acessórios',
-        model: 'Capinha',
-        color: 'Transparente',
-        storage: undefined,
-        condition: 'novo',
-        location: 'D1-A1',
-        imei1: undefined,
-        imei2: undefined,
-        serialNumber: undefined,
-        barcode: '7899444555666',
-        costPrice: 15.00,
-        salePrice: 45.00,
-        status: 'available',
-        createdAt: '2025-09-13',
-        updatedAt: '2025-09-13',
-        purchaseId: '2',
-        locatorCode: 'LOC001234568',
-        minStock: 10 // Adicionado minStock
+    if (!user?.id) return;
+
+    const fetchAllData = async () => {
+      setLoading(true);
+      const { data: productsData, error: productsError } = await supabase
+        .from('products')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('is_active', true);
+
+      if (productsError) {
+        showError('Erro ao carregar produtos.');
+        console.error('Error fetching products:', productsError);
+      } else {
+        setProducts(productsData || []);
       }
-    ]);
 
-    // Mock data para compras
-    setPurchases([
-      {
-        id: '1',
-        locatorCode: 'LOC001234567',
-        supplierId: '1',
-        supplierName: 'Apple Brasil',
-        purchaseDate: '2025-09-13',
-        invoiceNumber: 'NF-001234',
-        observations: 'Compra de produtos Apple para estoque principal',
-        items: [
-          { id: 'item1', description: 'iPhone 16 Pro Max 256GB Titânio-deserto', quantity: 1, costPrice: 3000, finalPrice: 3500, condition: 'seminovo', location: 'Loja', warranty: '1 ano', hasImeiSerial: true },
-          { id: 'item2', description: 'Samsung Galaxy S24 Ultra 512GB Preto', quantity: 1, costPrice: 4200, finalPrice: 4800, condition: 'novo', location: 'A1-B2', warranty: '1 ano', hasImeiSerial: true }
-        ],
-        subtotal: 8300.00,
-        additionalCost: 0,
-        total: 8300.00,
-        status: 'completed',
-        createdAt: '2025-09-13T10:30:00Z',
-        productType: 'apple',
-        selectedBrand: '1',
-        selectedCategory: '1',
-        selectedModel: 'iPhone 16 Pro Max',
-        selectedStorage: '256GB',
-        selectedColor: 'Titânio-deserto'
-      },
-      {
-        id: '2',
-        locatorCode: 'LOC001234568',
-        supplierId: '3',
-        supplierName: 'Tech Distribuidora',
-        purchaseDate: '2025-09-12',
-        invoiceNumber: 'NF-001235',
-        observations: 'Compra de acessórios diversos',
-        items: [
-          { id: 'item3', description: 'Smartphone Xiaomi 13X 8GB/256GB Dourado', quantity: 1, costPrice: 500, finalPrice: 750, condition: 'novo', location: 'Vitrine iS', warranty: '1 ano', hasImeiSerial: true },
-          { id: 'item4', description: 'Capinha iPhone 16 Pro Max Transparente', quantity: 10, costPrice: 15, finalPrice: 45, condition: 'novo', location: 'D1-A1', warranty: '3 meses', hasImeiSerial: false }
-        ],
-        subtotal: 1250.00,
-        additionalCost: 50.00,
-        total: 1300.00,
-        status: 'completed',
-        createdAt: '2025-09-12T14:20:00Z',
-        productType: 'product',
-        selectedBrand: '3',
-        selectedCategory: '9',
-        selectedDescription: 'Smartphone Xiaomi 13X',
-        productVariations: ['8GB/256GB', 'Dourado']
-      },
-      {
-        id: '3',
-        locatorCode: 'LOC001234569',
-        supplierId: '1',
-        supplierName: 'Apple Brasil',
-        purchaseDate: '2025-09-11',
-        invoiceNumber: 'NF-001236',
-        observations: 'Notebooks para revenda',
-        items: [
-          { id: 'item5', description: 'MacBook Pro 14" M3 512GB Cinza Espacial', quantity: 1, costPrice: 8500, finalPrice: 9200, condition: 'novo', location: 'B1-A3', warranty: '1 ano', hasImeiSerial: true }
-        ],
-        subtotal: 9200.00,
-        additionalCost: 100.00,
-        total: 9300.00,
-        status: 'completed',
-        createdAt: '2025-09-11T09:15:00Z',
-        productType: 'apple',
-        selectedBrand: '1',
-        selectedCategory: '3',
-        selectedModel: 'MacBook Pro 14"',
-        selectedStorage: '512GB',
-        selectedColor: 'Cinza Espacial'
-      },
-      {
-        id: '4',
-        locatorCode: 'LOC001234570',
-        supplierId: '2',
-        supplierName: 'Samsung Eletrônica',
-        purchaseDate: '2025-09-10',
-        invoiceNumber: '',
-        observations: 'Compra em processo de lançamento',
-        items: [
-          { id: 'item6', description: 'Galaxy Tab S9 256GB', quantity: 2, costPrice: 1200, finalPrice: 1500, condition: 'novo', location: 'Loja', warranty: '1 ano', hasImeiSerial: true }
-        ],
-        subtotal: 3000.00,
-        additionalCost: 0,
-        total: 3000.00,
-        status: 'pending',
-        createdAt: '2025-09-10T16:45:00Z',
-        productType: 'product',
-        selectedBrand: '2',
-        selectedCategory: '8',
-        selectedDescription: 'Galaxy Tab S9',
-        productVariations: ['256GB']
+      const { data: locationsData, error: locationsError } = await supabase
+        .from('stock_locations')
+        .select('id, name')
+        .eq('user_id', user.id)
+        .eq('is_active', true);
+
+      if (locationsError) {
+        console.error('Error fetching stock locations:', locationsError);
+      } else {
+        setStockLocations(locationsData || []);
       }
-    ]);
-  }, []);
 
-  // Filtrar unidades do estoque por localizador
-  const filteredByLocator = locatorSearch ? 
-    inventoryUnits.filter(unit => 
-      unit.locatorCode?.toLowerCase().includes(locatorSearch.toLowerCase())
-    ) : inventoryUnits;
+      const { data: warrantyData, error: warrantyError } = await supabase
+        .from('warranty_terms')
+        .select('id, name, months')
+        .eq('user_id', user.id)
+        .eq('is_active', true);
 
-  // Show locator search results message
-  const locatorSearchResults = locatorSearch ? filteredByLocator.length : null;
+      if (warrantyError) {
+        console.error('Error fetching warranty terms:', warrantyError);
+      } else {
+        setWarrantyTerms(warrantyData || []);
+      }
 
-  const filteredUnits = filteredByLocator.filter(unit => {
-    const searchTermLower = searchTerm.toLowerCase();
-    const matchesSearch = 
-      unit.productDescription.toLowerCase().includes(searchTermLower) ||
-      unit.productSku.toLowerCase().includes(searchTermLower) ||
-      unit.brand.toLowerCase().includes(searchTermLower) ||
-      (unit.model && unit.model.toLowerCase().includes(searchTermLower)) ||
-      (unit.color && unit.color.toLowerCase().includes(searchTermLower)) ||
-      (unit.storage && unit.storage.toLowerCase().includes(searchTermLower)) ||
-      (unit.imei1 && unit.imei1.includes(searchTerm)) ||
-      (unit.imei2 && unit.imei2.includes(searchTerm)) ||
-      (unit.serialNumber && unit.serialNumber.toLowerCase().includes(searchTermLower)) ||
-      (unit.barcode && unit.barcode.includes(searchTerm));
-    
-    const matchesBrand = filterBrand === '' || unit.brand === filterBrand;
-    const matchesCategory = filterCategory === '' || unit.category === filterCategory;
-    const matchesStatus = filterStatus === 'all' || unit.status === filterStatus;
-    const matchesCondition = filterCondition === 'all' || unit.condition === filterCondition;
-    
-    return matchesSearch && matchesBrand && matchesCategory && matchesStatus && matchesCondition;
-  });
+      setLoading(false);
+    };
 
-  const sortedUnits = [...filteredUnits].sort((a, b) => {
-    switch (sortBy) {
-      case 'description':
-        return a.productDescription.localeCompare(b.productDescription);
-      case 'sku':
-        return a.productSku.localeCompare(b.productSku);
-      case 'brand':
-        return a.brand.localeCompare(b.brand);
-      case 'price':
-        return a.salePrice - b.salePrice;
+    fetchAllData();
+  }, [user, showError]);
+
+  // Fetch Inventory Units (with search)
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const fetchInventoryUnits = async () => {
+      setLoading(true);
+      let query = supabase
+        .from('inventory_units')
+        .select('*, products(*), stock_locations(name), warranty_terms(name, months)')
+        .eq('user_id', user.id)
+        .eq('status', 'in_stock'); // Only show units currently in stock
+
+      if (searchTerm) {
+        const searchLower = searchTerm.toLowerCase();
+        query = query.or(`
+          serial_number.ilike.%${searchLower}%,
+          imei1.ilike.%${searchLower}%,
+          imei2.ilike.%${searchLower}%,
+          products.description.ilike.%${searchLower}%,
+          products.sku.ilike.%${searchLower}%
+        `);
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        showError('Erro ao carregar unidades de estoque.');
+        console.error('Error fetching inventory units:', error);
+      } else {
+        setInventoryUnits(data || []);
+      }
+      setLoading(false);
+    };
+
+    fetchInventoryUnits();
+  }, [user, searchTerm, showError]);
+
+  // Fetch Purchases
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const fetchPurchases = async () => {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('purchases')
+        .select('*, purchase_items(*, products(*))')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        showError('Erro ao carregar compras.');
+        console.error('Error fetching purchases:', error);
+      } else {
+        setPurchases(data || []);
+      }
+      setLoading(false);
+    };
+
+    fetchPurchases();
+  }, [user, showError]);
+
+  // --- Handlers for Modals and Actions ---
+  const handleProductSaved = async (newOrUpdatedProduct: Product) => {
+    if (!user?.id) return;
+
+    try {
+      if (newOrUpdatedProduct.id && products.some(p => p.id === newOrUpdatedProduct.id)) {
+        // Update existing product
+        const { error } = await supabase
+          .from('products')
+          .update({
+            sku: newOrUpdatedProduct.sku,
+            description: newOrUpdatedProduct.description,
+            brand: newOrUpdatedProduct.brand,
+            category: newOrUpdatedProduct.category,
+            model: newOrUpdatedProduct.model,
+            variation: newOrUpdatedProduct.variation,
+            cost_price: newOrUpdatedProduct.cost_price,
+            sale_price: newOrUpdatedProduct.sale_price,
+            markup: newOrUpdatedProduct.markup,
+            requires_imei: newOrUpdatedProduct.requires_imei,
+            requires_serial: newOrUpdatedProduct.requires_serial,
+            location_id: newOrUpdatedProduct.location_id,
+            warranty_term_id: newOrUpdatedProduct.warranty_term_id,
+            min_stock: newOrUpdatedProduct.min_stock,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', newOrUpdatedProduct.id)
+          .eq('user_id', user.id);
+
+        if (error) throw error;
+        setProducts(prev => prev.map(p => p.id === newOrUpdatedProduct.id ? newOrUpdatedProduct : p));
+        showSuccess('Produto atualizado com sucesso!');
+      } else {
+        // Insert new product
+        const { data, error } = await supabase
+          .from('products')
+          .insert({
+            ...newOrUpdatedProduct,
+            user_id: user.id,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+          .select();
+
+        if (error) throw error;
+        setProducts(prev => [...prev, data[0]]);
+        showSuccess('Produto criado com sucesso!');
+      }
+    } catch (error: any) {
+      showError(`Erro ao salvar produto: ${error.message}`);
+      console.error('Error saving product:', error);
+    }
+    setSelectedProduct(undefined);
+    setIsProductModalOpen(false);
+  };
+
+  const handleEditProduct = (product: Product) => {
+    setSelectedProduct(product);
+    setIsProductModalOpen(true);
+  };
+
+  const handleDeleteProduct = async (productId: string) => {
+    if (!user?.id) return;
+
+    if (!window.confirm('Tem certeza que deseja excluir este produto? Esta ação não pode ser desfeita.')) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('products')
+        .update({ is_active: false, updated_at: new Date().toISOString() }) // Soft delete
+        .eq('id', productId)
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+      setProducts(prev => prev.filter(p => p.id !== productId));
+      showSuccess('Produto excluído com sucesso!');
+    } catch (error: any) {
+      showError(`Erro ao excluir produto: ${error.message}`);
+      console.error('Error deleting product:', error);
+    }
+  };
+
+  const handlePurchaseCreated = async (newPurchase: Purchase) => {
+    if (!user?.id) return;
+
+    try {
+      // Insert the purchase
+      const { data: purchaseData, error: purchaseError } = await supabase
+        .from('purchases')
+        .insert({
+          user_id: user.id,
+          status: newPurchase.status,
+          total_cost: newPurchase.total_cost,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .select();
+
+      if (purchaseError) throw purchaseError;
+
+      const createdPurchase = purchaseData[0];
+
+      // Insert purchase items
+      const purchaseItemsToInsert = newPurchase.purchase_items.map(item => ({
+        purchase_id: createdPurchase.id,
+        product_id: item.product_id,
+        quantity: item.quantity,
+        unit_cost_price: item.unit_cost_price,
+        total_cost_price: item.total_cost_price,
+      }));
+
+      const { error: itemsError } = await supabase
+        .from('purchase_items')
+        .insert(purchaseItemsToInsert);
+
+      if (itemsError) throw itemsError;
+
+      // Refetch purchases to get the full joined data
+      const { data: refetchedPurchases, error: refetchError } = await supabase
+        .from('purchases')
+        .select('*, purchase_items(*, products(*))')
+        .eq('id', createdPurchase.id);
+
+      if (refetchError) throw refetchError;
+
+      setPurchases(prev => [refetchedPurchases[0], ...prev]);
+      showSuccess('Compra registrada com sucesso!');
+
+      // If purchase is pending, open FinalizePurchaseModal
+      if (createdPurchase.status === 'pending') {
+        setPurchaseToFinalize(refetchedPurchases[0]);
+        setIsFinalizePurchaseModalOpen(true);
+      }
+
+    } catch (error: any) {
+      showError(`Erro ao registrar compra: ${error.message}`);
+      console.error('Error creating purchase:', error);
+    }
+    setIsPurchaseModalOpen(false);
+  };
+
+  const handleFinalizePurchase = async (finalizedPurchase: Purchase, newInventoryUnits: InventoryUnit[]) => {
+    if (!user?.id) return;
+
+    try {
+      // Update purchase status to 'completed'
+      const { error: purchaseUpdateError } = await supabase
+        .from('purchases')
+        .update({ status: 'completed', updated_at: new Date().toISOString() })
+        .eq('id', finalizedPurchase.id)
+        .eq('user_id', user.id);
+
+      if (purchaseUpdateError) throw purchaseUpdateError;
+
+      // Insert new inventory units
+      const unitsToInsert = newInventoryUnits.map(unit => ({
+        ...unit,
+        user_id: user.id,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }));
+
+      const { error: unitsInsertError } = await supabase
+        .from('inventory_units')
+        .insert(unitsToInsert);
+
+      if (unitsInsertError) throw unitsInsertError;
+
+      showSuccess('Compra finalizada e estoque atualizado com sucesso!');
+
+      // Update local state
+      setPurchases(prev => prev.map(p => p.id === finalizedPurchase.id ? { ...p, status: 'completed' } : p));
+      setInventoryUnits(prev => [...prev, ...newInventoryUnits]);
+
+    } catch (error: any) {
+      showError(`Erro ao finalizar compra: ${error.message}`);
+      console.error('Error finalizing purchase:', error);
+    }
+    setIsFinalizePurchaseModalOpen(false);
+    setPurchaseToFinalize(undefined);
+  };
+
+  const handleRevertPurchase = async (purchaseId: string) => {
+    if (!user?.id) return;
+
+    if (!window.confirm('Tem certeza que deseja reverter esta compra? Isso removerá todos os itens associados do estoque e a compra voltará ao status "pendente".')) {
+      return;
+    }
+
+    try {
+      // Start a transaction (Supabase client doesn't directly support transactions,
+      // so we'll do sequential operations and handle errors)
+      
+      // 1. Delete associated inventory units
+      const { error: deleteUnitsError } = await supabase
+        .from('inventory_units')
+        .delete()
+        .eq('purchase_id', purchaseId)
+        .eq('user_id', user.id);
+
+      if (deleteUnitsError) throw deleteUnitsError;
+
+      // 2. Update purchase status to 'pending'
+      const { error: updatePurchaseError } = await supabase
+        .from('purchases')
+        .update({ status: 'pending', updated_at: new Date().toISOString() })
+        .eq('id', purchaseId)
+        .eq('user_id', user.id);
+
+      if (updatePurchaseError) throw updatePurchaseError;
+
+      showSuccess('Compra revertida com sucesso! Itens removidos do estoque.');
+
+      // Update local state
+      setPurchases(prev => prev.map(p => p.id === purchaseId ? { ...p, status: 'pending' } : p));
+      setInventoryUnits(prev => prev.filter(unit => unit.purchase_id !== purchaseId));
+
+    } catch (error: any) {
+      showError(`Erro ao reverter compra: ${error.message}`);
+      console.error('Error reverting purchase:', error);
+    }
+  };
+
+  const handleViewPurchase = (purchaseId: string) => {
+    const purchase = purchases.find(p => p.id === purchaseId);
+    if (purchase) {
+      setPurchaseToView(purchase);
+    }
+  };
+
+  const handleEditPurchase = (purchaseId: string) => {
+    const purchase = purchases.find(p => p.id === purchaseId);
+    if (purchase) {
+      setPurchaseToEdit(purchase);
+      setIsPurchaseModalOpen(true);
+    }
+  };
+
+  const handleDeletePurchase = async (purchaseId: string) => {
+    if (!user?.id) return;
+
+    if (!window.confirm('Tem certeza que deseja excluir esta compra? Esta ação não pode ser desfeita.')) {
+      return;
+    }
+
+    try {
+      // Delete associated purchase items first
+      const { error: deleteItemsError } = await supabase
+        .from('purchase_items')
+        .delete()
+        .eq('purchase_id', purchaseId);
+
+      if (deleteItemsError) throw deleteItemsError;
+
+      // Then delete the purchase
+      const { error: deletePurchaseError } = await supabase
+        .from('purchases')
+        .delete()
+        .eq('id', purchaseId)
+        .eq('user_id', user.id);
+
+      if (deletePurchaseError) throw deletePurchaseError;
+
+      showSuccess('Compra excluída com sucesso!');
+      setPurchases(prev => prev.filter(p => p.id !== purchaseId));
+    } catch (error: any) {
+      showError(`Erro ao excluir compra: ${error.message}`);
+      console.error('Error deleting purchase:', error);
+    }
+  };
+
+  const handleFinalizePurchaseFromDropdown = (purchaseId: string) => {
+    const purchase = purchases.find(p => p.id === purchaseId);
+    if (purchase) {
+      setPurchaseToFinalize(purchase);
+      setIsFinalizePurchaseModalOpen(true);
+    }
+  };
+
+  const handleViewHistory = (unitId: string) => {
+    // Implement navigation or modal for viewing history
+    showError('Funcionalidade "Ver Histórico" ainda não implementada.');
+    console.log('View history for unit:', unitId);
+  };
+
+  const handleAdjustStock = (unitId: string) => {
+    // Implement modal for adjusting stock
+    showError('Funcionalidade "Ajustar Estoque" ainda não implementada.');
+    console.log('Adjust stock for unit:', unitId);
+  };
+
+  // --- Memoized Data for Display ---
+  const totalStockValue = useMemo(() => {
+    return inventoryUnits.reduce((sum, unit) => sum + unit.cost_price, 0);
+  }, [inventoryUnits]);
+
+  const totalPurchasesValue = useMemo(() => {
+    return purchases.reduce((sum, purchase) => sum + purchase.total_cost, 0);
+  }, [purchases]);
+
+  const pendingPurchasesCount = useMemo(() => {
+    return purchases.filter(p => p.status === 'pending').length;
+  }, [purchases]);
+
+  const completedPurchasesCount = useMemo(() => {
+    return purchases.filter(p => p.status === 'completed').length;
+  }, [purchases]);
+
+  const getPurchaseStatusColor = (status: string) => {
+    switch (status) {
+      case 'pending':
+        return 'text-yellow-600 bg-yellow-100';
+      case 'completed':
+        return 'text-green-600 bg-green-100';
+      case 'cancelled':
+        return 'text-red-600 bg-red-100';
       default:
-        return 0;
-    }
-  });
-
-  // Helper function to get current month dates
-  const getCurrentMonthDates = () => {
-    const now = new Date();
-    const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
-    const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-    return {
-      from: firstDay.toISOString().split('T')[0],
-      to: lastDay.toISOString().split('T')[0]
-    };
-  };
-
-  // Get effective date range (current month if no filter set)
-  const getEffectiveDateRange = () => {
-    if (purchaseDateFrom && purchaseDateTo) {
-      return { from: purchaseDateFrom, to: purchaseDateTo };
-    }
-    return getCurrentMonthDates();
-  };
-
-  // Filtrar compras
-  const filteredPurchases = purchases.filter(purchase => {
-    const searchTermLower = searchTerm.toLowerCase();
-    const matchesSearch = purchase.locatorCode.toLowerCase().includes(searchTermLower) ||
-                         purchase.supplierName.toLowerCase().includes(searchTermLower) ||
-                         purchase.invoiceNumber.toLowerCase().includes(searchTermLower);
-    
-    const matchesStatus = purchaseStatusFilter === 'all' || purchase.status === purchaseStatusFilter;
-    
-    // Date filtering
-    const dateRange = getEffectiveDateRange();
-    const purchaseDate = purchase.purchaseDate;
-    const matchesDate = purchaseDate >= dateRange.from && purchaseDate <= dateRange.to;
-    
-    return matchesSearch && matchesStatus && matchesDate;
-  });
-
-  const brands = [...new Set(inventoryUnits.map(u => u.brand))];
-  const categories = [...new Set(inventoryUnits.map(u => u.category))];
-
-  // Update summary stats for inventory to use current month purchases when no date filter is set
-  const getInventoryValueForPeriod = () => {
-    const dateRange = getEffectiveDateRange();
-    const periodPurchases = purchases.filter(purchase => {
-      const purchaseDate = purchase.purchaseDate;
-      return purchaseDate >= dateRange.from && purchaseDate <= dateRange.to;
-    });
-    return periodPurchases.reduce((sum, p) => sum + p.total, 0);
-  };
-
-  const getStatusBadge = (status: string) => {
-    const badges = {
-      available: { label: 'Disponível', color: 'bg-green-100 text-green-800' },
-      sold: { label: 'Vendido', color: 'bg-blue-100 text-blue-800' },
-      reserved: { label: 'Reservado', color: 'bg-yellow-100 text-yellow-800' },
-      defective: { label: 'Defeituoso', color: 'bg-red-100 text-red-800' }
-    };
-    return badges[status as keyof typeof badges] || badges.available;
-  };
-
-  const getConditionBadge = (condition: string) => {
-    const badges = {
-      novo: { label: 'Novo', color: 'bg-green-100 text-green-800' },
-      seminovo: { label: 'Seminovo', color: 'bg-yellow-100 text-yellow-800' },
-      usado: { label: 'Usado', color: 'bg-orange-100 text-orange-800' }
-    };
-    return badges[condition as keyof typeof badges] || badges.novo;
-  };
-
-  const getPurchaseStatusBadge = (status: string) => {
-    const badges = {
-      completed: { label: 'Concluída', color: 'bg-green-100 text-green-800' },
-      pending: { label: 'Pendente', color: 'bg-yellow-100 text-yellow-800' },
-      partial: { label: 'Parcial', color: 'bg-blue-100 text-blue-800' }
-    };
-    return badges[status as keyof typeof badges] || badges.completed;
-  };
-
-  // Calculate low stock items
-  const lowStockItems = inventoryUnits.filter(unit => 
-    unit.status === 'available' && 
-    unit.minStock !== undefined && 
-    unit.minStock > 0 && 
-    // To get the current stock for a product, we need to count available units for that productSku
-    inventoryUnits.filter(u => u.productSku === unit.productSku && u.status === 'available').length <= unit.minStock
-  );
-
-  const summaryStats = {
-    total: inventoryUnits.length,
-    available: inventoryUnits.filter(u => u.status === 'available').length,
-    sold: inventoryUnits.filter(u => u.status === 'sold').length,
-    defective: inventoryUnits.filter(u => u.status === 'defective').length,
-    lowStock: lowStockItems.length, // Adicionado lowStock
-    totalValue: activeTab === 'inventory' ? getInventoryValueForPeriod() : inventoryUnits
-      .filter(u => u.status === 'available')
-      .reduce((sum, u) => sum + u.costPrice, 0)
-  };
-
-  // Purchase stats based on current filtering
-  const purchaseStats = {
-    total: filteredPurchases.length,
-    completed: filteredPurchases.filter(p => p.status === 'completed').length,
-    pending: filteredPurchases.filter(p => p.status === 'pending').length,
-    totalValue: filteredPurchases.reduce((sum, p) => sum + p.total, 0)
-  };
-
-  const handlePurchaseSaved = (purchase: Purchase) => {
-    if (editingPurchase) {
-      setPurchases(purchases.map(p => p.id === purchase.id ? purchase : p));
-    } else {
-      setPurchases([purchase, ...purchases]);
-    }
-    
-    // Se todos os itens não precisam de IMEI/Serial, já finalizar automaticamente
-    const allItemsNoImeiSerial = purchase.items.every((item: any) => item.hasImeiSerial === false);
-    if (allItemsNoImeiSerial) {
-      // Atualizar status para completed automaticamente
-      const updatedPurchases = purchases.map(p => 
-        p.id === purchase.id ? { ...purchase, status: 'completed' as const } : p
-      );
-      if (!editingPurchase) {
-        updatedPurchases.unshift({ ...purchase, status: 'completed' as const });
-      }
-      setPurchases(updatedPurchases);
-      
-      showSuccess(
-        'Compra finalizada automaticamente!',
-        `${purchase.items.length} itens adicionados ao estoque sem necessidade de IMEI/Serial.`
-      );
-    }
-    
-    setEditingPurchase(null);
-  };
-
-  const handleEditPurchase = (purchase: Purchase) => {
-    setEditingPurchase(purchase);
-    setIsPurchaseModalOpen(true);
-  };
-
-  const handleNewPurchase = () => {
-    setEditingPurchase(null);
-    setIsPurchaseModalOpen(true);
-  };
-
-  const handleFinalizePurchase = (purchase: Purchase) => {
-    setFinalizingPurchase(purchase);
-    setIsFinalizePurchaseModalOpen(true);
-  };
-
-  const handlePurchaseFinalized = (finalizedItems: any[]) => {
-    // Update purchase status to completed
-    if (finalizingPurchase) {
-      const updatedPurchases = purchases.map(p => 
-        p.id === finalizingPurchase.id 
-          ? { ...p, status: 'completed' as const }
-          : p
-      );
-      setPurchases(updatedPurchases);
-      
-      showSuccess(
-        'Entrada finalizada com sucesso!',
-        `${finalizedItems.length} itens processados com informações completas.`
-      );
-    }
-    setFinalizingPurchase(null);
-  };
-
-  const handleViewPurchase = (purchase: Purchase) => {
-    setViewingPurchase(purchase);
-    setIsPurchaseViewModalOpen(true);
-  };
-
-  const handleViewProductHistory = (product: InventoryUnit) => {
-    setSelectedProductForHistory(product);
-    setIsProductHistoryModalOpen(true);
-  };
-
-  // New functions for editing inventory units
-  const handleEditProductUnit = (unitId: string) => {
-    const unitToEdit = inventoryUnits.find(unit => unit.id === unitId);
-    if (unitToEdit) {
-      setEditingProductUnit(unitToEdit);
-      setIsProductEditModalOpen(true);
+        return 'text-slate-600 bg-slate-100';
     }
   };
 
-  const handleProductUnitSaved = (updatedUnit: InventoryUnit) => {
-    setInventoryUnits(prev => 
-      prev.map(unit => unit.id === updatedUnit.id ? updatedUnit : unit)
-    );
-    showSuccess('Produto Atualizado', `O item ${updatedUnit.productDescription} foi atualizado com sucesso.`);
-    setIsProductEditModalOpen(false);
-    setEditingProductUnit(null);
-  };
-
-  // New function for deleting inventory units
-  const handleDeleteProductUnit = (unitId: string) => {
-    if (confirm('Tem certeza que deseja excluir este item do estoque? Esta ação não pode ser desfeita.')) {
-      setInventoryUnits(prev => prev.filter(unit => unit.id !== unitId));
-      showSuccess('Item Excluído', 'O item foi removido do estoque com sucesso.');
-      // Log to audit
-      mockAuditLog({
-        id: `AUDIT-${Date.now()}-PRODUCT-DELETE`,
-        userId: 'current_user_id', // Replace with actual user ID
-        userName: 'Current User', // Replace with actual user name
-        action: 'PRODUCT_DELETE',
-        tableName: 'inventory_units',
-        recordId: unitId,
-        oldValues: inventoryUnits.find(unit => unit.id === unitId), // Store old values
-        ipAddress: '127.0.0.1', // Mock IP
-        userAgent: navigator.userAgent,
-        createdAt: new Date().toISOString()
-      });
+  const getPurchaseStatusText = (status: string) => {
+    switch (status) {
+      case 'pending':
+        return 'Pendente';
+      case 'completed':
+        return 'Concluída';
+      case 'cancelled':
+        return 'Cancelada';
+      default:
+        return 'Desconhecido';
     }
-  };
-
-  // New functions for stock adjustment
-  const handleOpenStockAdjustmentModal = (unitId: string) => {
-    const unitToAdjust = inventoryUnits.find(unit => unit.id === unitId);
-    if (unitToAdjust) {
-      setSelectedProductForStockAdjustment(unitToAdjust);
-      // Calculate current stock for this specific SKU
-      const currentStockCount = inventoryUnits.filter(u => u.productSku === unitToAdjust.productSku && u.status === 'available').length;
-      setCurrentStockForAdjustment(currentStockCount);
-      setIsStockAdjustmentModalOpen(true);
-    }
-  };
-
-  const handleConfirmStockAdjustment = (
-    productSku: string,
-    change: number,
-    reason: string,
-    newStock: number,
-    adjustmentType: 'add' | 'remove',
-    oldStock: number // Adicionado: estoque antes do ajuste
-  ) => {
-    // Find all units with the same SKU and update their status or add/remove dummy units
-    setInventoryUnits(prevUnits => {
-      let updatedUnits = [...prevUnits];
-      const unitsToAdjust = prevUnits.filter(u => u.productSku === productSku && u.status === 'available');
-      const productTemplate = unitsToAdjust.length > 0 ? unitsToAdjust[0] : prevUnits.find(u => u.productSku === productSku);
-
-      if (!productTemplate) {
-        console.error('Product template not found for SKU:', productSku);
-        return prevUnits; // Should not happen
-      }
-
-      if (adjustmentType === 'add') {
-        for (let i = 0; i < change; i++) {
-          // Create a new dummy unit for stock addition
-          const newUnit: InventoryUnit = {
-            ...productTemplate,
-            id: `stock-adj-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
-            imei1: undefined, // Clear unique identifiers for generic stock
-            imei2: undefined,
-            serialNumber: undefined,
-            barcode: undefined,
-            status: 'available',
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-            purchaseId: 'stock-adjustment', // Mark as stock adjustment
-            locatorCode: 'STOCK-ADJ',
-          };
-          updatedUnits.push(newUnit);
-        }
-      } else { // remove
-        // Remove units from the end of the available list
-        for (let i = 0; i < Math.abs(change); i++) {
-          const indexToRemove = updatedUnits.findIndex(u => u.productSku === productSku && u.status === 'available');
-          if (indexToRemove !== -1) {
-            updatedUnits.splice(indexToRemove, 1);
-          } else {
-            break; // No more units to remove
-          }
-        }
-      }
-      return updatedUnits;
-    });
-
-    // Log to audit
-    mockAuditLog({
-      id: `AUDIT-${Date.now()}-STOCK-ADJ`,
-      userId: 'current_user_id', // Replace with actual user ID
-      userName: 'Current User', // Replace with actual user name
-      action: 'STOCK_ADJUSTMENT',
-      tableName: 'inventory_units',
-      recordId: productSku, // Use SKU as record ID for stock adjustments
-      newValues: {
-        productSku: productSku,
-        productDescription: selectedProductForStockAdjustment?.productDescription,
-        change: change,
-        reason: reason,
-        newStock: newStock,
-        adjustmentType: adjustmentType,
-      },
-      ipAddress: '127.0.0.1', // Mock IP
-      userAgent: navigator.userAgent,
-      createdAt: new Date().toISOString()
-    });
-
-    // Also add to product history (mocked for now)
-    // This would typically be handled by the backend when the audit log is processed
-    // For frontend mock, we can simulate it:
-    const historyEntry = {
-      id: `history-${Date.now()}`,
-      type: 'stock_change',
-      date: new Date().toISOString().split('T')[0],
-      time: new Date().toLocaleTimeString('pt-BR'),
-      details: {
-        user: 'Current User',
-        movementType: adjustmentType === 'add' ? 'entrada' : 'saída',
-        quantity: change,
-        oldStock: oldStock, // Usando o oldStock passado como argumento
-        newStock: newStock,
-        reason: reason,
-      }
-    };
-    // This part would need to be integrated with how ProductHistoryModal fetches its data.
-    // For now, it's a console log to show the intent.
-    console.log('PRODUCT HISTORY ENTRY (STOCK ADJUSTMENT):', historyEntry);
-
-    setIsStockAdjustmentModalOpen(false);
-    setSelectedProductForStockAdjustment(null);
   };
 
   return (
-    <div className="p-6 bg-gradient-to-br from-slate-50 to-slate-100 min-h-screen">
-      {/* Header */}
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-3xl font-bold text-slate-800 mb-2 flex items-center">
-            <Package className="mr-3 text-blue-600" size={32} />
+    <div className={`min-h-screen ${theme === 'dark' ? 'bg-slate-900 text-slate-100' : 'bg-slate-50 text-slate-900'}`}>
+      <div className="container mx-auto p-6">
+        <h1 className="text-3xl font-bold mb-8 flex items-center">
+          <Package className="mr-3 text-blue-500" size={32} />
+          Gestão de Estoque
+        </h1>
+
+        {/* Action Buttons */}
+        <div className="flex justify-end gap-4 mb-8">
+          <button
+            onClick={() => setIsProductModalOpen(true)}
+            className="flex items-center px-6 py-3 bg-blue-600 text-white rounded-lg shadow-md hover:bg-blue-700 transition-colors"
+          >
+            <Plus size={20} className="mr-2" />
+            Novo Produto
+          </button>
+          <button
+            onClick={() => setIsPurchaseModalOpen(true)}
+            className="flex items-center px-6 py-3 bg-green-600 text-white rounded-lg shadow-md hover:bg-green-700 transition-colors"
+          >
+            <ShoppingCart size={20} className="mr-2" />
+            Nova Compra
+          </button>
+        </div>
+
+        {/* Overview Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <div className={`p-6 rounded-lg shadow-md ${theme === 'dark' ? 'bg-slate-800' : 'bg-white'}`}>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold">Valor Total em Estoque</h2>
+              <DollarSign className="text-green-500" size={24} />
+            </div>
+            <p className="text-3xl font-bold text-green-600">R$ {formatCurrencyBR(totalStockValue)}</p>
+          </div>
+          <div className={`p-6 rounded-lg shadow-md ${theme === 'dark' ? 'bg-slate-800' : 'bg-white'}`}>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold">Compras Pendentes</h2>
+              <History className="text-yellow-500" size={24} />
+            </div>
+            <p className="text-3xl font-bold text-yellow-600">{pendingPurchasesCount}</p>
+          </div>
+          <div className={`p-6 rounded-lg shadow-md ${theme === 'dark' ? 'bg-slate-800' : 'bg-white'}`}>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold">Compras Concluídas</h2>
+              <Check className="text-blue-500" size={24} />
+            </div>
+            <p className="text-3xl font-bold text-blue-600">{completedPurchasesCount}</p>
+          </div>
+        </div>
+
+        {/* Tabs */}
+        <div className={`flex border-b ${theme === 'dark' ? 'border-slate-700' : 'border-slate-200'} mb-6`}>
+          <button
+            onClick={() => setActiveTab('inventory')}
+            className={`py-3 px-6 text-lg font-medium ${
+              activeTab === 'inventory'
+                ? `border-b-2 border-blue-500 ${theme === 'dark' ? 'text-blue-400' : 'text-blue-600'}`
+                : `${theme === 'dark' ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900'}`
+            } transition-colors`}
+          >
             Estoque
-          </h1>
-          <p className="text-slate-600">Gestão completa de produtos e compras</p>
-        </div>
-        <div className="flex gap-3">
-          {/* Botão Nova Compra/Produto */}
-          <button 
-            onClick={handleNewPurchase}
-            className="bg-gradient-to-r from-blue-500 to-blue-600 text-white px-6 py-3 rounded-lg hover:shadow-lg transition-all duration-200 flex items-center font-medium"
-          >
-            <ShoppingBag className="mr-2" size={20} />
-            Nova Compra/Produto
           </button>
-          {/* Botão Atualizar Preços em Massa */}
-          <button 
-            onClick={() => setIsBulkPriceUpdateModalOpen(true)}
-            className="bg-gradient-to-r from-purple-500 to-purple-600 text-white px-6 py-3 rounded-lg hover:shadow-lg transition-all duration-200 flex items-center font-medium"
+          <button
+            onClick={() => setActiveTab('products')}
+            className={`py-3 px-6 text-lg font-medium ${
+              activeTab === 'products'
+                ? `border-b-2 border-blue-500 ${theme === 'dark' ? 'text-blue-400' : 'text-blue-600'}`
+                : `${theme === 'dark' ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900'}`
+            } transition-colors`}
           >
-            <DollarSign className="mr-2" size={20} />
-            Atualizar Preços
+            Produtos
           </button>
-          {/* Novo Botão para Configurações de Estoque */}
-          <Link 
-            to="/administration/warranty-stock"
-            className="bg-gradient-to-r from-indigo-500 to-indigo-600 text-white px-6 py-3 rounded-lg hover:shadow-lg transition-all duration-200 flex items-center font-medium"
+          <button
+            onClick={() => setActiveTab('purchases')}
+            className={`py-3 px-6 text-lg font-medium ${
+              activeTab === 'purchases'
+                ? `border-b-2 border-blue-500 ${theme === 'dark' ? 'text-blue-400' : 'text-blue-600'}`
+                : `${theme === 'dark' ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900'}`
+            } transition-colors`}
           >
-            <Settings className="mr-2" size={20} />
-            Configurações de Estoque
-          </Link>
+            Compras
+          </button>
         </div>
-      </div>
 
-      {/* Tabs */}
-      <div className="mb-6">
-        <div className="border-b border-slate-200">
-          <nav className="-mb-px flex space-x-8">
-            <button
-              onClick={() => setActiveTab('inventory')}
-              className={`py-3 px-4 border-b-2 font-medium text-base ${
-                activeTab === 'inventory'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+        {/* Search Bar (only for Inventory tab) */}
+        {activeTab === 'inventory' && (
+          <div className="relative mb-6">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={20} />
+            <input
+              type="text"
+              placeholder="Buscar por SKU, descrição, número de série ou IMEI..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                theme === 'dark'
+                  ? 'bg-slate-800 border-slate-700 text-slate-100'
+                  : 'bg-white border-slate-300 text-slate-900'
               }`}
-            >
-              <Package className="inline mr-3" size={20} />
-              Estoque
-            </button>
-            <button
-              onClick={() => setActiveTab('purchases')}
-              className={`py-3 px-4 border-b-2 font-medium text-base ${
-                activeTab === 'purchases'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
-              }`}
-            >
-              <ShoppingCart className="inline mr-3" size={20} />
-              Compras
-            </button>
-          </nav>
-        </div>
-      </div>
-
-      {/* Tab Content */}
-      {activeTab === 'inventory' ? (
-        <>
-          {/* Summary Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
-            <div className="bg-white rounded-lg p-4 shadow-md">
-              <h3 className="text-sm font-semibold text-slate-800 mb-2">Total Itens</h3>
-              <p className="text-xl font-bold text-blue-500">{summaryStats.total}</p>
-            </div>
-            <div className="bg-white rounded-lg p-4 shadow-md">
-              <h3 className="text-sm font-semibold text-slate-800 mb-2">Disponíveis</h3>
-              <p className="text-xl font-bold text-green-500">{summaryStats.available}</p>
-            </div>
-            <div className="bg-white rounded-lg p-4 shadow-md">
-              <h3 className="text-sm font-semibold text-slate-800 mb-2">Vendidos</h3>
-              <p className="text-xl font-bold text-blue-500">{summaryStats.sold}</p>
-            </div>
-            <div className="bg-white rounded-lg p-4 shadow-md">
-              <h3 className="text-sm font-semibold text-slate-800 mb-2">Defeituosos</h3>
-              <p className="text-xl font-bold text-red-500">{summaryStats.defective}</p>
-            </div>
-            <div className="bg-white rounded-lg p-4 shadow-md">
-              <h3 className="text-sm font-semibold text-slate-800 mb-2">
-                Estoque Baixo
-              </h3>
-              <p className="text-xl font-bold text-orange-500">{summaryStats.lowStock}</p>
-            </div>
+            />
           </div>
+        )}
 
-          {/* Search Bars */}
-          <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={20} />
-                <input
-                  type="text"
-                  placeholder="Buscar por descrição, SKU, IMEI, serial, código de barras..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-              
-              <div className="relative">
-                <Hash className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={20} />
-                <input
-                  type="text"
-                  placeholder="Buscar por localizador da compra (ex: LOC001234567)..."
-                  value={locatorSearch}
-                  onChange={(e) => setLocatorSearch(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <select
-                value={filterBrand}
-                onChange={(e) => setFilterBrand(e.target.value)}
-                className="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="">Todas as Marcas</option>
-                {brands.map(brand => (
-                  <option key={brand} value={brand}>{brand}</option>
-                ))}
-              </select>
-              
-              <select
-                value={filterCategory}
-                onChange={(e) => setFilterCategory(e.target.value)}
-                className="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="">Todas as Categorias</option>
-                {categories.map(category => (
-                  <option key={category} value={category}>{category}</option>
-                ))}
-              </select>
-
-              <select
-                value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value)}
-                className="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="all">Todos Status</option>
-                <option value="available">Disponível</option>
-                <option value="sold">Vendido</option>
-                <option value="reserved">Reservado</option>
-                <option value="defective">Defeituoso</option>
-              </select>
-
-              <select
-                value={filterCondition}
-                onChange={(e) => setFilterCondition(e.target.value)}
-                className="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="all">Todas Condições</option>
-                <option value="novo">Novo</option>
-                <option value="seminovo">Seminovo</option>
-                <option value="usado">Usado</option>
-              </select>
-
-              <div className="flex items-center text-sm text-slate-600">
-                <Filter className="mr-2" size={16} />
-                {filteredUnits.length} de {inventoryUnits.length} itens
-                {locatorSearch && (
-                  <span className="ml-2 text-blue-600 font-medium">
-                    (Localizador: {locatorSearch} - {locatorSearchResults} produtos encontrados)
-                  </span>
-                )}
-              </div>
-            </div>
+        {/* Content based on active tab */}
+        {loading ? (
+          <div className="flex justify-center items-center h-64">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
           </div>
+        ) : (
+          <>
+            {activeTab === 'inventory' && (
+              <div className={`overflow-x-auto rounded-lg shadow-md ${theme === 'dark' ? 'bg-slate-800' : 'bg-white'}`}>
+                <table className="min-w-full divide-y divide-slate-200">
+                  <thead className={`${theme === 'dark' ? 'bg-slate-700' : 'bg-slate-100'}`}>
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">SKU</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Produto</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Nº Série/IMEI</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Preço Custo</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Preço Venda</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Localização</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Garantia</th>
+                      <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody className={`divide-y ${theme === 'dark' ? 'divide-slate-700' : 'divide-slate-200'}`}>
+                    {inventoryUnits.length === 0 ? (
+                      <tr>
+                        <td colSpan={8} className="px-6 py-4 text-center text-slate-500">Nenhum item em estoque encontrado.</td>
+                      </tr>
+                    ) : (
+                      inventoryUnits.map((unit) => (
+                        <tr key={unit.id} className={`${theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-slate-50'}`}>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">{unit.product.sku}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm">{unit.product.description}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm">
+                            {unit.serial_number || unit.imei1 || unit.imei2 || 'N/A'}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm">R$ {formatCurrencyBR(unit.cost_price)}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm">R$ {formatCurrencyBR(unit.sale_price)}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm">{unit.stock_locations?.name || 'N/A'}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm">
+                            {unit.warranty_terms?.name} ({unit.warranty_terms?.months} meses)
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                            <ProductActionsDropdown
+                              unitId={unit.id}
+                              onViewHistory={handleViewHistory}
+                              onEdit={() => showError('Edição de unidade ainda não implementada.')} // Placeholder
+                              onDelete={() => showError('Exclusão de unidade ainda não implementada.')} // Placeholder
+                              onAdjustStock={handleAdjustStock}
+                            />
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
 
-          {/* Inventory Table */}
-          <div className="bg-white rounded-xl shadow-lg">
-            <div className="p-4 border-b border-slate-200">
-              <h3 className="text-lg font-semibold text-slate-800">
-                Itens do Estoque - Controle Individual
-              </h3>
-              <p className="text-sm text-slate-600 mt-1">
-                Cada item possui identificação única (IMEI/Serial) e código localizador da compra
-              </p>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-slate-50">
-                  <tr>
-                    <th className="text-left py-3 px-4 font-semibold text-slate-700">SKU</th>
-                    <th className="text-left py-3 px-4 font-semibold text-slate-700">Produto</th>
-                    <th className="text-left py-3 px-4 font-semibold text-slate-700">Marca/Categoria</th>
-                    <th className="text-left py-3 px-4 font-semibold text-slate-700">Identificação</th>
-                    <th className="text-left py-3 px-4 font-semibold text-slate-700">Condição</th>
-                    <th className="text-left py-3 px-4 font-semibold text-slate-700">Preços</th>
-                    <th className="text-left py-3 px-4 font-semibold text-slate-700">Localização</th>
-                    <th className="text-left py-3 px-4 font-semibold text-slate-700">Estoque Mín.</th> {/* Adicionado */}
-                    <th className="text-left py-3 px-4 font-semibold text-slate-700">Status</th>
-                    <th className="text-center py-3 px-4 font-semibold text-slate-700">Ações</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {sortedUnits.map((unit) => {
-                    const statusBadge = getStatusBadge(unit.status);
-                    const conditionBadge = getConditionBadge(unit.condition);
-                    const isLowStock = unit.minStock !== undefined && unit.minStock > 0 && 
-                                      inventoryUnits.filter(u => u.productSku === unit.productSku && u.status === 'available').length <= unit.minStock;
-                    
-                    return (
-                      <tr key={unit.id} className="border-b border-slate-100 hover:bg-slate-50">
-                        <td className="py-3 px-4">
-                          <div className="font-mono text-sm font-bold text-blue-600">
-                            {unit.productSku}
-                          </div>
-                        </td>
-                        
-                        <td className="py-3 px-4">
-                          <div>
-                            <div className="font-medium text-slate-800">{unit.productDescription}</div>
-                            <div className="text-sm text-slate-600">
-                              {unit.model && `${unit.model} `}
-                              {unit.color && `• ${unit.color} `}
-                              {unit.storage && `• ${unit.storage}`}
-                            </div>
-                          </div>
-                        </td>
-                        
-                        <td className="py-3 px-4">
-                          <div>
-                            <div className="font-medium text-slate-800">{unit.brand}</div>
-                            <div className="text-sm text-slate-600">{unit.category}</div>
-                          </div>
-                        </td>
-                        
-                        <td className="py-3 px-4">
-                          <div className="space-y-1">
-                            {unit.imei1 && (
-                              <div className="flex items-center text-xs">
-                                <Smartphone size={12} className="mr-1 text-blue-500" />
-                                <span className="font-mono">{unit.imei1}</span>
+            {activeTab === 'products' && (
+              <div className={`overflow-x-auto rounded-lg shadow-md ${theme === 'dark' ? 'bg-slate-800' : 'bg-white'}`}>
+                <table className="min-w-full divide-y divide-slate-200">
+                  <thead className={`${theme === 'dark' ? 'bg-slate-700' : 'bg-slate-100'}`}>
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">SKU</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Descrição</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Marca</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Custo</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Venda</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">IMEI/Série</th>
+                      <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody className={`divide-y ${theme === 'dark' ? 'divide-slate-700' : 'divide-slate-200'}`}>
+                    {products.length === 0 ? (
+                      <tr>
+                        <td colSpan={7} className="px-6 py-4 text-center text-slate-500">Nenhum produto cadastrado.</td>
+                      </tr>
+                    ) : (
+                      products.map((product) => (
+                        <tr key={product.id} className={`${theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-slate-50'}`}>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">{product.sku}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm">{product.description}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm">{product.brand}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm">R$ {formatCurrencyBR(product.cost_price)}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm">R$ {formatCurrencyBR(product.sale_price)}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm">
+                            {product.requires_imei && <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 mr-1">IMEI</span>}
+                            {product.requires_serial && <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">Série</span>}
+                            {!product.requires_imei && !product.requires_serial && 'Não'}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                            <button
+                              onClick={() => handleEditProduct(product)}
+                              className="text-blue-600 hover:text-blue-900 mr-4"
+                            >
+                              Editar
+                            </button>
+                            <button
+                              onClick={() => handleDeleteProduct(product.id)}
+                              className="text-red-600 hover:text-red-900"
+                            >
+                              Excluir
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {activeTab === 'purchases' && (
+              <div className={`overflow-x-auto rounded-lg shadow-md ${theme === 'dark' ? 'bg-slate-800' : 'bg-white'}`}>
+                <table className="min-w-full divide-y divide-slate-200">
+                  <thead className={`${theme === 'dark' ? 'bg-slate-700' : 'bg-slate-100'}`}>
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">ID Compra</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Data</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Itens</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Total</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Status</th>
+                      <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody className={`divide-y ${theme === 'dark' ? 'divide-slate-700' : 'divide-slate-200'}`}>
+                    {purchases.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="px-6 py-4 text-center text-slate-500">Nenhuma compra registrada.</td>
+                      </tr>
+                    ) : (
+                      purchases.map((purchase) => (
+                        <tr key={purchase.id} className={`${theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-slate-50'}`}>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">{purchase.id.substring(0, 8)}...</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm">{new Date(purchase.created_at).toLocaleDateString()}</td>
+                          <td className="px-6 py-4 text-sm">
+                            {purchase.purchase_items.map(item => (
+                              <div key={item.id} className="text-xs text-slate-500">
+                                {item.quantity}x {item.product.description}
                               </div>
-                            )}
-                            {unit.imei2 && (
-                              <div className="flex items-center text-xs">
-                                <Smartphone size={12} className="mr-1 text-purple-500" />
-                                <span className="font-mono">{unit.imei2}</span>
-                              </div>
-                            )}
-                            {unit.serialNumber && (
-                              <div className="flex items-center text-xs">
-                                <Hash size={12} className="mr-1 text-green-500" />
-                                <span className="font-mono">{unit.serialNumber}</span>
-                              </div>
-                            )}
-                            {unit.barcode && (
-                              <div className="flex items-center text-xs">
-                                <Barcode size={12} className="mr-1 text-orange-500" />
-                                <span className="font-mono">{unit.barcode}</span>
-                              </div>
-                            )}
-                          </div>
-                        </td>
-                        
-                        <td className="py-3 px-4">
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${conditionBadge.color}`}>
-                            {conditionBadge.label}
-                          </span>
-                        </td>
-                        
-                        <td className="py-3 px-4">
-                          <div>
-                            <div className="text-sm text-slate-600">
-                              Custo: R$ {unit.costPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                            </div>
-                            <div className="font-medium text-green-600">
-                              Venda: R$ {unit.salePrice.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                            </div>
-                          </div>
-                        </td>
-                        
-                        <td className="py-3 px-4">
-                          {unit.location ? (
-                            <span className="bg-slate-100 text-slate-800 px-2 py-1 rounded text-sm">
-                              {unit.location}
+                            ))}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm">R$ {formatCurrencyBR(purchase.total_cost)}</td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getPurchaseStatusColor(purchase.status)}`}>
+                              {getPurchaseStatusText(purchase.status)}
                             </span>
-                          ) : (
-                            <span className="text-slate-400">-</span>
-                          )}
-                        </td>
-
-                        <td className="py-3 px-4"> {/* Coluna de Estoque Mínimo */}
-                          {unit.minStock !== undefined && unit.minStock > 0 ? (
-                            <div className={`flex items-center text-sm ${isLowStock ? 'text-orange-600 font-bold' : 'text-slate-700'}`}>
-                              {isLowStock && <AlertTriangle size={14} className="mr-1" />}
-                              {unit.minStock} un.
-                            </div>
-                          ) : (
-                            <span className="text-slate-400">-</span>
-                          )}
-                        </td>
-                        
-                        <td className="py-3 px-4">
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusBadge.color}`}>
-                            {statusBadge.label}
-                          </span>
-                        </td>
-                        
-                        <td className="py-3 px-4 text-center">
-                          <ProductActionsDropdown
-                            unitId={unit.id}
-                            onViewHistory={() => handleViewProductHistory(unit)}
-                            onEdit={() => handleEditProductUnit(unit.id)}
-                            onDelete={() => handleDeleteProductUnit(unit.id)}
-                            onAdjustStock={() => handleOpenStockAdjustmentModal(unit.id)}
-                          />
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </>
-      ) : (
-        <>
-          {/* Purchase Summary Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-            <div className="bg-white rounded-lg p-4 shadow-md">
-              <h3 className="text-sm font-semibold text-slate-800 mb-2">Total Compras</h3>
-              <p className="text-xl font-bold text-blue-500">{purchaseStats.total}</p>
-            </div>
-            <div className="bg-white rounded-lg p-4 shadow-md">
-              <h3 className="text-sm font-semibold text-slate-800 mb-2">Concluídas</h3>
-              <p className="text-xl font-bold text-green-500">{purchaseStats.completed}</p>
-            </div>
-            <div className="bg-white rounded-lg p-4 shadow-md">
-              <h3 className="text-sm font-semibold text-slate-800 mb-2">Pendentes</h3>
-              <p className="text-xl font-bold text-yellow-500">{purchaseStats.pending}</p>
-            </div>
-            <div className="bg-white rounded-lg p-4 shadow-md">
-              <h3 className="text-sm font-semibold text-slate-800 mb-2">Valor Total</h3>
-              <p className="text-xl font-bold text-purple-500">
-                R$ {purchaseStats.totalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-              </p>
-            </div>
-          </div>
-
-          {/* Purchase Filters */}
-          <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={20} />
-                <input
-                  type="text"
-                  placeholder="Buscar por localizador, fornecedor ou nota fiscal..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                            <PurchaseActionsDropdown
+                              purchaseId={purchase.id}
+                              purchaseStatus={purchase.status}
+                              onView={handleViewPurchase}
+                              onEdit={handleEditPurchase}
+                              onFinalize={handleFinalizePurchaseFromDropdown}
+                              onRevert={handleRevertPurchase}
+                              onDelete={handleDeletePurchase}
+                            />
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
               </div>
-              
-              <select
-                value={purchaseStatusFilter}
-                onChange={(e) => setPurchaseStatusFilter(e.target.value)}
-                className="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="all">Todos os Status</option>
-                <option value="completed">Finalizadas</option>
-                <option value="pending">Pendentes</option>
-                <option value="partial">Parciais</option>
-              </select>
-            </div>
+            )}
+          </>
+        )}
+      </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Data Inicial
-                </label>
-                <input
-                  type="date"
-                  value={purchaseDateFrom}
-                  onChange={(e) => setPurchaseDateFrom(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Data Final
-                </label>
-                <input
-                  type="date"
-                  value={purchaseDateTo}
-                  onChange={(e) => setPurchaseDateTo(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-
-              <div className="flex items-end">
-                <div className="flex items-center text-sm text-slate-600">
-                  <Filter className="mr-2" size={16} />
-                  {filteredPurchases.length} de {purchases.length} compras
-                  {(!purchaseDateFrom && !purchaseDateTo) && (
-                    <span className="ml-2 text-blue-600 font-medium">
-                      (Mês Atual)
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Purchases Table */}
-          <div className="bg-white rounded-xl shadow-lg">
-            <div className="p-4 border-b border-slate-200">
-              <h3 className="text-lg font-semibold text-slate-800">
-                Histórico de Compras
-              </h3>
-              <p className="text-sm text-slate-600 mt-1">
-                Gerencie e edite suas compras de mercadorias
-              </p>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-slate-50">
-                  <tr>
-                    <th className="text-left py-3 px-4 font-semibold text-slate-700">Localizador</th>
-                    <th className="text-left py-3 px-4 font-semibold text-slate-700">Fornecedor</th>
-                    <th className="text-left py-3 px-4 font-semibold text-slate-700">Data</th>
-                    <th className="text-left py-3 px-4 font-semibold text-slate-700">Nota Fiscal</th>
-                    <th className="text-left py-3 px-4 font-semibold text-slate-700">Itens</th>
-                    <th className="text-left py-3 px-4 font-semibold text-slate-700">Total</th>
-                    <th className="text-left py-3 px-4 font-semibold text-slate-700">Status</th>
-                    <th className="text-center py-3 px-4 font-semibold text-slate-700">Ações</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredPurchases.map((purchase) => {
-                    const statusBadge = getPurchaseStatusBadge(purchase.status);
-                    
-                    return (
-                      <tr key={purchase.id} className="border-b border-slate-100 hover:bg-slate-50">
-                        <td className="py-3 px-4">
-                          <div className="font-mono text-sm font-bold text-blue-600">
-                            {purchase.locatorCode}
-                          </div>
-                        </td>
-                        
-                        <td className="py-3 px-4">
-                          <div className="font-medium text-slate-800">{purchase.supplierName}</div>
-                        </td>
-                        
-                        <td className="py-3 px-4">
-                          <div className="flex items-center text-sm">
-                            <Calendar size={14} className="mr-1 text-slate-500" />
-                            {new Date(purchase.purchaseDate).toLocaleDateString('pt-BR')}
-                          </div>
-                        </td>
-                        
-                        <td className="py-3 px-4">
-                          {purchase.invoiceNumber ? (
-                            <div className="flex items-center text-sm">
-                              <FileText size={14} className="mr-1 text-slate-500" />
-                              {purchase.invoiceNumber}
-                            </div>
-                          ) : (
-                            <span className="text-slate-400">-</span>
-                          )}
-                        </td>
-                        
-                        <td className="py-3 px-4">
-                          <div className="text-sm">
-                            <span className="font-medium">{purchase.items.length}</span> itens
-                          </div>
-                        </td>
-                        
-                        <td className="py-3 px-4">
-                          <div className="font-medium text-green-600">
-                            R$ {purchase.total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                          </div>
-                        </td>
-                        
-                        <td className="py-3 px-4">
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusBadge.color}`}>
-                            {statusBadge.label}
-                          </span>
-                        </td>
-                        
-                        <td className="py-3 px-4 text-center">
-                          <div className="flex justify-center gap-2">
-                            <button
-                              onClick={() => handleViewPurchase(purchase)}
-                              className="p-2 hover:bg-blue-100 rounded-lg transition-colors"
-                              title="Visualizar"
-                            >
-                              <Eye size={16} className="text-blue-600" />
-                            </button>
-                            <button
-                              onClick={() => handleEditPurchase(purchase)}
-                              className="p-2 hover:bg-green-100 rounded-lg transition-colors"
-                              title="Editar"
-                            >
-                              <Edit size={16} className="text-green-600" />
-                            </button>
-                            {(purchase.status === 'pending' || purchase.status === 'partial') && (
-                              <button
-                                onClick={() => handleFinalizePurchase(purchase)}
-                                className="p-2 hover:bg-purple-100 rounded-lg transition-colors"
-                                title="Finalizar Entrada"
-                              >
-                                <CheckCircle size={16} className="text-purple-600" />
-                              </button>
-                            )}
-                            <button
-                              onClick={() => {
-                                if (confirm('Tem certeza que deseja excluir esta compra?')) {
-                                  setPurchases(purchases.filter(p => p.id !== purchase.id));
-                                  showSuccess('Compra excluída com sucesso!');
-                                }
-                              }}
-                              className="p-2 hover:bg-red-100 rounded-lg transition-colors"
-                              title="Excluir"
-                            >
-                              <Trash2 size={16} className="text-red-600" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </>
-      )}
-
-      {/* Purchase/Product Modal */}
+      {/* Modals */}
+      <ProductModal
+        isOpen={isProductModalOpen}
+        onClose={() => { setIsProductModalOpen(false); setSelectedProduct(undefined); }}
+        product={selectedProduct}
+        onProductSaved={handleProductSaved}
+      />
       <PurchaseModal
         isOpen={isPurchaseModalOpen}
-        onClose={() => {
-          setIsPurchaseModalOpen(false);
-          setEditingPurchase(null);
-        }}
-        onPurchaseSaved={handlePurchaseSaved}
-        editingPurchase={editingPurchase}
+        onClose={() => setIsPurchaseModalOpen(false)}
+        onPurchaseCreated={handlePurchaseCreated}
+        products={products}
+        stockLocations={stockLocations}
+        warrantyTerms={warrantyTerms}
+        editingPurchase={purchaseToEdit} // Pass purchase to edit
       />
-
-      {/* Finalize Purchase Modal */}
-      <FinalizePurchaseModal
-        isOpen={isFinalizePurchaseModalOpen}
-        onClose={() => {
-          setIsFinalizePurchaseModalOpen(false);
-          setFinalizingPurchase(null);
-        }}
-        purchase={finalizingPurchase}
-        onFinalized={handlePurchaseFinalized}
-      />
-
-      {/* Purchase View Modal */}
-      <PurchaseViewModal
-        isOpen={isPurchaseViewModalOpen}
-        onClose={() => {
-          setIsPurchaseViewModalOpen(false);
-          setViewingPurchase(null);
-        }}
-        purchase={viewingPurchase}
-      />
-
-      {/* Product History Modal */}
-      <ProductHistoryModal
-        isOpen={isProductHistoryModalOpen}
-        onClose={() => {
-          setIsProductHistoryModalOpen(false);
-          setSelectedProductForHistory(null);
-        }}
-        product={selectedProductForHistory}
-      />
-
-      {/* Product Edit Modal (for Inventory Units) */}
-      <ProductModal
-        isOpen={isProductEditModalOpen}
-        onClose={() => {
-          setIsProductEditModalOpen(false);
-          setEditingProductUnit(null);
-        }}
-        product={editingProductUnit} // Pass the selected unit for editing
-        onProductSaved={handleProductUnitSaved} // Handle saving updates
-      />
-
-      {/* Bulk Price Update Modal */}
-      <BulkPriceUpdateModal
-        isOpen={isBulkPriceUpdateModalOpen}
-        onClose={() => setIsBulkPriceUpdateModalOpen(false)}
-        inventoryUnits={inventoryUnits}
-        onUpdateInventoryUnits={setInventoryUnits}
-      />
-
-      {/* Stock Adjustment Modal */}
-      <StockAdjustmentModal
-        isOpen={isStockAdjustmentModalOpen}
-        onClose={() => setIsStockAdjustmentModalOpen(false)}
-        productUnit={selectedProductForStockAdjustment}
-        currentStock={currentStockForAdjustment}
-        onConfirmAdjustment={handleConfirmStockAdjustment}
-      />
+      {purchaseToFinalize && (
+        <FinalizePurchaseModal
+          isOpen={isFinalizePurchaseModalOpen}
+          onClose={() => { setIsFinalizePurchaseModalOpen(false); setPurchaseToFinalize(undefined); }}
+          purchase={purchaseToFinalize}
+          onFinalize={handleFinalizePurchase}
+          existingInventoryUnits={inventoryUnits} // Pass existing units for duplication check
+          stockLocations={stockLocations}
+          warrantyTerms={warrantyTerms}
+        />
+      )}
+      {purchaseToView && (
+        // Assuming you have a PurchaseViewModal component
+        // For now, I'll just show an alert. You can replace this with your actual modal.
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className={`bg-white rounded-lg shadow-2xl max-w-md w-full p-6 ${theme === 'dark' ? 'bg-slate-800 text-white' : 'text-slate-900'}`}>
+            <h2 className="text-xl font-bold mb-4">Detalhes da Compra</h2>
+            <p>ID: {purchaseToView.id}</p>
+            <p>Status: {getPurchaseStatusText(purchaseToView.status)}</p>
+            <p>Total: R$ {formatCurrencyBR(purchaseToView.total_cost)}</p>
+            <button onClick={() => setPurchaseToView(undefined)} className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg">Fechar</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
