@@ -21,7 +21,8 @@ import {
   Moon,
   Printer,
   Clock,
-  User as UserIcon // Renomear User para UserIcon para evitar conflito
+  User as UserIcon, // Renomear User para UserIcon para evitar conflito
+  CreditCard // Importar CreditCard
 } from 'lucide-react';
 import { useAuth } from '@/react-app/hooks/useAuth';
 import { useTheme } from '@/react-app/hooks/useTheme';
