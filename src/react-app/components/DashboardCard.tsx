@@ -13,6 +13,7 @@ interface DashboardCardProps {
   customColor?: string;
   onVisibilityChange?: (id: string, visible: boolean) => void;
   onColorChange?: (id: string, color: string) => void;
+  onClick?: () => void; // Nova propriedade onClick
 }
 
 const colorOptions = [
@@ -36,7 +37,8 @@ export default function DashboardCard({
   isVisible = true,
   customColor = 'from-primary to-primary-dark', // Usar a nova cor primária como padrão
   onVisibilityChange,
-  onColorChange
+  onColorChange,
+  onClick // Receber a propriedade onClick
 }: DashboardCardProps) {
   const { theme } = useTheme();
   const [showCustomization, setShowCustomization] = useState(false);
@@ -46,14 +48,20 @@ export default function DashboardCard({
   if (!isVisible) return null;
 
   return (
-    <div className={`rounded-xl shadow-soft-lg p-6 hover:shadow-soft-xl transition-all duration-200 relative group ${
-      theme === 'dark' 
-        ? `bg-gradient-to-br ${customColor} text-white` 
-        : `bg-gradient-to-br ${customColor} text-white`
-    }`}>
+    <div 
+      className={`rounded-xl shadow-soft-lg p-6 hover:shadow-soft-xl transition-all duration-200 relative group ${
+        theme === 'dark' 
+          ? `bg-gradient-to-br ${customColor} text-white` 
+          : `bg-gradient-to-br ${customColor} text-white`
+      } ${onClick ? 'cursor-pointer' : ''}`} {/* Adicionar cursor-pointer se for clicável */}
+      onClick={onClick} {/* Aplicar o onClick aqui */}
+    >
       {/* Customization Button */}
       <button
-        onClick={() => setShowCustomization(!showCustomization)}
+        onClick={(e) => {
+          e.stopPropagation(); // Impedir que o clique no botão acione o onClick do card
+          setShowCustomization(!showCustomization);
+        }}
         className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-1 hover:bg-white/20 rounded-lg"
         title="Personalizar card"
       >
@@ -72,7 +80,10 @@ export default function DashboardCard({
               Personalizar
             </h4>
             <button
-              onClick={() => setShowCustomization(false)}
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowCustomization(false);
+              }}
               className={`p-1 hover:bg-slate-100 rounded ${
                 theme === 'dark' ? 'hover:bg-slate-700 text-slate-300' : 'text-slate-600'
               }`}
@@ -84,7 +95,10 @@ export default function DashboardCard({
           {/* Visibility Toggle */}
           <div className="mb-3">
             <button
-              onClick={() => onVisibilityChange?.(id, false)}
+              onClick={(e) => {
+                e.stopPropagation();
+                onVisibilityChange?.(id, false);
+              }}
               className={`flex items-center w-full p-2 text-sm rounded-lg transition-colors ${
                 theme === 'dark' 
                   ? 'hover:bg-slate-700 text-slate-300' 
@@ -107,7 +121,8 @@ export default function DashboardCard({
               {colorOptions.map((color) => (
                 <button
                   key={color.value}
-                  onClick={() => {
+                  onClick={(e) => {
+                    e.stopPropagation();
                     onColorChange?.(id, color.value);
                     setShowCustomization(false);
                   }}
