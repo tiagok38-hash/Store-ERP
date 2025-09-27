@@ -22,6 +22,7 @@ import PaymentMethodsPage from "@/react-app/pages/PaymentMethodsPage";
 import ProductStructurePage from "@/react-app/pages/ProductStructurePage";
 import WarrantyStockPage from "@/react-app/pages/WarrantyStockPage";
 import AuditPage from "@/react-app/pages/AuditPage";
+import UserProfileSettingsPage from "@/react-app/pages/UserProfileSettingsPage"; // Importar a nova página
 import Login from "@/react-app/pages/Login";
 import Home from "@/react-app/pages/Home";
 import { UserPermissions } from "@/shared/auth-types";
@@ -182,6 +183,14 @@ function AppContent() {
               element={
                 <ProtectedRoute permission={UserPermissions.AUDIT_VIEW}>
                   <AuditPage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/administration/user-profile-settings" 
+              element={
+                <ProtectedRoute permission={UserPermissions.SETTINGS_VIEW}> {/* Usar SETTINGS_VIEW para acesso ao perfil */}
+                  <UserProfileSettingsPage />
                 </ProtectedRoute>
               } 
             />

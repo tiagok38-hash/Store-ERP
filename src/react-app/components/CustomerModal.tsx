@@ -11,6 +11,7 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/react-app/hooks/useAuth';
 import { useNotification } from '@/react-app/components/NotificationSystem';
+import { formatDocument, formatPhone, formatZipCode, fetchAddressByCep } from '@/react-app/utils/form-helpers'; // Importar utilitários
 
 interface CustomerModalProps {
   isOpen: boolean;
@@ -53,8 +54,8 @@ export default function CustomerModal({ isOpen, onClose, type, data, onCustomerS
         address: data?.address || '',
         houseNumber: data?.house_number || '',
         neighborhood: data?.neighborhood || '',
-        city: data?.city || '',
-        state: data?.state || '',
+        city: data?.localidade || data?.city || '', // Ajuste para ViaCEP
+        state: data?.uf || data?.state || '',       // Ajuste para ViaCEP
         zipCode: data?.zip_code || '',
         observations: data?.observations || ''
       });
@@ -145,48 +146,21 @@ export default function CustomerModal({ isOpen, onClose, type, data, onCustomerS
     }
   };
 
-  const formatDocument = (value: string) => {
-    const numbers = value.replace(/\D/g, '');
-    if (numbers.length <= 11) {
-      return numbers.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
-    } else {
-      return numbers.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
-    }
-  };
-
-  const formatPhone = (value: string) => {
-    const numbers = value.replace(/\D/g, '');
-    if (numbers.length <= 10) {
-      return numbers.replace(/(\d{2})(\d{4})(\d{4})/, '($1) $2-$3');
-    } else {
-      return numbers.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3');
-    }
-  };
-
-  const formatZipCode = (value: string) => {
-    const numbers = value.replace(/\D/g, '');
-    return numbers.replace(/(\d{5})(\d{3})/, '$1-$2');
-  };
-
-  const fetchAddressByCep = async (cep: string) => {
-    const cleanCep = cep.replace(/\D/g, '');
-    if (cleanCep.length === 8) {
-      try {
-        const response = await fetch(`https://viacep.com.br/ws/${cleanCep}/json/`);
-        const data = await response.json();
-        
-        if (!data.erro) {
-          setFormData(prev => ({
-            ...prev,
-            address: data.logradouro || '',
-            neighborhood: data.bairro || '',
-            city: data.localidade || '',
-            state: data.uf || '',
-            zipCode: formatZipCode(cleanCep)
-          }));
-        }
-      } catch (error) {
-        console.error('Erro ao buscar CEP:', error);
+  const handleZipCodeChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formatted = formatZipCode(e.target.value);
+    setFormData(prev => ({ ...prev, zipCode: formatted }));
+    
+    if (formatted.replace(/\D/g, '').length === 8) {
+      const addressData = await fetchAddressByCep(formatted);
+      if (addressData) {
+        setFormData(prev => ({
+          ...prev,
+          address: addressData.address,
+          neighborhood: addressData.neighborhood,
+          city: addressData.city,
+          state: addressData.state,
+          zipCode: addressData.zipCode
+        }));
       }
     }
   };
@@ -330,15 +304,7 @@ export default function CustomerModal({ isOpen, onClose, type, data, onCustomerS
                 <input
                   type="text"
                   value={formData.zipCode}
-                  onChange={(e) => {
-                    const formatted = formatZipCode(e.target.value);
-                    setFormData({ ...formData, zipCode: formatted });
-                    
-                    // Buscar endereço automaticamente quando CEP estiver completo
-                    if (formatted.replace(/\D/g, '').length === 8) {
-                      fetchAddressByCep(formatted);
-                    }
-                  }}
+                  onChange={handleZipCodeChange}
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                   placeholder="00000-000"
                 />

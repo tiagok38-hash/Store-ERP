@@ -23,7 +23,8 @@ import {
   Sun,
   Moon,
   Printer,
-  Clock
+  Clock,
+  User as UserIcon // Renomear User para UserIcon para evitar conflito
 } from 'lucide-react';
 import { useAuth } from '@/react-app/hooks/useAuth';
 import { useTheme } from '@/react-app/hooks/useTheme';
@@ -250,6 +251,28 @@ export default function Sidebar() {
         {/* Navigation */}
         <nav className="flex-1 overflow-y-auto py-4">
           {navigationItems.map(item => renderNavItem(item))}
+          {/* Novo item de navegação para Ajustes do Usuário */}
+          <button
+            onClick={() => {
+              setIsMobileOpen(false);
+              navigate('/administration/user-profile-settings');
+            }}
+            className={`flex items-center w-full px-4 py-3 text-left transition-all duration-200 group ${
+              location.pathname === '/administration/user-profile-settings'
+                ? `${theme === 'dark' ? 'bg-primary-dark text-primary-light border-r-2 border-primary' : 'bg-primary-light/20 text-primary-dark border-r-2 border-primary'}`
+                : `${theme === 'dark' ? 'text-text-dark hover:bg-card-dark hover:text-white' : 'text-text-light hover:bg-background-light hover:text-slate-900'}`
+            }`}
+          >
+            <UserIcon 
+              size={20} 
+              className={`${isCollapsed ? 'mx-auto' : 'mr-3'} ${
+                location.pathname === '/administration/user-profile-settings'
+                  ? theme === 'dark' ? 'text-primary-light' : 'text-primary'
+                  : theme === 'dark' ? 'text-text-dark' : 'text-text-light'
+              }`} 
+            />
+            {!isCollapsed && <span className="font-medium">Ajustes do Usuário</span>}
+          </button>
         </nav>
 
         {/* Theme Toggle and Logout */}
