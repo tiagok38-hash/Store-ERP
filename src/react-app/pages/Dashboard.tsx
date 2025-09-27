@@ -284,7 +284,7 @@ export default function Dashboard() {
             customColor={cardSettings.sales.color}
             onVisibilityChange={handleCardVisibilityChange}
             onColorChange={handleCardColorChange}
-            onClick={() => navigate('/sales')} {/* Adicionado onClick */}
+            onClick={() => navigate('/sales')}
           />
 
           {/* Faturamento Card */}
@@ -312,7 +312,7 @@ export default function Dashboard() {
             customColor={cardSettings.stock.color}
             onVisibilityChange={handleCardVisibilityChange}
             onColorChange={handleCardColorChange}
-            onClick={() => navigate('/inventory')} {/* Adicionado onClick */}
+            onClick={() => navigate('/inventory')}
           />
 
           {/* Clientes Card */}
@@ -326,7 +326,7 @@ export default function Dashboard() {
             customColor={cardSettings.customers.color}
             onVisibilityChange={handleCardVisibilityChange}
             onColorChange={handleCardColorChange}
-            onClick={() => navigate('/registrations')} {/* Adicionado onClick */}
+            onClick={() => navigate('/registrations')}
           />
         </div>
       )}
