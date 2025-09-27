@@ -93,6 +93,9 @@ export default function PaymentMethodsPage() {
           allowInterestFree: true,
           maxInterestFreeInstallments: 3,
           interestRates: {
+            1: 0,
+            2: 0,
+            3: 0,
             4: 2.5,
             5: 3.0,
             6: 3.5,
@@ -101,7 +104,13 @@ export default function PaymentMethodsPage() {
             9: 5.0,
             10: 5.5,
             11: 6.0,
-            12: 6.5
+            12: 6.5,
+            13: 7.0,
+            14: 7.5,
+            15: 8.0,
+            16: 8.5,
+            17: 9.0,
+            18: 9.5
           }
         },
         createdAt: '2025-01-15T00:00:00Z',
@@ -510,7 +519,7 @@ export default function PaymentMethodsPage() {
                             <input
                               type="number"
                               min="1"
-                              max="12"
+                              max="18" // Changed max to 18
                               value={formData.maxInterestFreeInstallments}
                               onChange={(e) => setFormData({ ...formData, maxInterestFreeInstallments: parseInt(e.target.value) })}
                               className={`w-16 px-2 py-1 border rounded text-center focus:ring-2 focus:ring-blue-500 ${
@@ -525,7 +534,7 @@ export default function PaymentMethodsPage() {
                       <div>
                         <h4 className={`text-sm font-medium mb-3 ${theme === 'dark' ? 'text-slate-200' : 'text-slate-700'}`}>Taxa de Juros por Parcela:</h4>
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                          {Array.from({ length: 16 }, (_, i) => i + 3).map(installments => (
+                          {Array.from({ length: 18 }, (_, i) => i + 1).map(installments => ( // Changed range to 1 to 18
                             <div key={installments} className="flex items-center gap-2">
                               <label className={`text-sm w-8 ${theme === 'dark' ? 'text-slate-200' : 'text-slate-700'}`}>{installments}x:</label>
                               <input
