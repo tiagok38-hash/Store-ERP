@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router';
 import {
   LayoutDashboard,
   ShoppingCart,
@@ -17,6 +16,7 @@ import DashboardCard from '@/react-app/components/DashboardCard';
 import { useTheme } from '@/react-app/hooks/useTheme';
 import { useAuth } from '@/react-app/hooks/useAuth';
 import { UserPermissions } from '@/shared/auth-types';
+import { useNavigate } from 'react-router'; // Importar useNavigate
 
 const recentSales = [
   { id: 1, customer: 'João Silva', product: 'iPhone 13 Pro', amount: 3200, profit: 850, time: '10:30' },
@@ -26,11 +26,12 @@ const recentSales = [
   { id: 5, customer: 'Carlos Lima', product: 'Carregador USB-C', amount: 70, profit: 35, time: '13:15' },
 ];
 
-const openServiceOrders = [
-  { id: 1, customer: 'Lucas Ferreira', device: 'iPhone 12', issue: 'Tela quebrada', status: 'Aguardando peças' },
-  { id: 2, customer: 'Fernanda Alves', device: 'Samsung A54', issue: 'Não carrega', status: 'Em diagnóstico' },
-  { id: 3, customer: 'Roberto Santos', device: 'Xiaomi Note 10', issue: 'Não liga', status: 'Orçamento enviado' },
-  { id: 4, customer: 'Juliana Costa', device: 'iPhone 14', issue: 'Câmera não funciona', status: 'Em reparo' },
+// Dados mockados para produtos com estoque baixo
+const lowStockProducts = [
+  { id: 1, product: 'Capinha iPhone 16 Pro Max', currentStock: 2, minStock: 5 },
+  { id: 2, product: 'Película Galaxy S24 Ultra', currentStock: 1, minStock: 3 },
+  { id: 3, product: 'Carregador USB-C 20W', currentStock: 4, minStock: 10 },
+  { id: 4, product: 'Fone Bluetooth JBL', currentStock: 3, minStock: 5 },
 ];
 
 type PeriodFilter = 'today' | 'week' | 'month' | 'quarter' | 'year' | 'custom';
@@ -371,7 +372,9 @@ export default function Dashboard() {
             <h3 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>
               Vendas de Hoje
             </h3>
-            <button className={`flex items-center transition-colors ${
+            <button 
+              onClick={() => navigate('/sales')}
+              className={`flex items-center transition-colors ${
               theme === 'dark' 
                 ? 'text-blue-400 hover:text-blue-300' 
                 : 'text-blue-600 hover:text-blue-800'
@@ -409,43 +412,45 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Service Orders */}
+        {/* Produtos com Estoque Baixo */}
         <div className={`rounded-xl shadow-lg p-6 ${
           theme === 'dark' ? 'bg-slate-800' : 'bg-white'
         }`}>
           <div className="flex items-center justify-between mb-4">
             <h3 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>
-              Ordens de Serviço
+              Produtos com Estoque Baixo
             </h3>
-            <button className={`flex items-center transition-colors ${
+            <button 
+              onClick={() => navigate('/inventory')}
+              className={`flex items-center transition-colors ${
               theme === 'dark' 
                 ? 'text-blue-400 hover:text-blue-300' 
                 : 'text-blue-600 hover:text-blue-800'
             }`}>
               <Eye size={16} className="mr-1" />
-              Ver todas
+              Ver todos
             </button>
           </div>
           <div className="space-y-4">
-            {openServiceOrders.map((order) => (
-              <div key={order.id} className={`flex items-center justify-between p-3 rounded-lg ${
+            {lowStockProducts.map((product) => (
+              <div key={product.id} className={`flex items-center justify-between p-3 rounded-lg ${
                 theme === 'dark' ? 'bg-slate-700/50' : 'bg-slate-50'
               }`}>
                 <div className="flex-1">
                   <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>
-                    {order.customer}
+                    {product.product}
                   </p>
                   <p className={`text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-slate-600'}`}>
-                    {order.device} - {order.issue}
+                    Estoque atual: {product.currentStock} / Mínimo: {product.minStock}
                   </p>
                 </div>
                 <div className="text-right">
                   <span className={`px-2 py-1 rounded-full text-xs ${
                     theme === 'dark' 
-                      ? 'bg-yellow-900/50 text-yellow-300' 
-                      : 'bg-yellow-100 text-yellow-800'
+                      ? 'bg-red-900/50 text-red-300' 
+                      : 'bg-red-100 text-red-800'
                   }`}>
-                    {order.status}
+                    Abaixo do Mínimo
                   </span>
                 </div>
               </div>
