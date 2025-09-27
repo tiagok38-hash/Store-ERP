@@ -17,14 +17,21 @@ interface DashboardCardProps {
 }
 
 const colorOptions = [
-  { name: 'Azul', value: 'from-primary to-primary-dark', bg: 'bg-primary' },
-  { name: 'Verde', value: 'from-secondary to-secondary-dark', bg: 'bg-secondary' },
+  { name: 'Azul', value: 'from-blue-500 to-blue-600', bg: 'bg-blue-500' },
+  { name: 'Verde', value: 'from-green-500 to-green-600', bg: 'bg-green-500' },
   { name: 'Roxo', value: 'from-purple-500 to-purple-600', bg: 'bg-purple-500' },
-  { name: 'Laranja', value: 'from-accent to-accent-dark', bg: 'bg-accent' },
+  { name: 'Laranja', value: 'from-orange-500 to-orange-600', bg: 'bg-orange-500' },
   { name: 'Rosa', value: 'from-pink-500 to-pink-600', bg: 'bg-pink-500' },
   { name: 'Vermelho', value: 'from-red-500 to-red-600', bg: 'bg-red-500' },
   { name: 'Índigo', value: 'from-indigo-500 to-indigo-600', bg: 'bg-indigo-500' },
   { name: 'Amarelo', value: 'from-yellow-500 to-yellow-600', bg: 'bg-yellow-500' },
+  { name: 'Ciano', value: 'from-cyan-500 to-cyan-600', bg: 'bg-cyan-500' },
+  { name: 'Esmeralda', value: 'from-emerald-500 to-emerald-600', bg: 'bg-emerald-500' },
+  { name: 'Lima', value: 'from-lime-500 to-lime-600', bg: 'bg-lime-500' },
+  { name: 'Fúcsia', value: 'from-fuchsia-500 to-fuchsia-600', bg: 'bg-fuchsia-500' },
+  { name: 'Teal', value: 'from-teal-500 to-teal-600', bg: 'bg-teal-500' },
+  { name: 'Sky', value: 'from-sky-500 to-sky-600', bg: 'bg-sky-500' },
+  { name: 'Cinza', value: 'from-gray-500 to-gray-600', bg: 'bg-gray-500' },
 ];
 
 export default function DashboardCard({ 
@@ -35,7 +42,7 @@ export default function DashboardCard({
   subtitle, 
   id,
   isVisible = true,
-  customColor = 'from-primary to-primary-dark', // Usar a nova cor primária como padrão
+  customColor = 'from-blue-500 to-blue-600', // Usar um azul como padrão
   onVisibilityChange,
   onColorChange,
   onClick // Receber a propriedade onClick
