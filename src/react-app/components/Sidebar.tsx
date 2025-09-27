@@ -12,6 +12,7 @@ import {
   Settings,
   ChevronDown,
   ChevronRight,
+  ChevronLeft, // Importar ChevronLeft
   UserCheck,
   Building2,
   History,
@@ -239,7 +240,7 @@ export default function Sidebar() {
               {isCollapsed ? (
                 <ChevronRight size={20} className={theme === 'dark' ? 'text-slate-400' : 'text-slate-600'} />
               ) : (
-                <ChevronDown size={20} className={theme === 'dark' ? 'text-slate-400' : 'text-slate-600'} />
+                <ChevronLeft size={20} className={theme === 'dark' ? 'text-slate-400' : 'text-slate-600'} />
               )}
             </button>
           </div>
