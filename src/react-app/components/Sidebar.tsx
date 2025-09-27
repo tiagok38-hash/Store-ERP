@@ -214,7 +214,7 @@ export default function Sidebar() {
         flex flex-col ${theme === 'dark' ? 'bg-background-dark' : 'bg-card-light'}
       `}>
         {/* Header */}
-        <div className={`p-6 border-b ${theme === 'dark' ? 'border-slate-700' : 'border-slate-200'}`}>
+        <div className={`border-b ${isCollapsed ? 'p-3' : 'p-6'} ${theme === 'dark' ? 'border-slate-700' : 'border-slate-200'}`}>
           <div className="flex items-center justify-between">
             <div className="flex items-center">
               <div className="w-10 h-10 bg-gradient-to-r from-primary to-secondary rounded-lg flex items-center justify-center">
