@@ -70,6 +70,22 @@ export default function BulkPriceUpdateModal({
 
   const [isAnimatingOut, setIsAnimatingOut] = useState(false);
 
+  // MOVIDO: useMemo agora é chamado antes do retorno condicional
+  const filteredProducts = useMemo(() => {
+    const searchLower = searchTerm.toLowerCase();
+    return inventoryUnits.filter(unit => {
+      const matchesSearch = 
+        unit.productDescription.toLowerCase().includes(searchLower) ||
+        unit.productSku.toLowerCase().includes(searchLower) ||
+        unit.brand.toLowerCase().includes(searchLower) ||
+        (unit.model && unit.model.toLowerCase().includes(searchLower));
+      
+      const matchesCondition = filterCondition === 'all' || unit.condition === filterCondition;
+
+      return matchesSearch && unit.status === 'available' && matchesCondition; // Apenas produtos disponíveis
+    });
+  }, [inventoryUnits, searchTerm, filterCondition]);
+
   const handleClose = () => {
     setIsAnimatingOut(true);
     setTimeout(() => {
@@ -86,21 +102,6 @@ export default function BulkPriceUpdateModal({
   };
 
   if (!isOpen && !isAnimatingOut) return null;
-
-  const filteredProducts = useMemo(() => {
-    const searchLower = searchTerm.toLowerCase();
-    return inventoryUnits.filter(unit => {
-      const matchesSearch = 
-        unit.productDescription.toLowerCase().includes(searchLower) ||
-        unit.productSku.toLowerCase().includes(searchLower) ||
-        unit.brand.toLowerCase().includes(searchLower) ||
-        (unit.model && unit.model.toLowerCase().includes(searchLower));
-      
-      const matchesCondition = filterCondition === 'all' || unit.condition === filterCondition;
-
-      return matchesSearch && matchesCondition;
-    });
-  }, [inventoryUnits, searchTerm, filterCondition]);
 
   const calculateNewPrice = (currentPrice: number, updateType: PriceUpdateType, updateValue: string): number => {
     const value = parseCurrencyBR(updateValue);
@@ -122,12 +123,17 @@ export default function BulkPriceUpdateModal({
         newPrice = currentPrice - value;
         break;
     }
-    return Math.max(0, newPrice); // Ensure price doesn't go below zero
+    return parseFloat(Math.max(0, newPrice).toFixed(2)); // Ensure price doesn't go below zero and is formatted
   };
 
   const handleApplyChanges = () => {
     if (filteredProducts.length === 0) {
       showError('Nenhum produto selecionado', 'Não há produtos para aplicar as alterações.');
+      return;
+    }
+
+    if (!costPriceUpdateValue && !salePriceUpdateValue) {
+      showError('Nenhuma alteração de preço', 'Por favor, insira um valor para alterar o preço de custo ou de venda.');
       return;
     }
 
@@ -148,8 +154,8 @@ export default function BulkPriceUpdateModal({
 
         return {
           ...unit,
-          costPrice: parseFloat(newCostPrice.toFixed(2)),
-          salePrice: parseFloat(newSalePrice.toFixed(2)),
+          costPrice: newCostPrice,
+          salePrice: newSalePrice,
           updatedAt: new Date().toISOString(), // Update timestamp
         };
       }
@@ -173,20 +179,20 @@ export default function BulkPriceUpdateModal({
         {priceType === 'costPrice' ? 'Preço de Custo' : 'Preço de Venda'}
       </h4>
       <div className="flex flex-wrap gap-2 mb-3">
-        <label className="flex items-center text-xs">
-          <input type="radio" name={`${priceType}-type`} value="increase_percent" checked={updateType === 'increase_percent'} onChange={() => setUpdateType('increase_percent')} className="mr-1" />
+        <label className="flex items-center text-xs cursor-pointer">
+          <input type="radio" name={`${priceType}-type`} value="increase_percent" checked={updateType === 'increase_percent'} onChange={() => setUpdateType('increase_percent')} className="mr-1 form-radio text-purple-600" />
           <ArrowUp size={12} className="text-green-500 mr-0.5" /> %
         </label>
-        <label className="flex items-center text-xs">
-          <input type="radio" name={`${priceType}-type`} value="decrease_percent" checked={updateType === 'decrease_percent'} onChange={() => setUpdateType('decrease_percent')} className="mr-1" />
+        <label className="flex items-center text-xs cursor-pointer">
+          <input type="radio" name={`${priceType}-type`} value="decrease_percent" checked={updateType === 'decrease_percent'} onChange={() => setUpdateType('decrease_percent')} className="mr-1 form-radio text-purple-600" />
           <ArrowDown size={12} className="text-red-500 mr-0.5" /> %
         </label>
-        <label className="flex items-center text-xs">
-          <input type="radio" name={`${priceType}-type`} value="increase_amount" checked={updateType === 'increase_amount'} onChange={() => setUpdateType('increase_amount')} className="mr-1" />
+        <label className="flex items-center text-xs cursor-pointer">
+          <input type="radio" name={`${priceType}-type`} value="increase_amount" checked={updateType === 'increase_amount'} onChange={() => setUpdateType('increase_amount')} className="mr-1 form-radio text-purple-600" />
           <ArrowUp size={12} className="text-green-500 mr-0.5" /> R$
         </label>
-        <label className="flex items-center text-xs">
-          <input type="radio" name={`${priceType}-type`} value="decrease_amount" checked={updateType === 'decrease_amount'} onChange={() => setUpdateType('decrease_amount')} className="mr-1" />
+        <label className="flex items-center text-xs cursor-pointer">
+          <input type="radio" name={`${priceType}-type`} value="decrease_amount" checked={updateType === 'decrease_amount'} onChange={() => setUpdateType('decrease_amount')} className="mr-1 form-radio text-purple-600" />
           <ArrowDown size={12} className="text-red-500 mr-0.5" /> R$
         </label>
       </div>
