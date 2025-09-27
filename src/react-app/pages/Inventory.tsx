@@ -30,6 +30,7 @@ import ProductModal from '@/react-app/components/ProductModal'; // Importar Prod
 import BulkPriceUpdateModal from '@/react-app/components/BulkPriceUpdateModal'; // Importar o novo modal
 import StockAdjustmentModal from '@/react-app/components/StockAdjustmentModal'; // Importar o novo modal de ajuste de estoque
 import ProductActionsDropdown from '@/react-app/components/ProductActionsDropdown'; // Importar o novo dropdown
+import EditInventoryUnitModal from '@/react-app/components/EditInventoryUnitModal'; // Importar o novo modal de edição de unidade
 import { useNotification } from '@/react-app/components/NotificationSystem';
 
 interface InventoryUnit {
@@ -55,6 +56,7 @@ interface InventoryUnit {
   purchaseId?: string;
   locatorCode?: string;
   minStock?: number; // Adicionado minStock
+  warrantyTerm: string;
 }
 
 interface Purchase {
@@ -107,9 +109,9 @@ export default function Inventory() {
   const [isProductHistoryModalOpen, setIsProductHistoryModalOpen] = useState(false);
   const [selectedProductForHistory, setSelectedProductForHistory] = useState<InventoryUnit | null>(null);
   
-  // New states for ProductModal (editing inventory units)
-  const [isProductEditModalOpen, setIsProductEditModalOpen] = useState(false);
-  const [editingProductUnit, setEditingProductUnit] = useState<InventoryUnit | null>(null);
+  // New states for ProductModal (editing product definitions)
+  const [isProductDefinitionModalOpen, setIsProductDefinitionModalOpen] = useState(false);
+  const [editingProductDefinition, setEditingProductDefinition] = useState<any>(null); // Use 'any' for ProductDefinition type
 
   // New state for BulkPriceUpdateModal
   const [isBulkPriceUpdateModalOpen, setIsBulkPriceUpdateModalOpen] = useState(false);
@@ -118,6 +120,10 @@ export default function Inventory() {
   const [isStockAdjustmentModalOpen, setIsStockAdjustmentModalOpen] = useState(false);
   const [selectedProductForStockAdjustment, setSelectedProductForStockAdjustment] = useState<InventoryUnit | null>(null);
   const [currentStockForAdjustment, setCurrentStockForAdjustment] = useState(0);
+
+  // New states for EditInventoryUnitModal
+  const [isEditInventoryUnitModalOpen, setIsEditInventoryUnitModalOpen] = useState(false);
+  const [unitToEdit, setUnitToEdit] = useState<InventoryUnit | null>(null);
 
   // Purchase filters
   const [purchaseDateFrom, setPurchaseDateFrom] = useState('');
@@ -149,7 +155,8 @@ export default function Inventory() {
         updatedAt: '2025-09-13',
         purchaseId: '1',
         locatorCode: 'LOC001234567',
-        minStock: 2 // Adicionado minStock
+        minStock: 2, // Adicionado minStock
+        warrantyTerm: '1 ano (defeito de fábrica)'
       },
       {
         id: '2',
@@ -173,7 +180,8 @@ export default function Inventory() {
         updatedAt: '2025-09-13',
         purchaseId: '2',
         locatorCode: 'LOC001234568',
-        minStock: 1 // Adicionado minStock
+        minStock: 1, // Adicionado minStock
+        warrantyTerm: '1 ano (defeito de fábrica)'
       },
       {
         id: '3',
@@ -197,7 +205,8 @@ export default function Inventory() {
         updatedAt: '2025-09-13',
         purchaseId: '1',
         locatorCode: 'LOC001234567',
-        minStock: 3 // Adicionado minStock
+        minStock: 3, // Adicionado minStock
+        warrantyTerm: '1 ano (defeito de fábrica)'
       },
       {
         id: '4',
@@ -221,7 +230,8 @@ export default function Inventory() {
         updatedAt: '2025-09-13',
         purchaseId: '3',
         locatorCode: 'LOC001234569',
-        minStock: 1 // Adicionado minStock
+        minStock: 1, // Adicionado minStock
+        warrantyTerm: '1 ano (defeito de fábrica)'
       },
       {
         id: '5',
@@ -245,7 +255,8 @@ export default function Inventory() {
         updatedAt: '2025-09-13',
         purchaseId: '2',
         locatorCode: 'LOC001234568',
-        minStock: 10 // Adicionado minStock
+        minStock: 10, // Adicionado minStock
+        warrantyTerm: '3 meses (seminovos)'
       }
     ]);
 
@@ -568,25 +579,24 @@ export default function Inventory() {
     setIsProductHistoryModalOpen(true);
   };
 
-  // New functions for editing inventory units
-  const handleEditProductUnit = (unitId: string) => {
-    const unitToEdit = inventoryUnits.find(unit => unit.id === unitId);
-    if (unitToEdit) {
-      setEditingProductUnit(unitToEdit);
-      setIsProductEditModalOpen(true);
+  // New functions for editing individual inventory units
+  const handleEditInventoryUnit = (unitId: string) => {
+    const unit = inventoryUnits.find(u => u.id === unitId);
+    if (unit) {
+      setUnitToEdit(unit);
+      setIsEditInventoryUnitModalOpen(true);
     }
   };
 
-  const handleProductUnitSaved = (updatedUnit: InventoryUnit) => {
+  const handleInventoryUnitUpdated = (updatedUnit: InventoryUnit) => {
     setInventoryUnits(prev => 
       prev.map(unit => unit.id === updatedUnit.id ? updatedUnit : unit)
     );
-    showSuccess('Produto Atualizado', `O item ${updatedUnit.productDescription} foi atualizado com sucesso.`);
-    setIsProductEditModalOpen(false);
-    setEditingProductUnit(null);
+    setIsEditInventoryUnitModalOpen(false);
+    setUnitToEdit(null);
   };
 
-  // New function for deleting inventory units
+  // New functions for deleting inventory units
   const handleDeleteProductUnit = (unitId: string) => {
     if (confirm('Tem certeza que deseja excluir este item do estoque? Esta ação não pode ser desfeita.')) {
       setInventoryUnits(prev => prev.filter(unit => unit.id !== unitId));
@@ -1034,7 +1044,7 @@ export default function Inventory() {
                           <ProductActionsDropdown
                             unitId={unit.id}
                             onViewHistory={() => handleViewProductHistory(unit)}
-                            onEdit={() => handleEditProductUnit(unit.id)}
+                            onEdit={() => handleEditInventoryUnit(unit.id)} {/* Chamar o novo handler */}
                             onDelete={() => handleDeleteProductUnit(unit.id)}
                             onAdjustStock={() => handleOpenStockAdjustmentModal(unit.id)}
                           />
@@ -1303,15 +1313,15 @@ export default function Inventory() {
         product={selectedProductForHistory}
       />
 
-      {/* Product Edit Modal (for Inventory Units) */}
+      {/* Product Definition Modal (for creating/editing product types) */}
       <ProductModal
-        isOpen={isProductEditModalOpen}
+        isOpen={isProductDefinitionModalOpen}
         onClose={() => {
-          setIsProductEditModalOpen(false);
-          setEditingProductUnit(null);
+          setIsProductDefinitionModalOpen(false);
+          setEditingProductDefinition(null);
         }}
-        product={editingProductUnit} // Pass the selected unit for editing
-        onProductSaved={handleProductUnitSaved} // Handle saving updates
+        product={editingProductDefinition}
+        onProductSaved={() => { /* Handle product definition saved */ }}
       />
 
       {/* Bulk Price Update Modal */}
@@ -1329,6 +1339,14 @@ export default function Inventory() {
         productUnit={selectedProductForStockAdjustment}
         currentStock={currentStockForAdjustment}
         onConfirmAdjustment={handleConfirmStockAdjustment}
+      />
+
+      {/* Edit Inventory Unit Modal (NEW) */}
+      <EditInventoryUnitModal
+        isOpen={isEditInventoryUnitModalOpen}
+        onClose={() => setIsEditInventoryUnitModalOpen(false)}
+        unit={unitToEdit}
+        onUnitUpdated={handleInventoryUnitUpdated}
       />
     </div>
   );
