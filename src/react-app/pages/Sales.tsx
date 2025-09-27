@@ -17,7 +17,8 @@ import {
   Calculator, // Importar Calculator
   Edit3,
   Check,
-  Award // Ícone para ranking
+  Award, // Ícone para ranking
+  ChevronUp // Importar ChevronUp para o toggle
 } from 'lucide-react';
 import { useTheme } from '@/react-app/hooks/useTheme';
 import { useNotification } from '@/react-app/components/NotificationSystem';
@@ -111,6 +112,7 @@ export default function Sales() {
   const [productSearch, setProductSearch] = useState('');
   const [viewingSaleId, setViewingSaleId] = useState<string | null>(null);
   const [sellerRankingSortOrder, setSellerRankingSortOrder] = useState<'desc' | 'asc'>('desc');
+  const [isSellerRankingExpanded, setIsSellerRankingExpanded] = useState(false); // Novo estado para expansão
 
   // Mock data for sales
   const sales: Sale[] = [
@@ -363,50 +365,67 @@ export default function Sales() {
                 <Award className="mr-2 text-yellow-500" size={20} />
                 Ranking de Vendedores
               </h3>
-              <button
-                onClick={() => setSellerRankingSortOrder(prev => prev === 'desc' ? 'asc' : 'desc')}
-                className={`px-3 py-1 rounded-lg text-sm font-medium flex items-center transition-colors ${
-                  theme === 'dark'
-                    ? 'bg-slate-700 text-white hover:bg-slate-600'
-                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                }`}
-              >
-                Ordenar por Vendas {sellerRankingSortOrder === 'desc' ? '↓' : '↑'}
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setSellerRankingSortOrder(prev => prev === 'desc' ? 'asc' : 'desc')}
+                  className={`px-3 py-1 rounded-lg text-sm font-medium flex items-center transition-colors ${
+                    theme === 'dark'
+                      ? 'bg-slate-700 text-white hover:bg-slate-600'
+                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                  }`}
+                >
+                  Ordenar por Vendas {sellerRankingSortOrder === 'desc' ? '↓' : '↑'}
+                </button>
+                <button
+                  onClick={() => setIsSellerRankingExpanded(!isSellerRankingExpanded)}
+                  className={`p-1 rounded-lg transition-colors ${
+                    theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-slate-200'
+                  }`}
+                  title={isSellerRankingExpanded ? 'Retrair' : 'Expandir'}
+                >
+                  {isSellerRankingExpanded ? (
+                    <ChevronUp size={20} className={theme === 'dark' ? 'text-slate-400' : 'text-slate-600'} />
+                  ) : (
+                    <ChevronDown size={20} className={theme === 'dark' ? 'text-slate-400' : 'text-slate-600'} />
+                  )}
+                </button>
+              </div>
             </div>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className={theme === 'dark' ? 'bg-slate-700' : 'bg-slate-50'}>
-                  <tr>
-                    <th className={`text-left py-3 px-4 font-semibold text-sm ${theme === 'dark' ? 'text-slate-200' : 'text-slate-700'}`}>Posição</th>
-                    <th className={`text-left py-3 px-4 font-semibold text-sm ${theme === 'dark' ? 'text-slate-200' : 'text-slate-700'}`}>Vendedor</th>
-                    <th className={`text-left py-3 px-4 font-semibold text-sm ${theme === 'dark' ? 'text-slate-200' : 'text-slate-700'}`}>Total Vendido</th>
-                    <th className={`text-left py-3 px-4 font-semibold text-sm ${theme === 'dark' ? 'text-slate-200' : 'text-slate-700'}`}>Nº de Vendas</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {sellerRanking.map((seller, index) => (
-                    <tr key={seller.name} className={`border-b transition-colors ${
-                      theme === 'dark' 
-                        ? 'border-slate-700 hover:bg-slate-700/50' 
-                        : 'border-slate-100 hover:bg-slate-50'
-                    }`}>
-                      <td className={`py-3 px-4 font-medium text-sm ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>
-                        {index + 1}º
-                      </td>
-                      <td className={`py-3 px-4 text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-slate-600'}`}>
-                        {seller.name}
-                      </td>
-                      <td className={`py-3 px-4 text-sm font-semibold ${theme === 'dark' ? 'text-green-400' : 'text-green-600'}`}>
-                        R$ {seller.totalSales.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                      </td>
-                      <td className={`py-3 px-4 text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-slate-600'}`}>
-                        {seller.salesCount}
-                      </td>
+            <div className={`overflow-hidden transition-all duration-300 ease-in-out ${isSellerRankingExpanded ? 'max-h-screen' : 'max-h-0'}`}>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className={theme === 'dark' ? 'bg-slate-700' : 'bg-slate-50'}>
+                    <tr>
+                      <th className={`text-left py-3 px-4 font-semibold text-sm ${theme === 'dark' ? 'text-slate-200' : 'text-slate-700'}`}>Posição</th>
+                      <th className={`text-left py-3 px-4 font-semibold text-sm ${theme === 'dark' ? 'text-slate-200' : 'text-slate-700'}`}>Vendedor</th>
+                      <th className={`text-left py-3 px-4 font-semibold text-sm ${theme === 'dark' ? 'text-slate-200' : 'text-slate-700'}`}>Total Vendido</th>
+                      <th className={`text-left py-3 px-4 font-semibold text-sm ${theme === 'dark' ? 'text-slate-200' : 'text-slate-700'}`}>Nº de Vendas</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {sellerRanking.map((seller, index) => (
+                      <tr key={seller.name} className={`border-b transition-colors ${
+                        theme === 'dark' 
+                          ? 'border-slate-700 hover:bg-slate-700/50' 
+                          : 'border-slate-100 hover:bg-slate-50'
+                      }`}>
+                        <td className={`py-3 px-4 font-medium text-sm ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>
+                          {index + 1}º
+                        </td>
+                        <td className={`py-3 px-4 text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-slate-600'}`}>
+                          {seller.name}
+                        </td>
+                        <td className={`py-3 px-4 text-sm font-semibold ${theme === 'dark' ? 'text-green-400' : 'text-green-600'}`}>
+                          R$ {seller.totalSales.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                        </td>
+                        <td className={`py-3 px-4 text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-slate-600'}`}>
+                          {seller.salesCount}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         </div>
