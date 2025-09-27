@@ -64,6 +64,9 @@ export default function BulkPriceUpdateModal({
   const [newCostPriceInput, setNewCostPriceInput] = useState('');
   const [newSalePriceInput, setNewSalePriceInput] = useState('');
 
+  // CORREÇÃO: Adicionando de volta a declaração de displayedProducts
+  const [displayedProducts, setDisplayedProducts] = useState<InventoryUnit[]>([]);
+
   const [isAnimatingOut, setIsAnimatingOut] = useState(false);
 
   // Memoiza a lista de produtos filtrados para a busca (não para exibição imediata)
@@ -364,7 +367,7 @@ export default function BulkPriceUpdateModal({
             <button
               type="button"
               onClick={handleApplyChanges}
-              disabled={filteredProducts.length === 0 || (!newCostPriceInput && !newSalePriceInput)}
+              disabled={displayedProducts.length === 0 || (!newCostPriceInput && !newSalePriceInput)}
               className="px-6 py-3 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-xl font-medium shadow-lg transition-all duration-200 hover:shadow-xl hover:scale-105 flex items-center disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
             >
               <CheckCircle className="mr-2" size={16} />
