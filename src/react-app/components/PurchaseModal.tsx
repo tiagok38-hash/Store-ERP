@@ -62,6 +62,14 @@ interface TradeInResult {
   newInventoryUnits: InventoryUnitForTradeIn[];
 }
 
+// Interface for Customer (to be passed from SalesModal)
+interface Customer {
+  id: string;
+  name: string;
+  email?: string;
+  phone?: string;
+}
+
 interface PurchaseModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -69,6 +77,7 @@ interface PurchaseModalProps {
   onTradeInSaved?: (result: TradeInResult) => void; // New callback for trade-in specific data
   editingPurchase?: any;
   isTradeIn?: boolean;
+  tradeInCustomer?: Customer | null; // New prop for trade-in customer
 }
 
 const mockSuppliers = [
@@ -220,6 +229,7 @@ export default function PurchaseModal({
   onTradeInSaved, // New prop
   editingPurchase, 
   isTradeIn = false,
+  tradeInCustomer = null, // New prop default to null
 }: PurchaseModalProps) {
   const { theme } = useTheme();
   const { showSuccess, showError } = useNotification();
@@ -272,10 +282,31 @@ export default function PurchaseModal({
     }, 300); // Match animation duration
   };
 
-  // Efeito para inicializar o formulário quando editingPurchase muda
+  // Efeito para inicializar o formulário quando editingPurchase ou tradeInCustomer muda
   useEffect(() => {
     if (isOpen) { // Only reset if modal is opening
-      if (editingPurchase) {
+      if (isTradeIn && tradeInCustomer) {
+        // Pre-fill supplier with trade-in customer
+        setFormData(prev => ({
+          ...prev,
+          supplierId: tradeInCustomer.id,
+          purchaseDate: new Date().toISOString().split('T')[0], // Always current date for trade-in
+          invoiceNumber: '', // No invoice for trade-in
+          observations: `Aparelho recebido em troca do cliente: ${tradeInCustomer.name}`
+        }));
+        setSelectedSupplier(tradeInCustomer.id);
+        setSupplierSearchTerm(tradeInCustomer.name);
+        setProductType('apple'); // Default to apple for trade-in, usually phones
+        setSelectedBrand('1'); // Default to Apple brand ID
+        setSelectedCategory('');
+        setSelectedModel('');
+        setSelectedStorage('');
+        setSelectedColor('');
+        setSelectedDescription('');
+        setProductVariations([]);
+        setItems([]);
+        setAdditionalCost(0);
+      } else if (editingPurchase) {
         setFormData({
           supplierId: editingPurchase.supplierId || '',
           purchaseDate: editingPurchase.purchaseDate || new Date().toISOString().split('T')[0],
@@ -329,7 +360,7 @@ export default function PurchaseModal({
         setAdditionalCost(0);
       }
     }
-  }, [isOpen, editingPurchase]);
+  }, [isOpen, editingPurchase, isTradeIn, tradeInCustomer]);
 
 
   const filteredSuppliers = mockSuppliers.filter(supplier => 
@@ -419,7 +450,8 @@ export default function PurchaseModal({
   };
 
   const subtotal = items.reduce((sum, item) => sum + item.totalPrice, 0);
-  const total = subtotal + additionalCost;
+  const additionalCostTotal = parseCurrencyBR(formatCurrencyInput(additionalCost.toString())); // Ensure additionalCost is parsed
+  const total = subtotal + additionalCostTotal;
 
   // Gerar código localizador único
   const generateLocatorCode = (): string => {
@@ -500,7 +532,7 @@ export default function PurchaseModal({
       observations: formData.observations,
       items: itemsWithSkus,
       subtotal,
-      additionalCost,
+      additionalCost: additionalCostTotal, // Use the parsed value
       total,
       status: editingPurchase?.status || 'partial',
       createdAt: editingPurchase?.createdAt || new Date().toISOString(),
@@ -528,6 +560,8 @@ export default function PurchaseModal({
   };
 
   if (!isOpen && !isAnimatingOut) return null;
+
+  const isSupplierInputDisabled = isTradeIn && tradeInCustomer !== null;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -575,13 +609,14 @@ export default function PurchaseModal({
                         }
                       }}
                       onFocus={() => setShowSupplierDropdown(true)}
+                      disabled={isSupplierInputDisabled} // Disable if pre-filled by trade-in
                       className={`w-full px-2 py-1.5 text-xs border rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
                         theme === 'dark'
                           ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-400'
                           : 'bg-white border-slate-300 text-slate-900'
-                      }`}
+                      } ${isSupplierInputDisabled ? 'opacity-70 cursor-not-allowed' : ''}`}
                     />
-                    {showSupplierDropdown && supplierSearchTerm && filteredSuppliers.length > 0 && (
+                    {showSupplierDropdown && supplierSearchTerm && filteredSuppliers.length > 0 && !isSupplierInputDisabled && (
                       <div className={`absolute z-10 w-full mt-1 border rounded shadow-lg max-h-32 overflow-y-auto ${
                         theme === 'dark' 
                           ? 'bg-slate-700 border-slate-600' 
@@ -611,7 +646,8 @@ export default function PurchaseModal({
                   <button
                     type="button"
                     onClick={() => setIsSupplierModalOpen(true)}
-                    className="px-2 py-1.5 bg-green-500 text-white rounded hover:bg-green-600 transition-colors flex items-center justify-center"
+                    disabled={isSupplierInputDisabled} // Disable if pre-filled by trade-in
+                    className={`px-2 py-1.5 bg-green-500 text-white rounded hover:bg-green-600 transition-colors flex items-center justify-center ${isSupplierInputDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
                     title="Adicionar novo fornecedor"
                   >
                     <Plus size={14} />

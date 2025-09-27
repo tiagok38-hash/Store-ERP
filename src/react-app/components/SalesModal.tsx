@@ -340,6 +340,11 @@ export default function EnhancedSalesModal({ isOpen, onClose }: EnhancedSalesMod
 
   const addPaymentMethod = (type: PaymentMethod['type'] = 'money') => {
     if (type === 'trade_in') {
+      // Ensure a customer is selected before opening trade-in modal
+      if (!selectedCustomer) {
+        showError('Cliente Obrigatório', 'Selecione um cliente antes de adicionar um aparelho na troca.');
+        return;
+      }
       setIsTradeInModalOpen(true);
       return;
     }
@@ -1021,6 +1026,7 @@ export default function EnhancedSalesModal({ isOpen, onClose }: EnhancedSalesMod
         onClose={() => setIsTradeInModalOpen(false)}
         isTradeIn={true}
         onTradeInSaved={handleTradeInSaved} // Use the new handler
+        tradeInCustomer={selectedCustomer} // Pass the selected customer here
         // Aumentar o z-index para garantir que ele apareça sobre o SalesModal
         style={{ zIndex: 60 }} 
       />
