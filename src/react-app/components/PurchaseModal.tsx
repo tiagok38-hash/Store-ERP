@@ -1,298 +1,1385 @@
-import { useState, useEffect, useMemo } from 'react';
-import { X, Plus, Trash2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { 
+  X, 
+  Save, 
+  Plus,
+  Trash2,
+  Info,
+  Package,
+  Building2
+} from 'lucide-react';
+import { useNotification } from '@/react-app/components/NotificationSystem';
 import { useTheme } from '@/react-app/hooks/useTheme';
-import { Product, Purchase, PurchaseItem, StockLocation, WarrantyTerm } from '@/shared/types';
-import { formatCurrencyBR } from '@/react-app/utils/currency';
+import { formatCurrencyInput, parseCurrencyBR, formatCurrencyBR } from '@/react-app/utils/currency';
+import CustomerModal from '@/react-app/components/CustomerModal';
 
-// Define a type for purchase items within the modal, including product details
-interface PurchaseItemForm extends PurchaseItem {
-  product: Product; // Include product object for display and selection
+interface PurchaseItem {
+  id: string;
+  description: string;
+  quantity: number;
+  costPrice: number;
+  finalPrice: number;
+  totalPrice: number;
+  imei1?: string;
+  imei2?: string;
+  serialNumber?: string;
+  condition: string;
+  location: string;
+  warranty: string;
+  sku?: string;
+  hasImeiSerial?: boolean;
+}
+
+// Add InventoryUnit interface here for local use in trade-in logic
+interface InventoryUnitForTradeIn {
+  id: string;
+  productSku: string;
+  productDescription: string;
+  brand: string;
+  category: string;
+  model?: string;
+  color?: string;
+  storage?: string;
+  condition: 'novo' | 'seminovo' | 'usado';
+  location?: string;
+  imei1?: string;
+  imei2?: string;
+  serialNumber?: string;
+  barcode?: string;
+  costPrice: number; // This is the cost to the store (what they paid for trade-in)
+  salePrice: number; // For inventory, this is the value it's taken in at
+  status: 'available' | 'sold' | 'reserved' | 'defective';
+  createdAt: string;
+  updatedAt: string;
+  purchaseId?: string;
+  locatorCode?: string;
+  warrantyTerm: string; // Added for consistency
+}
+
+// New interface for trade-in data returned by PurchaseModal
+interface TradeInResult {
+  tradeInValue: number;
+  newInventoryUnits: InventoryUnitForTradeIn[];
+}
+
+// Interface for Customer (to be passed from SalesModal)
+interface Customer {
+  id: string;
+  name: string;
+  email?: string;
+  phone?: string;
 }
 
 interface PurchaseModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onPurchaseCreated: (purchase: Purchase) => void;
-  products: Product[];
-  stockLocations: StockLocation[];
-  warrantyTerms: WarrantyTerm[];
-  editingPurchase?: Purchase; // Optional prop for editing an existing purchase
-  initialProductToAdd?: Product; // NEW: Optional prop to pre-fill with a product
+  onPurchaseSaved?: (data: any) => void; // Keep as any for flexibility
+  onTradeInSaved?: (result: TradeInResult) => void; // New callback for trade-in specific data
+  editingPurchase?: any;
+  isTradeIn?: boolean;
+  tradeInCustomer?: Customer | null; // New prop for trade-in customer
 }
 
-export default function PurchaseModal({
-  isOpen,
-  onClose,
-  onPurchaseCreated,
-  products,
-  stockLocations,
-  warrantyTerms,
-  editingPurchase,
-  initialProductToAdd, // NEW
+const mockSuppliers = [
+  { id: '1', name: 'Fornecedor ABC Ltda' },
+  { id: '2', name: 'Tech Distribuidora' },
+  { id: '3', name: 'Acessórios & Cia' },
+  { id: '4', name: 'Apple Brasil' },
+  { id: '5', name: 'Samsung Eletrônica' },
+  { id: '6', name: 'Xiaomi Global' }
+];
+
+const mockStockLocations = [
+  'Vitrine Principal',
+  'Vitrine iS',
+  'Estoque A1-B2',
+  'Estoque B1-A3',
+  'Estoque C1-D2',
+  'Depósito',
+  'Loja',
+  'Balcão',
+  'Sala Técnica'
+];
+
+const mockBrands = [
+  { id: '1', name: 'Apple' },
+  { id: '2', name: 'Samsung' },
+  { id: '3', name: 'Xiaomi' },
+  { id: '4', name: 'Genérica' }
+];
+
+// Filtrar marcas baseado no tipo de produto
+const getAvailableBrands = (productType: 'apple' | 'product') => {
+  if (productType === 'apple') {
+    return mockBrands.filter(brand => brand.name === 'Apple');
+  }
+  return mockBrands;
+};
+
+const mockCategories = {
+  '1': [
+    { id: '1', name: 'iPhone' },
+    { id: '2', name: 'iPad' },
+    { id: '3', name: 'MacBook' },
+    { id: '4', name: 'AirPods' },
+    { id: '5', name: 'Apple Watch' }
+  ],
+  '2': [
+    { id: '6', name: 'Galaxy S' },
+    { id: '7', name: 'Galaxy A' },
+    { id: '8', name: 'Galaxy Tab' }
+  ],
+  '3': [
+    { id: '9', name: 'Redmi' },
+    { id: '10', name: 'POCO' },
+    { id: '11', name: 'Mi' }
+  ],
+  '4': [
+    { id: '12', name: 'Capinhas' },
+    { id: '13', name: 'Películas' },
+    { id: '14', name: 'Carregadores' }
+  ]
+};
+
+// Modelos específicos por categoria
+const mockModels = {
+  '1': ['iPhone 15 Pro Max', 'iPhone 15 Pro', 'iPhone 15 Plus', 'iPhone 15', 'iPhone 14 Pro Max', 'iPhone 14 Pro', 'iPhone 14', 'iPhone 13'],
+  '2': ['iPad Pro 12.9"', 'iPad Pro 11"', 'iPad Air 5ª Geração', 'iPad 10ª Geração', 'iPad Mini'],
+  '3': ['MacBook Pro 16"', 'MacBook Pro 14"', 'MacBook Air 15"', 'MacBook Air 13"'],
+  '4': ['AirPods Pro 2ª Geração', 'AirPods 3ª Geração', 'AirPods Max'],
+  '5': ['Apple Watch Ultra 2', 'Apple Watch Series 9', 'Apple Watch SE'],
+  '6': ['Galaxy S24 Ultra', 'Galaxy S24+', 'Galaxy S24'],
+  '7': ['Galaxy A54', 'Galaxy A34', 'Galaxy A24'],
+  '9': ['Redmi Note 13 Pro+', 'Redmi Note 13 Pro', 'Redmi Note 13'],
+  '12': ['Capinha Silicone', 'Capinha Transparente', 'Capinha Couro']
+};
+
+// Armazenamento por modelo (para Apple)
+const mockStorage = {
+  'iPhone 15 Pro Max': ['128GB', '256GB', '512GB', '1TB'],
+  'iPhone 15 Pro': ['128GB', '256GB', '512GB', '1TB'],
+  'iPhone 15 Plus': ['128GB', '256GB', '512GB'],
+  'iPhone 15': ['128GB', '256GB', '512GB'],
+  'iPhone 14 Pro Max': ['128GB', '256GB', '512GB', '1TB'],
+  'iPhone 14 Pro': ['128GB', '256GB', '512GB', '1TB'],
+  'iPhone 14': ['128GB', '256GB', '512GB'],
+  'iPhone 13': ['128GB', '256GB', '512GB'],
+  'iPad Pro 12.9"': ['128GB', '256GB', '512GB', '1TB', '2TB'],
+  'iPad Pro 11"': ['128GB', '256GB', '512GB', '1TB', '2TB'],
+  'iPad Air 5ª Geração': ['64GB', '256GB'],
+  'iPad 10ª Geração': ['64GB', '256GB'],
+  'MacBook Pro 16"': ['512GB', '1TB', '2TB', '4TB', '8TB'],
+  'MacBook Pro 14"': ['512GB', '1TB', '2TB', '4TB'],
+  'MacBook Air 15"': ['256GB', '512GB', '1TB', '2TB'],
+  'MacBook Air 13"': ['256GB', '512GB', '1TB', '2TB']
+};
+
+// Cores por modelo e armazenamento (para Apple)
+const mockColors = {
+  'iPhone 15 Pro Max': ['Titânio Natural', 'Titânio Azul', 'Titânio Branco', 'Titânio Preto'],
+  'iPhone 15 Pro': ['Titânio Natural', 'Titânio Azul', 'Titânio Branco', 'Titânio Preto'],
+  'iPhone 15 Plus': ['Rosa', 'Amarelo', 'Verde', 'Azul', 'Preto'],
+  'iPhone 15': ['Rosa', 'Amarelo', 'Verde', 'Azul', 'Preto'],
+  'iPhone 14 Pro Max': ['Roxo Profundo', 'Dourado', 'Prata', 'Preto Espacial'],
+  'iPhone 14 Pro': ['Roxo Profundo', 'Dourado', 'Prata', 'Preto Espacial'],
+  'iPhone 14': ['Roxo', 'Azul', 'Midnight', 'Starlight', 'Product Red'],
+  'iPhone 13': ['Rosa', 'Azul', 'Midnight', 'Starlight', 'Product Red'],
+  'iPad Pro 12.9"': ['Cinza Espacial', 'Prata'],
+  'iPad Pro 11"': ['Cinza Espacial', 'Prata'],
+  'iPad Air 5ª Geração': ['Cinza Espacial', 'Rosa', 'Roxo', 'Azul', 'Starlight'],
+  'iPad 10ª Geração': ['Azul', 'Rosa', 'Amarelo', 'Prata'],
+  'MacBook Pro 16"': ['Cinza Espacial', 'Prata'],
+  'MacBook Pro 14"': ['Cinza Espacial', 'Prata'],
+  'MacBook Air 15"': ['Midnight', 'Starlight', 'Cinza Espacial', 'Prata'],
+  'MacBook Air 13"': ['Midnight', 'Starlight', 'Cinza Espacial', 'Prata'],
+  'AirPods Pro 2ª Geração': ['Branco'],
+  'AirPods 3ª Geração': ['Branco'],
+  'AirPods Max': ['Cinza Espacial', 'Prata', 'Rosa', 'Verde', 'Azul Céu'],
+  'Apple Watch Ultra 2': ['Titânio Natural'],
+  'Apple Watch Series 9': ['Midnight', 'Starlight', 'Rosa', 'Product Red'],
+  'Apple Watch SE': ['Midnight', 'Starlight', 'Prata']
+};
+
+// Descrições pré-cadastradas para produtos genéricos
+const mockProductDescriptions = [
+  'Capinha Silicone Premium',
+  'Capinha Transparente Anti-Impacto',
+  'Capinha Couro Magnética',
+  'Película Vidro Temperado',
+  'Película Hidrogel',
+  'Película Privacidade',
+  'Carregador USB-C 20W',
+  'Carregador Lightning',
+  'Carregador Wireless',
+  'Power Bank 10000mAh',
+  'Cabo USB-C para Lightning',
+  'Cabo USB-C para USB-C',
+  'Adaptador Lightning para P2',
+  'Suporte Veicular Magnético',
+  'Fone de Ouvido Bluetooth',
+  'Smartwatch',
+  'Tablet Android',
+  'Smartphone Android'
+];
+
+export default function PurchaseModal({ 
+  isOpen, 
+  onClose, 
+  onPurchaseSaved, 
+  onTradeInSaved, // New prop
+  editingPurchase, 
+  isTradeIn = false,
+  tradeInCustomer = null, // New prop default to null
 }: PurchaseModalProps) {
   const { theme } = useTheme();
-  const [purchaseItems, setPurchaseItems] = useState<PurchaseItemForm[]>([]);
-  const [status, setStatus] = useState<'pending' | 'completed'>('pending'); // Default status for new purchases
+  const { showSuccess, showError } = useNotification();
+  const [formData, setFormData] = useState({
+    supplierId: editingPurchase?.supplierId || '',
+    purchaseDate: editingPurchase?.purchaseDate || new Date().toISOString().split('T')[0],
+    invoiceNumber: editingPurchase?.invoiceNumber || '',
+    observations: editingPurchase?.observations || ''
+  });
 
-  // NEW: Effect to initialize purchase items when modal opens
+  const [productType, setProductType] = useState<'apple' | 'product'>(
+    editingPurchase?.productType || 'apple'
+  );
+  const [selectedSupplier, setSelectedSupplier] = useState(editingPurchase?.supplierId || '');
+  const [supplierSearchTerm, setSupplierSearchTerm] = useState(
+    editingPurchase ? mockSuppliers.find(s => s.id === editingPurchase.supplierId)?.name || '' : ''
+  );
+  const [showSupplierDropdown, setShowSupplierDropdown] = useState(false);
+  const [selectedBrand, setSelectedBrand] = useState(
+    editingPurchase?.selectedBrand || (editingPurchase?.productType === 'apple' ? '1' : '')
+  );
+  const [selectedCategory, setSelectedCategory] = useState(editingPurchase?.selectedCategory || '');
+  const [selectedModel, setSelectedModel] = useState(editingPurchase?.selectedModel || '');
+  const [selectedStorage, setSelectedStorage] = useState(editingPurchase?.selectedStorage || '');
+  const [selectedColor, setSelectedColor] = useState(editingPurchase?.selectedColor || '');
+  const [selectedDescription, setSelectedDescription] = useState(editingPurchase?.selectedDescription || '');
+  const [productVariations, setProductVariations] = useState<string[]>(editingPurchase?.productVariations || []);
+  const [currentVariation, setCurrentVariation] = useState('');
+  const [hasImeiSn, setHasImeiSn] = useState<'sim' | 'nao'>('sim');
+  
+  const [currentItem, setCurrentItem] = useState({
+    warranty: '1 ano',
+    location: '',
+    condition: 'Novo',
+    quantity: 1,
+    costPrice: '',
+    additionalCost: ''
+  });
+
+  const [items, setItems] = useState<PurchaseItem[]>(editingPurchase?.items || []);
+  const [additionalCost, setAdditionalCost] = useState(editingPurchase?.additionalCost || 0);
+  const [isSupplierModalOpen, setIsSupplierModalOpen] = useState(false);
+  const [isAnimatingOut, setIsAnimatingOut] = useState(false);
+
+  const handleClose = () => {
+    setIsAnimatingOut(true);
+    setTimeout(() => {
+      onClose();
+      setIsAnimatingOut(false);
+    }, 300); // Match animation duration
+  };
+
+  // Efeito para inicializar o formulário quando editingPurchase ou tradeInCustomer muda
   useEffect(() => {
-    if (isOpen) {
-      if (editingPurchase) {
-        // If editing an existing purchase, pre-fill with its items
-        setPurchaseItems(editingPurchase.purchase_items.map(item => ({
-          id: item.id,
-          purchase_id: item.purchase_id,
-          product_id: item.product_id,
-          quantity: item.quantity,
-          unit_cost_price: item.unit_cost_price,
-          total_cost_price: item.total_cost_price,
-          product: products.find(p => p.id === item.product_id) || item.product,
-        })));
-        setStatus(editingPurchase.status);
-      } else if (initialProductToAdd) {
-        // If opened to create a new purchase for a specific product
-        setPurchaseItems([{
-          id: `temp-${Date.now()}`, // Temporary ID for new item in modal
-          product_id: initialProductToAdd.id,
-          quantity: 1,
-          unit_cost_price: initialProductToAdd.cost_price,
-          total_cost_price: initialProductToAdd.cost_price,
-          product: initialProductToAdd,
-        }]);
-        setStatus('pending'); // Default to pending for new purchases
+    if (isOpen) { // Only reset if modal is opening
+      if (isTradeIn && tradeInCustomer) {
+        // Pre-fill supplier with trade-in customer
+        setFormData(prev => ({
+          ...prev,
+          supplierId: tradeInCustomer.id,
+          purchaseDate: new Date().toISOString().split('T')[0], // Always current date for trade-in
+          invoiceNumber: '', // No invoice for trade-in
+          observations: `Aparelho recebido em troca do cliente: ${tradeInCustomer.name}`
+        }));
+        setSelectedSupplier(tradeInCustomer.id);
+        setSupplierSearchTerm(tradeInCustomer.name);
+        setProductType('apple'); // Default to apple for trade-in, usually phones
+        setSelectedBrand('1'); // Default to Apple brand ID
+        setSelectedCategory('');
+        setSelectedModel('');
+        setSelectedStorage('');
+        setSelectedColor('');
+        setSelectedDescription('');
+        setProductVariations([]);
+        setItems([]);
+        setAdditionalCost(0);
+      } else if (editingPurchase) {
+        setFormData({
+          supplierId: editingPurchase.supplierId || '',
+          purchaseDate: editingPurchase.purchaseDate || new Date().toISOString().split('T')[0],
+          invoiceNumber: editingPurchase.invoiceNumber || '',
+          observations: editingPurchase.observations || ''
+        });
+        setProductType(editingPurchase.productType || 'apple');
+        setSelectedSupplier(editingPurchase.supplierId || '');
+        setSupplierSearchTerm(mockSuppliers.find(s => s.id === editingPurchase.supplierId)?.name || '');
+        setSelectedBrand(editingPurchase.selectedBrand || (editingPurchase.productType === 'apple' ? '1' : ''));
+        setSelectedCategory(editingPurchase.selectedCategory || '');
+        setSelectedModel(editingPurchase.selectedModel || '');
+        setSelectedStorage(editingPurchase.selectedStorage || '');
+        setSelectedColor(editingPurchase.selectedColor || '');
+        setSelectedDescription(editingPurchase.selectedDescription || '');
+        setProductVariations(editingPurchase.productVariations || []);
+
+        // Inicializa items corretamente, calculando totalPrice para itens existentes
+        const initializedItems = editingPurchase.items.map((item: any) => {
+          const quantity = item.quantity || 0;
+          const finalPrice = item.finalPrice || 0;
+          return {
+            ...item,
+            quantity: quantity,
+            costPrice: item.costPrice || 0,
+            finalPrice: finalPrice,
+            totalPrice: finalPrice * quantity, // Calcula totalPrice para itens existentes
+          };
+        });
+        setItems(initializedItems);
+        setAdditionalCost(editingPurchase.additionalCost || 0);
       } else {
-        // Default for a completely new, empty purchase
-        setPurchaseItems([]);
-        setStatus('pending');
+        // Resetar formulário para nova compra
+        setFormData({
+          supplierId: '',
+          purchaseDate: new Date().toISOString().split('T')[0],
+          invoiceNumber: '',
+          observations: ''
+        });
+        setProductType('apple');
+        setSelectedSupplier('');
+        setSupplierSearchTerm('');
+        setSelectedBrand('1'); // Default to Apple brand ID
+        setSelectedCategory('');
+        setSelectedModel('');
+        setSelectedStorage('');
+        setSelectedColor('');
+        setSelectedDescription('');
+        setProductVariations([]);
+        setItems([]);
+        setAdditionalCost(0);
       }
-    } else {
-      // When modal closes, clear items and reset status
-      setPurchaseItems([]);
-      setStatus('pending');
     }
-  }, [isOpen, initialProductToAdd, editingPurchase, products]);
+  }, [isOpen, editingPurchase, isTradeIn, tradeInCustomer]);
 
-  const handleAddItem = () => {
-    setPurchaseItems(prev => [
-      ...prev,
-      {
-        id: `temp-${Date.now()}`, // Temporary ID for new item in modal
-        product_id: '',
-        quantity: 1,
-        unit_cost_price: 0,
-        total_cost_price: 0,
-        product: {} as Product, // Placeholder product
-      },
-    ]);
+
+  const filteredSuppliers = mockSuppliers.filter(supplier => 
+    supplier.name.toLowerCase().includes(supplierSearchTerm.toLowerCase())
+  );
+  
+  const availableCategories = selectedBrand ? mockCategories[selectedBrand as keyof typeof mockCategories] || [] : [];
+  const availableModels = selectedCategory ? mockModels[selectedCategory as keyof typeof mockModels] || [] : [];
+  const availableStorage = selectedModel ? mockStorage[selectedModel as keyof typeof mockStorage] || [] : [];
+  const availableColors = selectedModel ? mockColors[selectedModel as keyof typeof mockColors] || [] : [];
+
+  const resetCurrentItem = () => {
+    // Preservar seleções feitas para facilitar cadastro de produtos similares
+    setCurrentItem({
+      ...currentItem,  // Manter configurações atuais
+      quantity: 1,     // Resetar apenas quantidade
+      costPrice: '',   // Resetar apenas preço
+      additionalCost: '' // Resetar apenas custo adicional
+    });
+    
+    // Para produtos não-Apple, resetar descrição e variações
+    if (productType !== 'apple') {
+      setSelectedDescription('');
+      setProductVariations([]);
+      setCurrentVariation('');
+    }
   };
 
-  const handleRemoveItem = (id: string) => {
-    setPurchaseItems(prev => prev.filter(item => item.id !== id));
+  const getProductDescription = () => {
+    if (productType === 'apple') {
+      if (!selectedModel) return '';
+      let description = selectedModel;
+      if (selectedStorage) description += ` ${selectedStorage}`;
+      if (selectedColor) description += ` ${selectedColor}`;
+      return description;
+    } else {
+      if (!selectedDescription) return '';
+      let description = selectedDescription;
+      if (productVariations.length > 0) {
+        description += ` - ${productVariations.join(', ')}`;
+      }
+      return description;
+    }
   };
 
-  const handleItemChange = (id: string, field: keyof PurchaseItemForm, value: any) => {
-    setPurchaseItems(prev =>
-      prev.map(item => {
-        if (item.id === id) {
-          let updatedItem = { ...item, [field]: value };
-
-          if (field === 'product_id') {
-            const selectedProduct = products.find(p => p.id === value);
-            if (selectedProduct) {
-              updatedItem.product = selectedProduct;
-              updatedItem.unit_cost_price = selectedProduct.cost_price;
-              updatedItem.total_cost_price = selectedProduct.cost_price * updatedItem.quantity;
-            }
-          } else if (field === 'quantity' || field === 'unit_cost_price') {
-            updatedItem.total_cost_price = updatedItem.quantity * updatedItem.unit_cost_price;
-          }
-          return updatedItem;
-        }
-        return item;
-      })
-    );
-  };
-
-  const totalCost = useMemo(() => {
-    return purchaseItems.reduce((sum, item) => sum + item.total_cost_price, 0);
-  }, [purchaseItems]);
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (purchaseItems.length === 0) {
-      alert('Adicione pelo menos um item à compra.');
+  const addItem = () => {
+    const description = getProductDescription();
+    
+    if (!description || !currentItem.costPrice || !selectedSupplier) {
+      showError('Campos obrigatórios', 'Preencha todos os campos obrigatórios: fornecedor, descrição do produto e preço de custo');
       return;
     }
 
-    const newPurchase: Purchase = {
-      id: editingPurchase?.id || '', // ID will be generated by Supabase on insert
-      user_id: '', // Will be filled by backend/hook
-      status: status,
-      total_cost: totalCost,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      purchase_items: purchaseItems.map(item => ({
-        id: item.id, // ID will be generated by Supabase on insert
-        purchase_id: '', // Will be filled after purchase insert
-        product_id: item.product_id,
-        quantity: item.quantity,
-        unit_cost_price: item.unit_cost_price,
-        total_cost_price: item.total_cost_price,
-        // product: item.product // Not needed for DB insert
-      })),
+    const costPrice = parseCurrencyBR(currentItem.costPrice);
+    const itemSpecificAdditionalCost = parseCurrencyBR(currentItem.additionalCost); // Renomeado para clareza
+    const quantity = currentItem.quantity;
+
+    if (costPrice <= 0) {
+      showError('Valores inválidos', 'Preço de custo deve ser maior que zero');
+      return;
+    }
+
+    const finalPrice = costPrice + itemSpecificAdditionalCost; // Preço final unitário
+    const totalPrice = finalPrice * quantity; // Total para esta linha de item
+
+    const hasImeiSerial = hasImeiSn === 'sim';
+
+    const newItem: PurchaseItem = {
+      id: Date.now().toString(),
+      description,
+      quantity,
+      costPrice,
+      finalPrice, // Usar o finalPrice calculado
+      totalPrice,
+      condition: currentItem.condition,
+      location: currentItem.location,
+      warranty: currentItem.warranty,
+      hasImeiSerial
     };
 
-    // For now, this modal always calls onPurchaseCreated, meaning it always creates a new purchase.
-    // If editing functionality is fully implemented, this would need to call an onPurchaseUpdated prop.
-    onPurchaseCreated(newPurchase);
+    setItems([...items, newItem]);
+    resetCurrentItem();
   };
 
-  // NEW: Dynamic modal title
-  const modalTitle = useMemo(() => {
-    if (editingPurchase) {
-      return `Editar Compra #${editingPurchase.id.substring(0, 8)}`;
-    }
-    if (initialProductToAdd) {
-      return `Nova Compra para ${initialProductToAdd.description}`;
-    }
-    return 'Registrar Nova Compra';
-  }, [editingPurchase, initialProductToAdd]);
+  const removeItem = (id: string) => {
+    setItems(items.filter(item => item.id !== id));
+  };
 
-  if (!isOpen) return null;
+  const subtotal = items.reduce((sum, item) => sum + item.totalPrice, 0);
+  const additionalCostTotal = parseCurrencyBR(formatCurrencyInput(additionalCost.toString())); // Ensure additionalCost is parsed
+  const total = subtotal + additionalCostTotal;
+
+  // Gerar código localizador único
+  const generateLocatorCode = (): string => {
+    const prefix = 'LOC';
+    const timestamp = new Date().getTime().toString().slice(-6);
+    const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+    return `${prefix}${timestamp}${random}`;
+  };
+
+  const handleSubmit = () => {
+    if (items.length === 0) {
+      showError('Nenhum item', 'Adicione pelo menos um item');
+      return;
+    }
+
+    if (!selectedSupplier) {
+      showError('Fornecedor obrigatório', 'Selecione um fornecedor');
+      return;
+    }
+
+    // Generate unique SKUs for each item following the #1, #2, #3 pattern
+    const itemsWithSkus = items.map((item, index) => ({
+      ...item,
+      sku: item.sku || `#${index + 1}` // Use existing SKU or generate #1, #2, etc.
+    }));
+
+    const supplierName = mockSuppliers.find(s => s.id === selectedSupplier)?.name || 'Fornecedor';
+    const locatorCode = editingPurchase?.locatorCode || generateLocatorCode();
+    
+    if (isTradeIn) {
+      const newInventoryUnits: InventoryUnitForTradeIn[] = [];
+      let totalTradeInValue = 0;
+
+      itemsWithSkus.forEach(item => {
+          const newUnitId = `tradein-unit-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
+          
+          const newInventoryUnit: InventoryUnitForTradeIn = {
+              id: newUnitId,
+              productSku: item.sku || 'TRADEIN-SKU',
+              productDescription: item.description,
+              brand: 'Trade-in', 
+              category: 'Trade-in', 
+              condition: item.condition as any,
+              location: item.location,
+              costPrice: item.costPrice, 
+              salePrice: item.costPrice, // Value it's taken in at
+              status: 'available',
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+              imei1: item.imei1,
+              imei2: item.imei2,
+              serialNumber: item.serialNumber,
+              barcode: item.barcode,
+              warrantyTerm: item.warranty
+          };
+          newInventoryUnits.push(newInventoryUnit);
+          totalTradeInValue += item.costPrice * item.quantity; 
+      });
+
+      if (onTradeInSaved) { // Use the new callback for trade-in
+          onTradeInSaved({
+              tradeInValue: totalTradeInValue,
+              newInventoryUnits: newInventoryUnits
+          });
+      }
+      showSuccess('Trade-in registrado', `Valor de R$ ${formatCurrencyBR(totalTradeInValue)} adicionado como pagamento.`);
+      handleClose();
+      return; 
+    }
+
+    const purchaseData = {
+      id: editingPurchase?.id || Date.now().toString(),
+      locatorCode,
+      supplierId: selectedSupplier,
+      supplierName,
+      purchaseDate: formData.purchaseDate,
+      invoiceNumber: formData.invoiceNumber,
+      observations: formData.observations,
+      items: itemsWithSkus,
+      subtotal,
+      additionalCost: additionalCostTotal, // Use the parsed value
+      total,
+      status: editingPurchase?.status || 'partial',
+      createdAt: editingPurchase?.createdAt || new Date().toISOString(),
+      // Salvar seleções para edição
+      productType,
+      selectedBrand,
+      selectedCategory,
+      selectedModel,
+      selectedStorage,
+      selectedColor,
+      selectedDescription,
+      productVariations
+    };
+
+    // Callback para salvar a compra
+    if (onPurchaseSaved) {
+      onPurchaseSaved(purchaseData);
+    }
+    
+    showSuccess(
+      `${editingPurchase ? 'Compra atualizada' : 'Compra registrada'} com sucesso!`,
+      `Localizador: ${locatorCode} - ${itemsWithSkus.length} itens ${editingPurchase ? 'atualizados' : 'registrados'}`
+    );
+    handleClose(); // Use the animated close
+  };
+
+  if (!isOpen && !isAnimatingOut) return null;
+
+  const isSupplierInputDisabled = isTradeIn && tradeInCustomer !== null;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className={`relative rounded-lg shadow-2xl max-w-3xl w-full p-6 ${theme === 'dark' ? 'bg-slate-800 text-white' : 'bg-white text-slate-900'}`}>
-        <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600">
-          <X size={24} />
-        </button>
-        <h2 className="text-2xl font-bold mb-6">{modalTitle}</h2>
+      <div 
+        className={`rounded-xl shadow-2xl max-w-6xl w-full max-h-[95vh] overflow-y-auto ${
+          theme === 'dark' ? 'bg-slate-800' : 'bg-white'
+        } ${isAnimatingOut ? 'animate-modal-out' : 'animate-modal-in'}`}
+      >
+        {/* Header */}
+        <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white p-3 flex justify-between items-center rounded-t-xl">
+          <h2 className="text-lg font-bold flex items-center">
+            <Package className="mr-2" size={20} />
+            {isTradeIn ? 'Trade-in: Entrada no Estoque' : editingPurchase ? 'Editar Compra' : 'Lançamento de Compras'}
+          </h2>
+          <button
+            onClick={handleClose}
+            className="hover:bg-white/20 p-2 rounded-lg transition-colors"
+          >
+            <X size={18} />
+          </button>
+        </div>
 
-        <form onSubmit={handleSubmit}>
-          <div className="mb-4">
-            <label htmlFor="status" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-              Status da Compra
-            </label>
-            <select
-              id="status"
-              value={status}
-              onChange={(e) => setStatus(e.target.value as 'pending' | 'completed')}
-              className={`w-full p-2 border rounded-lg ${
-                theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-slate-300 text-slate-900'
-              }`}
-              disabled={!!editingPurchase} // Disable status change if editing an existing purchase (for simplicity, can be adjusted)
-            >
-              <option value="pending">Pendente</option>
-              <option value="completed">Concluída</option>
-            </select>
-          </div>
+        <div className={`p-4 ${theme === 'dark' ? 'text-white' : ''}`}>
+          {/* Supplier Selection and Registration Note */}
+          <div className="mb-3">
+            <div className="grid grid-cols-2 gap-3 items-start">
+              {/* Supplier Search */}
+              <div>
+                <label className={`block text-xs font-medium mb-1 ${
+                  theme === 'dark' ? 'text-slate-200' : 'text-slate-700'
+                }`}>
+                  Fornecedor *
+                </label>
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <input
+                      type="text"
+                      placeholder="Buscar fornecedor..."
+                      value={supplierSearchTerm}
+                      onChange={(e) => {
+                        setSupplierSearchTerm(e.target.value);
+                        setShowSupplierDropdown(true);
+                        if (!e.target.value) {
+                          setSelectedSupplier('');
+                        }
+                      }}
+                      onFocus={() => setShowSupplierDropdown(true)}
+                      disabled={isSupplierInputDisabled} // Disable if pre-filled by trade-in
+                      className={`w-full px-2 py-1.5 text-xs border rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                        theme === 'dark'
+                          ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-400'
+                          : 'bg-white border-slate-300 text-slate-900'
+                      } ${isSupplierInputDisabled ? 'opacity-70 cursor-not-allowed' : ''}`}
+                    />
+                    {showSupplierDropdown && supplierSearchTerm && filteredSuppliers.length > 0 && !isSupplierInputDisabled && (
+                      <div className={`absolute z-10 w-full mt-1 border rounded shadow-lg max-h-32 overflow-y-auto ${
+                        theme === 'dark' 
+                          ? 'bg-slate-700 border-slate-600' 
+                          : 'bg-white border-slate-300'
+                      } animate-dropdown-in`}>
+                        {filteredSuppliers.map(supplier => (
+                          <button
+                            key={supplier.id}
+                            type="button"
+                            onClick={() => {
+                              setSelectedSupplier(supplier.id);
+                              setSupplierSearchTerm(supplier.name);
+                              setShowSupplierDropdown(false);
+                            }}
+                            className={`w-full text-left px-3 py-2 transition-colors text-xs ${
+                              theme === 'dark' 
+                                ? 'hover:bg-slate-600 text-white' 
+                                : 'hover:bg-blue-50 text-slate-900'
+                            }`}
+                          >
+                            {supplier.name}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsSupplierModalOpen(true)}
+                    disabled={isSupplierInputDisabled} // Disable if pre-filled by trade-in
+                    className={`px-2 py-1.5 bg-green-500 text-white rounded hover:bg-green-600 transition-colors flex items-center justify-center ${isSupplierInputDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    title="Adicionar novo fornecedor"
+                  >
+                    <Plus size={14} />
+                  </button>
+                </div>
+              </div>
 
-          <h3 className="text-lg font-semibold mb-4">Itens da Compra</h3>
-          <div className="space-y-4 mb-6 max-h-60 overflow-y-auto pr-2">
-            {purchaseItems.length === 0 && (
-              <p className="text-slate-500 dark:text-slate-400">Nenhum item adicionado ainda.</p>
-            )}
-            {purchaseItems.map((item, index) => (
-              <div key={item.id} className={`flex items-center space-x-4 p-3 rounded-lg ${theme === 'dark' ? 'bg-slate-700' : 'bg-slate-100'}`}>
-                <div className="flex-grow grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-xs font-medium text-slate-500 dark:text-slate-400">Produto</label>
-                    <select
-                      value={item.product_id}
-                      onChange={(e) => handleItemChange(item.id, 'product_id', e.target.value)}
-                      className={`w-full p-2 border rounded-lg text-sm ${
-                        theme === 'dark' ? 'bg-slate-600 border-slate-500 text-white' : 'bg-white border-slate-300 text-slate-900'
-                      }`}
-                      required
-                    >
-                      <option value="">Selecione um produto</option>
-                      {products.map(product => (
-                        <option key={product.id} value={product.id}>
-                          {product.description} ({product.sku})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-slate-500 dark:text-slate-400">Quantidade</label>
-                    <input
-                      type="number"
-                      value={item.quantity}
-                      onChange={(e) => handleItemChange(item.id, 'quantity', parseInt(e.target.value) || 0)}
-                      className={`w-full p-2 border rounded-lg text-sm ${
-                        theme === 'dark' ? 'bg-slate-600 border-slate-500 text-white' : 'bg-white border-slate-300 text-slate-900'
-                      }`}
-                      min="1"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-slate-500 dark:text-slate-400">Preço de Custo Unitário</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={item.unit_cost_price}
-                      onChange={(e) => handleItemChange(item.id, 'unit_cost_price', parseFloat(e.target.value) || 0)}
-                      className={`w-full p-2 border rounded-lg text-sm ${
-                        theme === 'dark' ? 'bg-slate-600 border-slate-500 text-white' : 'bg-white border-slate-300 text-slate-900'
-                      }`}
-                      required
-                    />
-                  </div>
-                  <div className="md:col-span-3">
-                    <label className="block text-xs font-medium text-slate-500 dark:text-slate-400">Custo Total do Item</label>
-                    <p className={`w-full p-2 rounded-lg text-sm font-semibold ${theme === 'dark' ? 'bg-slate-600 text-white' : 'bg-slate-200 text-slate-800'}`}>
-                      R$ {formatCurrencyBR(item.total_cost_price)}
-                    </p>
+              {/* Registration Note */}
+              <div>
+                <label className={`block text-xs font-medium mb-1 ${
+                  theme === 'dark' ? 'text-slate-200' : 'text-slate-700'
+                }`}>
+                  Cadastros
+                </label>
+                <div className={`rounded p-2 ${
+                  theme === 'dark' 
+                    ? 'bg-blue-900/50 border border-blue-700' 
+                    : 'bg-blue-50 border border-blue-200'
+                }`}>
+                  <div className="flex items-start">
+                    <Info className={`mr-1 mt-0.5 ${
+                      theme === 'dark' ? 'text-blue-400' : 'text-blue-600'
+                    }`} size={12} />
+                    <div className={`text-xs ${
+                      theme === 'dark' ? 'text-blue-300' : 'text-blue-800'
+                    }`}>
+                      Para cadastrar Marcas, Categorias e Grades,{' '}
+                      <button 
+                        type="button"
+                        onClick={() => window.open('/administration/product-structure', '_blank')}
+                        className={`underline font-medium transition-colors ${
+                          theme === 'dark' 
+                            ? 'hover:text-blue-200' 
+                            : 'hover:text-blue-900'
+                        }`}
+                      >
+                        clique aqui
+                      </button>
+                      .
+                    </div>
                   </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => handleRemoveItem(item.id)}
-                  className="p-2 text-red-600 hover:bg-red-100 dark:hover:bg-red-900/20 rounded-lg transition-colors"
-                >
-                  <Trash2 size={20} />
-                </button>
               </div>
-            ))}
+            </div>
           </div>
 
-          <button
-            type="button"
-            onClick={handleAddItem}
-            className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg shadow-md hover:bg-blue-700 transition-colors mb-6"
-          >
-            <Plus size={18} className="mr-2" />
-            Adicionar Item
-          </button>
-
-          <div className={`flex justify-between items-center p-4 rounded-lg ${theme === 'dark' ? 'bg-slate-700' : 'bg-slate-100'} mb-6`}>
-            <span className="text-lg font-semibold">Custo Total da Compra:</span>
-            <span className="text-2xl font-bold text-green-600">R$ {formatCurrencyBR(totalCost)}</span>
+          {/* Product Type Selection */}
+          <div className="mb-3">
+            <div className="flex gap-4">
+              <label className="flex items-center">
+                <input
+                  type="radio"
+                  name="productType"
+                  value="apple"
+                  checked={productType === 'apple'}
+                  onChange={(e) => {
+                    setProductType(e.target.value as 'apple' | 'product');
+                    if (e.target.value === 'apple') {
+                      setSelectedBrand('1'); // Apple ID
+                      setSelectedCategory(''); // Resetar categoria para mostrar opções
+                    } else {
+                      setSelectedBrand('');
+                      setSelectedDescription('');
+                      setProductVariations([]);
+                    }
+                  }}
+                  className="mr-1"
+                />
+                <span className={`font-medium text-xs ${
+                  theme === 'dark' ? 'text-slate-200' : 'text-slate-800'
+                }`}>Apple</span>
+              </label>
+              <label className="flex items-center">
+                <input
+                  type="radio"
+                  name="productType"
+                  value="product"
+                  checked={productType === 'product'}
+                  onChange={(e) => {
+                    setProductType(e.target.value as 'apple' | 'product');
+                    if (e.target.value === 'apple') {
+                      setSelectedBrand('1'); // Apple ID
+                      setSelectedCategory(''); // Resetar categoria para mostrar opções
+                    } else {
+                      setSelectedBrand('');
+                      setSelectedDescription('');
+                      setProductVariations([]);
+                    }
+                  }}
+                  className="mr-1"
+                />
+                <span className={`font-medium text-xs ${
+                  theme === 'dark' ? 'text-slate-200' : 'text-slate-800'
+                }`}>Produto</span>
+              </label>
+            </div>
           </div>
 
-          <div className="flex justify-end gap-4">
+          {/* Compact Row - Garantia, Local e Condição */}
+          <div className="grid grid-cols-4 gap-2 mb-3">
+            <div>
+              <label className={`block text-xs font-medium mb-1 ${
+                theme === 'dark' ? 'text-slate-300' : 'text-slate-700'
+              }`}>
+                Garantia
+              </label>
+              <select
+                value={currentItem.warranty}
+                onChange={(e) => setCurrentItem({...currentItem, warranty: e.target.value})}
+                className={`w-full px-1.5 py-1 text-xs border rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                  theme === 'dark'
+                    ? 'bg-slate-700 border-slate-600 text-white'
+                    : 'bg-white border-slate-300 text-slate-900'
+                }`}
+              >
+                <option value="1 ano">1 ano</option>
+                <option value="6 meses">6 meses</option>
+                <option value="3 meses">3 meses</option>
+                <option value="Sem garantia">Sem garantia</option>
+              </select>
+            </div>
+
+            <div>
+              <label className={`block text-xs font-medium mb-1 ${
+                theme === 'dark' ? 'text-slate-300' : 'text-slate-700'
+              }`}>
+                Local estoque
+              </label>
+              <select
+                value={currentItem.location}
+                onChange={(e) => setCurrentItem({...currentItem, location: e.target.value})}
+                className={`w-full px-1.5 py-1 text-xs border rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                  theme === 'dark'
+                    ? 'bg-slate-700 border-slate-600 text-white'
+                    : 'bg-white border-slate-300 text-slate-900'
+                }`}
+              >
+                <option value="">Selecione</option>
+                {mockStockLocations.map(location => (
+                  <option key={location} value={location}>{location}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className={`block text-xs font-medium mb-1 ${
+                theme === 'dark' ? 'text-slate-300' : 'text-slate-700'
+              }`}>
+                Condição
+              </label>
+              <select
+                value={currentItem.condition}
+                onChange={(e) => setCurrentItem({...currentItem, condition: e.target.value})}
+                className={`w-full px-1.5 py-1 text-xs border rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                  theme === 'dark'
+                    ? 'bg-slate-700 border-slate-600 text-white'
+                    : 'bg-white border-slate-300 text-slate-900'
+                }`}
+              >
+                <option value="Novo">Novo</option>
+                <option value="Seminovo">Seminovo</option>
+                <option value="Usado">Usado</option>
+              </select>
+            </div>
+
+            <div>
+              <label className={`block text-xs font-medium mb-1 ${
+                theme === 'dark' ? 'text-slate-300' : 'text-slate-700'
+              }`}>
+                IMEI/SN?
+              </label>
+              <div className="flex gap-2">
+                <label className="flex items-center">
+                  <input
+                    type="radio"
+                    name="hasImeiSn"
+                    value="sim"
+                    checked={hasImeiSn === 'sim'}
+                    onChange={(e) => setHasImeiSn(e.target.value as 'sim' | 'nao')}
+                    className="mr-1"
+                  />
+                  <span className={`text-xs ${
+                    theme === 'dark' ? 'text-slate-300' : 'text-slate-700'
+                  }`}>Sim</span>
+                </label>
+                <label className="flex items-center">
+                  <input
+                    type="radio"
+                    name="hasImeiSn"
+                    value="nao"
+                    checked={hasImeiSn === 'nao'}
+                    onChange={(e) => setHasImeiSn(e.target.value as 'sim' | 'nao')}
+                    className="mr-1"
+                  />
+                  <span className={`text-xs ${
+                    theme === 'dark' ? 'text-slate-300' : 'text-slate-700'
+                  }`}>Não</span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          {/* Product Form */}
+          <div className="space-y-3 mb-4">
+            {/* Product Registration */}
+            <div className="space-y-3">
+              {productType === 'apple' ? (
+                // Fluxo Apple - todos os filtros em uma única linha
+                <>
+                  {/* Linha única compacta - Marca, Categoria, Modelos, Armazenamento, Cor */}
+                  <div className="grid grid-cols-5 gap-2 mb-2">
+                    <div>
+                      <label className={`block text-xs font-medium mb-1 ${
+                        theme === 'dark' ? 'text-slate-300' : 'text-slate-700'
+                      }`}>
+                        Marca*
+                      </label>
+                      <select
+                        value={selectedBrand}
+                        onChange={(e) => {
+                          setSelectedBrand(e.target.value);
+                          setSelectedCategory('');
+                          setSelectedModel('');
+                          setSelectedStorage('');
+                          setSelectedColor('');
+                        }}
+                        className={`w-full px-1.5 py-1 text-xs border rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                          theme === 'dark'
+                            ? 'bg-slate-700 border-slate-600 text-white'
+                            : 'bg-white border-slate-300 text-slate-900'
+                        }`}
+                      >
+                        <option value="">Marca</option>
+                        {getAvailableBrands(productType).map(brand => (
+                          <option key={brand.id} value={brand.id}>{brand.name}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className={`block text-xs font-medium mb-1 ${
+                        theme === 'dark' ? 'text-slate-300' : 'text-slate-700'
+                      }`}>
+                        Categoria*
+                      </label>
+                      <select
+                        value={selectedCategory}
+                        onChange={(e) => {
+                          setSelectedCategory(e.target.value);
+                          setSelectedModel('');
+                          setSelectedStorage('');
+                          setSelectedColor('');
+                        }}
+                        className={`w-full px-1.5 py-1 text-xs border rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                          theme === 'dark'
+                            ? 'bg-slate-700 border-slate-600 text-white'
+                            : 'bg-white border-slate-300 text-slate-900'
+                        }`}
+                        disabled={!selectedBrand}
+                      >
+                        <option value="">Categoria</option>
+                        {availableCategories.map(category => (
+                          <option key={category.id} value={category.id}>{category.name}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className={`block text-xs font-medium mb-1 ${
+                        theme === 'dark' ? 'text-slate-300' : 'text-slate-700'
+                      }`}>
+                        Modelos*
+                      </label>
+                      <select
+                        value={selectedModel}
+                        onChange={(e) => {
+                          setSelectedModel(e.target.value);
+                          setSelectedStorage('');
+                          setSelectedColor('');
+                        }}
+                        className={`w-full px-1.5 py-1 text-xs border rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                          theme === 'dark'
+                            ? 'bg-slate-700 border-slate-600 text-white'
+                            : 'bg-white border-slate-300 text-slate-900'
+                        }`}
+                        disabled={!selectedCategory}
+                      >
+                        <option value="">Modelo</option>
+                        {availableModels.map(model => (
+                          <option key={model} value={model}>{model}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className={`block text-xs font-medium mb-1 ${
+                        theme === 'dark' ? 'text-slate-300' : 'text-slate-700'
+                      }`}>
+                        Armazenamento
+                      </label>
+                      <select
+                        value={selectedStorage}
+                        onChange={(e) => {
+                          setSelectedStorage(e.target.value);
+                          setSelectedColor('');
+                        }}
+                        className={`w-full px-1.5 py-1 text-xs border rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                          theme === 'dark'
+                            ? 'bg-slate-700 border-slate-600 text-white'
+                            : 'bg-white border-slate-300 text-slate-900'
+                        }`}
+                        disabled={!selectedModel || availableStorage.length === 0}
+                      >
+                        <option value="">Armazenamento</option>
+                        {availableStorage.map(storage => (
+                          <option key={storage} value={storage}>{storage}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className={`block text-xs font-medium mb-1 ${
+                        theme === 'dark' ? 'text-slate-300' : 'text-slate-700'
+                      }`}>
+                        Cor
+                      </label>
+                      <select
+                        value={selectedColor}
+                        onChange={(e) => setSelectedColor(e.target.value)}
+                        className={`w-full px-1.5 py-1 text-xs border rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                          theme === 'dark'
+                            ? 'bg-slate-700 border-slate-600 text-white'
+                            : 'bg-white border-slate-300 text-slate-900'
+                        }`}
+                        disabled={!selectedModel || availableColors.length === 0}
+                      >
+                        <option value="">Cor</option>
+                        {availableColors.map(color => (
+                          <option key={color} value={color}>{color}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                // Fluxo Produto compacto
+                <>
+                  {/* Primeira linha compacta - Marca, Categoria, Descrição */}
+                  <div className="grid grid-cols-3 gap-2 mb-2">
+                    <div>
+                      <label className={`block text-xs font-medium mb-1 ${
+                        theme === 'dark' ? 'text-slate-300' : 'text-slate-700'
+                      }`}>
+                        Marca*
+                      </label>
+                      <select
+                        value={selectedBrand}
+                        onChange={(e) => {
+                          setSelectedBrand(e.target.value);
+                          setSelectedCategory('');
+                          setSelectedDescription('');
+                          setProductVariations([]);
+                        }}
+                        className={`w-full px-1.5 py-1 text-xs border rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                          theme === 'dark'
+                            ? 'bg-slate-700 border-slate-600 text-white'
+                            : 'bg-white border-slate-300 text-slate-900'
+                        }`}
+                      >
+                        <option value="">Marca</option>
+                        {getAvailableBrands(productType).map(brand => (
+                          <option key={brand.id} value={brand.id}>{brand.name}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {selectedBrand && (
+                      <div>
+                        <label className={`block text-xs font-medium mb-1 ${
+                          theme === 'dark' ? 'text-slate-300' : 'text-slate-700'
+                        }`}>
+                          Categoria*
+                        </label>
+                        <select
+                          value={selectedCategory}
+                          onChange={(e) => {
+                            setSelectedCategory(e.target.value);
+                            setSelectedDescription('');
+                            setProductVariations([]);
+                          }}
+                          className={`w-full px-1.5 py-1 text-xs border rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                            theme === 'dark'
+                              ? 'bg-slate-700 border-slate-600 text-white'
+                              : 'bg-white border-slate-300 text-slate-900'
+                          }`}
+                        >
+                          <option value="">Categoria</option>
+                          {availableCategories.map(category => (
+                            <option key={category.id} value={category.id}>{category.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+
+                    {selectedCategory && (
+                      <div>
+                        <label className={`block text-xs font-medium mb-1 ${
+                          theme === 'dark' ? 'text-slate-300' : 'text-slate-700'
+                        }`}>
+                          Descrição*
+                        </label>
+                        <select
+                          value={selectedDescription}
+                          onChange={(e) => setSelectedDescription(e.target.value)}
+                          className={`w-full px-1.5 py-1 text-xs border rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                            theme === 'dark'
+                              ? 'bg-slate-700 border-slate-600 text-white'
+                              : 'bg-white border-slate-300 text-slate-900'
+                          }`}
+                        >
+                          <option value="">Descrição</option>
+                          {mockProductDescriptions.map(description => (
+                            <option key={description} value={description}>{description}</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Variações compactas */}
+                  {selectedDescription && (
+                    <div className="mb-2">
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={currentVariation}
+                          onChange={(e) => setCurrentVariation(e.target.value)}
+                          className={`flex-1 px-1.5 py-1 text-xs border rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                            theme === 'dark'
+                              ? 'bg-slate-700 border-slate-600 text-white'
+                              : 'bg-white border-slate-300 text-slate-900'
+                          }`}
+                          placeholder="Variação (ex: 128GB, Azul)"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (currentVariation.trim()) {
+                              setProductVariations([...productVariations, currentVariation.trim()]);
+                              setCurrentVariation('');
+                            }
+                          }}
+                          className="px-2 py-1 bg-green-500 text-white rounded hover:bg-green-600 transition-colors"
+                        >
+                          <Plus size={12} />
+                        </button>
+                      </div>
+                      
+                      {productVariations.length > 0 && (
+                        <div className="mt-1 flex flex-wrap gap-1">
+                          {productVariations.map((variation, index) => (
+                            <span
+                              key={index}
+                              className="bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded text-xs flex items-center gap-1"
+                            >
+                              {variation}
+                              <button
+                                type="button"
+                                onClick={() => setProductVariations(productVariations.filter((_, i) => i !== index))}
+                                className="text-blue-600 hover:text-blue-800"
+                              >
+                                <X size={8} />
+                              </button>
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </>
+              )}
+
+              {/* Linha de Quantidade, Preço de Custo e Custo Adicional - compacta */}
+              <div className="grid grid-cols-3 gap-2 mb-2">
+                <div>
+                  <label className={`block text-xs font-medium mb-1 ${
+                    theme === 'dark' ? 'text-slate-300' : 'text-slate-700'
+                  }`}>
+                    Quantidade
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={currentItem.quantity}
+                    onFocus={(e) => e.target.select()}
+                    onChange={(e) => setCurrentItem({...currentItem, quantity: parseInt(e.target.value) || 1})}
+                    className={`w-full px-1.5 py-1 text-xs border rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                      theme === 'dark'
+                        ? 'bg-slate-700 border-slate-600 text-white'
+                        : 'bg-white border-slate-300 text-slate-900'
+                    }`}
+                  />
+                </div>
+
+                <div>
+                  <label className={`block text-xs font-medium mb-1 ${
+                    theme === 'dark' ? 'text-slate-300' : 'text-slate-700'
+                  }`}>
+                    Preço de Custo *
+                  </label>
+                  <div className="relative">
+                    <span className={`absolute left-1.5 top-1/2 transform -translate-y-1/2 text-xs ${
+                      theme === 'dark' ? 'text-slate-400' : 'text-slate-500'
+                    }`}>R$</span>
+                    <input
+                      type="text"
+                      value={currentItem.costPrice}
+                      onChange={(e) => {
+                        const formattedValue = formatCurrencyInput(e.target.value);
+                        setCurrentItem({...currentItem, costPrice: formattedValue});
+                      }}
+                      className={`w-full pl-6 pr-1.5 py-1 text-xs border rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                        theme === 'dark'
+                          ? 'bg-slate-700 border-slate-600 text-white'
+                          : 'bg-white border-slate-300 text-slate-900'
+                      }`}
+                      placeholder="0,00"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className={`block text-xs font-medium mb-1 ${
+                    theme === 'dark' ? 'text-slate-300' : 'text-slate-700'
+                  }`}>
+                    Custo Adicional
+                  </label>
+                  <div className="relative">
+                    <span className={`absolute left-1.5 top-1/2 transform -translate-y-1/2 text-xs ${
+                      theme === 'dark' ? 'text-slate-400' : 'text-slate-500'
+                    }`}>R$</span>
+                    <input
+                      type="text"
+                      value={currentItem.additionalCost}
+                      onChange={(e) => {
+                        const formattedValue = formatCurrencyInput(e.target.value);
+                        setCurrentItem({...currentItem, additionalCost: formattedValue});
+                      }}
+                      className={`w-full pl-6 pr-1.5 py-1 text-xs border rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                        theme === 'dark'
+                          ? 'bg-slate-700 border-slate-600 text-white'
+                          : 'bg-white border-slate-300 text-slate-900'
+                      }`}
+                      placeholder="0,00"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Botão Adicionar Item compacto */}
+              <button
+                onClick={addItem}
+                className="w-full bg-gradient-to-r from-blue-500 to-blue-600 text-white py-1.5 rounded hover:shadow-lg transition-all duration-200 flex items-center justify-center font-medium text-xs"
+              >
+                ADICIONAR ITEM
+              </button>
+            </div>
+          </div>
+
+          {/* Items Table - compacta */}
+          <div className="mb-4">
+            <div className={`rounded p-3 ${
+              theme === 'dark' ? 'bg-slate-700/50' : 'bg-slate-50'
+            }`}>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className={`font-semibold text-sm flex items-center ${
+                  theme === 'dark' ? 'text-white' : 'text-slate-800'
+                }`}>
+                  <Package className="mr-2" size={16} />
+                  Produtos
+                </h3>
+                <span className={`text-xs ${
+                  theme === 'dark' ? 'text-slate-300' : 'text-slate-600'
+                }`}>Total: {items.length}</span>
+              </div>
+
+              {items.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className={`text-left text-xs font-medium border-b ${
+                        theme === 'dark' 
+                          ? 'text-slate-300 border-slate-600' 
+                          : 'text-slate-700 border-slate-200'
+                      }`}>
+                        <th className="pb-1">#</th>
+                        <th className="pb-1">Descrição</th>
+                        <th className="pb-1">Qtd</th>
+                        <th className="pb-1">Preço (un)</th>
+                        <th className="pb-1">Total</th>
+                        <th className="pb-1 text-center">Ações</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {items.map((item, index) => (
+                        <tr key={item.id} className={`border-b ${
+                          theme === 'dark' ? 'border-slate-600' : 'border-slate-100'
+                        }`}>
+                          <td className="py-1.5 text-xs">{index + 1}</td>
+                          <td className="py-1.5">
+                            <div>
+                              <div className={`font-medium text-xs ${
+                                theme === 'dark' ? 'text-white' : 'text-slate-800'
+                              }`}>{item.description}</div>
+                              <div className={`text-xs ${
+                                theme === 'dark' ? 'text-slate-400' : 'text-slate-600'
+                              }`}>
+                                {item.condition} • {item.warranty}
+                              </div>
+                            </div>
+                          </td>
+                          <td className="py-1.5 text-xs">{item.quantity}</td>
+                          <td className="py-1.5 text-xs">R$ {formatCurrencyBR(item.costPrice)}</td>
+                          <td className="py-1.5 text-xs font-medium">R$ {formatCurrencyBR(item.totalPrice)}</td>
+                          <td className="py-1.5 text-center">
+                            <button
+                              onClick={() => removeItem(item.id)}
+                              className="p-1 hover:bg-red-100 rounded transition-colors"
+                              title="Remover item"
+                            >
+                              <Trash2 size={12} className="text-red-600" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className={`text-center py-6 ${
+                  theme === 'dark' ? 'text-slate-400' : 'text-slate-500'
+                }`}>
+                  <Package size={32} className="mx-auto mb-2 opacity-50" />
+                  <p className="text-xs">Nenhum item adicionado</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Totals compactos */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+            <div>
+              <label className={`block text-xs font-medium mb-1 ${
+                theme === 'dark' ? 'text-slate-300' : 'text-slate-700'
+              }`}>
+                Subtotal
+              </label>
+              <div className={`px-3 py-1.5 rounded font-medium text-sm ${
+                theme === 'dark' ? 'bg-slate-700 text-white' : 'bg-slate-100 text-slate-800'
+              }`}>
+                R$ {formatCurrencyBR(subtotal)}
+              </div>
+            </div>
+
+            <div>
+              <label className={`block text-xs font-medium mb-1 ${
+                theme === 'dark' ? 'text-slate-300' : 'text-slate-700'
+              }`}>
+                Custo Adicional
+              </label>
+              <div className="relative">
+                <span className={`absolute left-2 top-1/2 transform -translate-y-1/2 text-xs ${
+                  theme === 'dark' ? 'text-slate-400' : 'text-slate-500'
+                }`}>R$</span>
+                <input
+                  type="text"
+                  value={formatCurrencyInput(additionalCost.toString())}
+                  onChange={(e) => {
+                    const formattedValue = formatCurrencyInput(e.target.value);
+                    setAdditionalCost(parseCurrencyBR(formattedValue));
+                  }}
+                  className={`w-full pl-6 pr-3 py-1.5 border rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm ${
+                    theme === 'dark'
+                      ? 'bg-slate-700 border-slate-600 text-white'
+                      : 'bg-white border-slate-300 text-slate-900'
+                  }`}
+                  placeholder="0,00"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className={`block text-xs font-medium mb-1 ${
+                theme === 'dark' ? 'text-slate-300' : 'text-slate-700'
+              }`}>
+                Total
+              </label>
+              <div className="bg-green-100 text-green-800 px-3 py-1.5 rounded font-bold text-sm">
+                R$ {formatCurrencyBR(total)}
+              </div>
+            </div>
+          </div>
+
+          {/* Action Buttons compactos */}
+          <div className="flex justify-between gap-3">
             <button
-              type="button"
-              onClick={onClose}
-              className={`px-6 py-2 rounded-lg border ${
+              onClick={handleClose}
+              className={`px-4 py-2 border rounded hover:bg-slate-50 transition-colors text-sm ${
                 theme === 'dark'
                   ? 'border-slate-600 text-slate-300 hover:bg-slate-700'
-                  : 'border-slate-300 text-slate-700 hover:bg-slate-100'
-              } transition-colors`}
+                  : 'border-slate-300 text-slate-700'
+              }`}
             >
-              Cancelar
+              Voltar
             </button>
             <button
-              type="submit"
-              className="px-6 py-2 bg-green-600 text-white rounded-lg shadow-md hover:bg-green-700 transition-colors"
+              onClick={handleSubmit}
+              className="px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white rounded hover:shadow-lg transition-all duration-200 flex items-center text-sm"
             >
-              {editingPurchase ? 'Atualizar Compra' : 'Registrar Compra'}
+              <Save className="mr-2" size={14} />
+              {editingPurchase ? 'Atualizar' : isTradeIn ? 'Confirmar Trade-in' : 'Salvar'}
             </button>
           </div>
-        </form>
+        </div>
       </div>
+
+      {/* Supplier Modal */}
+      <CustomerModal
+        isOpen={isSupplierModalOpen}
+        onClose={() => setIsSupplierModalOpen(false)}
+        type="supplier"
+      />
     </div>
   );
 }
