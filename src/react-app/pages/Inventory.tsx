@@ -76,7 +76,7 @@ interface Purchase {
 }
 
 export default function Inventory() {
-  const { showSuccess } = useNotification();
+  const { showSuccess, showError } = useNotification(); // Adicionado showError
   const [searchParams] = useSearchParams(); // Hook para ler parâmetros da URL
   const location = useLocation(); // Hook para obter a localização atual
 
@@ -113,6 +113,30 @@ export default function Inventory() {
 
   // Novo estado para o filtro de nível de estoque
   const [stockLevelFilter, setStockLevelFilter] = useState('all'); // 'all', 'low', 'zero', 'negative'
+
+  // Função para verificar duplicidade de IMEI/Serial
+  const checkDuplicateImeiSerial = (
+    imei1: string | undefined,
+    imei2: string | undefined,
+    serialNumber: string | undefined,
+    currentUnitId: string | undefined = undefined // Para edição, para excluir a própria unidade
+  ): { isDuplicate: boolean; type: string; value: string } => {
+    for (const unit of inventoryUnits) {
+      if (currentUnitId && unit.id === currentUnitId) {
+        continue; // Ignorar a unidade que está sendo editada
+      }
+      if (imei1 && unit.imei1 && unit.imei1.trim() === imei1.trim()) {
+        return { isDuplicate: true, type: 'IMEI 1', value: imei1 };
+      }
+      if (imei2 && unit.imei2 && unit.imei2.trim() === imei2.trim()) {
+        return { isDuplicate: true, type: 'IMEI 2', value: imei2 };
+      }
+      if (serialNumber && unit.serialNumber && unit.serialNumber.trim() === serialNumber.trim()) {
+        return { isDuplicate: true, type: 'Número de Série', value: serialNumber };
+      }
+    }
+    return { isDuplicate: false, type: '', value: '' };
+  };
 
   useEffect(() => {
     // Mock data com produtos únicos por IMEI/Serial
@@ -2530,8 +2554,8 @@ export default function Inventory() {
         invoiceNumber: 'NF-001234',
         observations: 'Compra de produtos Apple para estoque principal',
         items: [
-          { id: 'item1', description: 'iPhone 16 Pro Max 256GB Titânio-deserto', quantity: 1, costPrice: 3000, finalPrice: 3500, condition: 'seminovo', location: 'Loja', warranty: '1 ano', hasImeiSerial: true },
-          { id: 'item2', description: 'Samsung Galaxy S24 Ultra 512GB Preto', quantity: 1, costPrice: 4200, finalPrice: 4800, condition: 'novo', location: 'A1-B2', warranty: '1 ano', hasImeiSerial: true }
+          { id: 'item1', description: 'iPhone 16 Pro Max 256GB Titânio-deserto', quantity: 1, costPrice: 3000, finalPrice: 3500, condition: 'seminovo', location: 'Loja', warranty: '1 ano', hasImeiSerial: true, imei1: '123456789012345', imei2: '123456789012346' },
+          { id: 'item2', description: 'Samsung Galaxy S24 Ultra 512GB Preto', quantity: 1, costPrice: 4200, finalPrice: 4800, condition: 'novo', location: 'A1-B2', warranty: '1 ano', hasImeiSerial: true, imei1: '555666777888999', imei2: '555666777888998' }
         ],
         subtotal: 8300.00,
         additionalCost: 0,
@@ -2554,7 +2578,7 @@ export default function Inventory() {
         invoiceNumber: 'NF-001235',
         observations: 'Compra de acessórios diversos',
         items: [
-          { id: 'item3', description: 'Smartphone Xiaomi 13X 8GB/256GB Dourado', quantity: 1, costPrice: 500, finalPrice: 750, condition: 'novo', location: 'Vitrine iS', warranty: '1 ano', hasImeiSerial: true },
+          { id: 'item3', description: 'Smartphone Xiaomi 13X 8GB/256GB Dourado', quantity: 1, costPrice: 500, finalPrice: 750, condition: 'novo', location: 'Vitrine iS', warranty: '1 ano', hasImeiSerial: true, imei1: '987654321098765' },
           { id: 'item4', description: 'Capinha iPhone 16 Pro Max Transparente', quantity: 10, costPrice: 15, finalPrice: 45, condition: 'novo', location: 'D1-A1', warranty: '3 meses', hasImeiSerial: false }
         ],
         subtotal: 1250.00,
@@ -2577,7 +2601,7 @@ export default function Inventory() {
         invoiceNumber: 'NF-001236',
         observations: 'Notebooks para revenda',
         items: [
-          { id: 'item5', description: 'MacBook Pro 14" M3 512GB Cinza Espacial', quantity: 1, costPrice: 8500, finalPrice: 9200, condition: 'novo', location: 'B1-A3', warranty: '1 ano', hasImeiSerial: true }
+          { id: 'item5', description: 'MacBook Pro 14" M3 512GB Cinza Espacial', quantity: 1, costPrice: 8500, finalPrice: 9200, condition: 'novo', location: 'B1-A3', warranty: '1 ano', hasImeiSerial: true, serialNumber: 'FVFH3LL/A12345' }
         ],
         subtotal: 9200.00,
         additionalCost: 100.00,
@@ -3491,6 +3515,7 @@ export default function Inventory() {
         }}
         onPurchaseSaved={handlePurchaseSaved}
         editingPurchase={editingPurchase}
+        checkDuplicateImeiSerial={checkDuplicateImeiSerial} // Passando a função
       />
 
       {/* Finalize Purchase Modal */}
@@ -3502,6 +3527,7 @@ export default function Inventory() {
         }}
         purchase={finalizingPurchase}
         onFinalized={handlePurchaseFinalized}
+        checkDuplicateImeiSerial={checkDuplicateImeiSerial} // Passando a função
       />
 
       {/* Purchase View Modal */}
@@ -3533,6 +3559,7 @@ export default function Inventory() {
         }}
         product={editingProductUnit} // Pass the selected unit for editing
         onProductSaved={handleProductUnitSaved} // Handle saving updates
+        checkDuplicateImeiSerial={checkDuplicateImeiSerial} // Passando a função
       />
 
       {/* Bulk Price Update Modal */}
