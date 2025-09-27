@@ -2,6 +2,13 @@ import { ReactNode, useState } from 'react';
 import { TrendingUp, TrendingDown, Settings, EyeOff, X } from 'lucide-react';
 import { useTheme } from '@/react-app/hooks/useTheme';
 
+interface ColorOption {
+  name: string;
+  value: string; // Gradient classes
+  bg: string;    // Solid background for preview
+  textColor: string; // Text color for the card
+}
+
 interface DashboardCardProps {
   title: string;
   value: string;
@@ -10,29 +17,48 @@ interface DashboardCardProps {
   subtitle?: string;
   id: string;
   isVisible?: boolean;
-  customColor?: string;
+  customColor?: ColorOption; // Now expects a ColorOption object
   onVisibilityChange?: (id: string, visible: boolean) => void;
-  onColorChange?: (id: string, color: string) => void;
-  onClick?: () => void; // Nova propriedade onClick
+  onColorChange?: (id: string, color: ColorOption) => void; // Passes the full ColorOption
+  onClick?: () => void;
 }
 
-const colorOptions = [
-  { name: 'Azul', value: 'from-blue-500 to-blue-600', bg: 'bg-blue-500' },
-  { name: 'Verde', value: 'from-green-500 to-green-600', bg: 'bg-green-500' },
-  { name: 'Roxo', value: 'from-purple-500 to-purple-600', bg: 'bg-purple-500' },
-  { name: 'Laranja', value: 'from-orange-500 to-orange-600', bg: 'bg-orange-500' },
-  { name: 'Rosa', value: 'from-pink-500 to-pink-600', bg: 'bg-pink-500' },
-  { name: 'Vermelho', value: 'from-red-500 to-red-600', bg: 'bg-red-500' },
-  { name: 'Índigo', value: 'from-indigo-500 to-indigo-600', bg: 'bg-indigo-500' },
-  { name: 'Amarelo', value: 'from-yellow-500 to-yellow-600', bg: 'bg-yellow-500' },
-  { name: 'Ciano', value: 'from-cyan-500 to-cyan-600', bg: 'bg-cyan-500' },
-  { name: 'Esmeralda', value: 'from-emerald-500 to-emerald-600', bg: 'bg-emerald-500' },
-  { name: 'Lima', value: 'from-lime-500 to-lime-600', bg: 'bg-lime-500' },
-  { name: 'Fúcsia', value: 'from-fuchsia-500 to-fuchsia-600', bg: 'bg-fuchsia-500' },
-  { name: 'Teal', value: 'from-teal-500 to-teal-600', bg: 'bg-teal-500' },
-  { name: 'Sky', value: 'from-sky-500 to-sky-600', bg: 'bg-sky-500' },
-  { name: 'Cinza', value: 'from-gray-500 to-gray-600', bg: 'bg-gray-500' },
+const colorOptions: ColorOption[] = [
+  { name: 'Azul Escuro', value: 'from-blue-700 to-blue-800', bg: 'bg-blue-700', textColor: 'text-white' },
+  { name: 'Verde Escuro', value: 'from-green-700 to-green-800', bg: 'bg-green-700', textColor: 'text-white' },
+  { name: 'Roxo Escuro', value: 'from-purple-700 to-purple-800', bg: 'bg-purple-700', textColor: 'text-white' },
+  { name: 'Laranja Escuro', value: 'from-orange-700 to-orange-800', bg: 'bg-orange-700', textColor: 'text-white' },
+  { name: 'Rosa Escuro', value: 'from-pink-700 to-pink-800', bg: 'bg-pink-700', textColor: 'text-white' },
+  { name: 'Vermelho Escuro', value: 'from-red-700 to-red-800', bg: 'bg-red-700', textColor: 'text-white' },
+  { name: 'Índigo Escuro', value: 'from-indigo-700 to-indigo-800', bg: 'bg-indigo-700', textColor: 'text-white' },
+  { name: 'Amarelo Escuro', value: 'from-yellow-700 to-yellow-800', bg: 'bg-yellow-700', textColor: 'text-white' },
+  { name: 'Ciano Escuro', value: 'from-cyan-700 to-cyan-800', bg: 'bg-cyan-700', textColor: 'text-white' },
+  { name: 'Esmeralda Escuro', value: 'from-emerald-700 to-emerald-800', bg: 'bg-emerald-700', textColor: 'text-white' },
+  { name: 'Lima Escuro', value: 'from-lime-700 to-lime-800', bg: 'bg-lime-700', textColor: 'text-white' },
+  { name: 'Fúcsia Escuro', value: 'from-fuchsia-700 to-fuchsia-800', bg: 'bg-fuchsia-700', textColor: 'text-white' },
+  { name: 'Teal Escuro', value: 'from-teal-700 to-teal-800', bg: 'bg-teal-700', textColor: 'text-white' },
+  { name: 'Sky Escuro', value: 'from-sky-700 to-sky-800', bg: 'bg-sky-700', textColor: 'text-white' },
+  { name: 'Cinza Escuro', value: 'from-gray-700 to-gray-800', bg: 'bg-gray-700', textColor: 'text-white' },
+  // Novas opções de cores claras
+  { name: 'Azul Claro', value: 'from-blue-50 to-blue-100', bg: 'bg-blue-50', textColor: 'text-blue-800' },
+  { name: 'Verde Claro', value: 'from-green-50 to-green-100', bg: 'bg-green-50', textColor: 'text-green-800' },
+  { name: 'Roxo Claro', value: 'from-purple-50 to-purple-100', bg: 'bg-purple-50', textColor: 'text-purple-800' },
+  { name: 'Laranja Claro', value: 'from-orange-50 to-orange-100', bg: 'bg-orange-50', textColor: 'text-orange-800' },
+  { name: 'Rosa Claro', value: 'from-pink-50 to-pink-100', bg: 'bg-pink-50', textColor: 'text-pink-800' },
+  { name: 'Vermelho Claro', value: 'from-red-50 to-red-100', bg: 'bg-red-50', textColor: 'text-red-800' },
+  { name: 'Índigo Claro', value: 'from-indigo-50 to-indigo-100', bg: 'bg-indigo-50', textColor: 'text-indigo-800' },
+  { name: 'Amarelo Claro', value: 'from-yellow-50 to-yellow-100', bg: 'bg-yellow-50', textColor: 'text-yellow-800' },
+  { name: 'Ciano Claro', value: 'from-cyan-50 to-cyan-100', bg: 'bg-cyan-50', textColor: 'text-cyan-800' },
+  { name: 'Esmeralda Claro', value: 'from-emerald-50 to-emerald-100', bg: 'bg-emerald-50', textColor: 'text-emerald-800' },
+  { name: 'Lima Claro', value: 'from-lime-50 to-lime-100', bg: 'bg-lime-50', textColor: 'text-lime-800' },
+  { name: 'Fúcsia Claro', value: 'from-fuchsia-50 to-fuchsia-100', bg: 'bg-fuchsia-50', textColor: 'text-fuchsia-800' },
+  { name: 'Teal Claro', value: 'from-teal-50 to-teal-100', bg: 'bg-teal-50', textColor: 'text-teal-800' },
+  { name: 'Sky Claro', value: 'from-sky-50 to-sky-100', bg: 'bg-sky-50', textColor: 'text-sky-800' },
+  { name: 'Cinza Claro', value: 'from-gray-50 to-gray-100', bg: 'bg-gray-50', textColor: 'text-gray-800' },
 ];
+
+// Default color option
+const defaultColorOption: ColorOption = colorOptions[0]; // Azul Escuro
 
 export default function DashboardCard({ 
   title, 
@@ -42,10 +68,10 @@ export default function DashboardCard({
   subtitle, 
   id,
   isVisible = true,
-  customColor = 'from-blue-500 to-blue-600', // Usar um azul como padrão
+  customColor = defaultColorOption, // Use the default color option
   onVisibilityChange,
   onColorChange,
-  onClick // Receber a propriedade onClick
+  onClick 
 }: DashboardCardProps) {
   const { theme } = useTheme();
   const [showCustomization, setShowCustomization] = useState(false);
@@ -56,17 +82,15 @@ export default function DashboardCard({
 
   return (
     <div 
-      className={`rounded-xl shadow-soft-lg p-6 hover:shadow-soft-xl transition-all duration-200 relative group ${
-        theme === 'dark' 
-          ? `bg-gradient-to-br ${customColor} text-white` 
-          : `bg-gradient-to-br ${customColor} text-white`
-      } ${onClick ? 'cursor-pointer' : ''}`} 
+      className={`rounded-xl shadow-soft-lg p-6 hover:shadow-soft-xl transition-all duration-200 relative group 
+        bg-gradient-to-br ${customColor.value} ${customColor.textColor}
+        ${onClick ? 'cursor-pointer' : ''}`} 
       onClick={onClick} 
     >
       {/* Customization Button */}
       <button
         onClick={(e) => {
-          e.stopPropagation(); // Impedir que o clique no botão acione o onClick do card
+          e.stopPropagation();
           setShowCustomization(!showCustomization);
         }}
         className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-1 hover:bg-white/20 rounded-lg"
@@ -127,14 +151,14 @@ export default function DashboardCard({
             <div className="grid grid-cols-4 gap-2">
               {colorOptions.map((color) => (
                 <button
-                  key={color.value}
+                  key={color.name}
                   onClick={(e) => {
                     e.stopPropagation();
-                    onColorChange?.(id, color.value);
+                    onColorChange?.(id, color); // Pass the full color object
                     setShowCustomization(false);
                   }}
                   className={`w-6 h-6 rounded-lg ${color.bg} hover:scale-110 transition-transform ${
-                    customColor === color.value ? 'ring-2 ring-white ring-offset-2' : ''
+                    customColor.value === color.value ? 'ring-2 ring-white ring-offset-2' : ''
                   }`}
                   title={color.name}
                 />
@@ -157,10 +181,9 @@ export default function DashboardCard({
         )}
       </div>
       <div>
-        <h3 className="text-3xl font-bold mb-1">{value}</h3> {/* Aumentado de text-2xl para text-3xl */}
-        <p className="text-white/90 text-lg">{title}</p> {/* Aumentado de text-sm para text-lg */}
+        <h3 className="text-3xl font-bold mb-1">{value}</h3>
+        <p className="text-lg">{title}</p>
         {subtitle && (
-          // Aumentado de text-xs para text-base
           <p className="text-base text-white/80 mt-1">{subtitle}</p> 
         )}
       </div>

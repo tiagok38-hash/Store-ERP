@@ -45,6 +45,9 @@ const periodOptions = [
   { value: 'custom', label: 'Período Personalizado' },
 ];
 
+// Define a default color option for new cards
+const defaultCardColor = { value: 'from-blue-500 to-blue-600', bg: 'bg-blue-500', textColor: 'text-white' };
+
 export default function Dashboard() {
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
@@ -54,10 +57,10 @@ export default function Dashboard() {
   const [customDateTo, setCustomDateTo] = useState('');
   const [cardSettings, setCardSettings] = useState(() => {
     const defaultSettings = {
-      revenueAndSales: { visible: true, color: 'from-blue-600 to-blue-700' }, // Novo card combinado
-      stock: { visible: true, color: 'from-orange-600 to-orange-700' },
-      customers: { visible: true, color: 'from-purple-600 to-purple-700' },
-      lowStock: { visible: true, color: 'from-red-500 to-red-600' }
+      revenueAndSales: { visible: true, color: { value: 'from-blue-600 to-blue-700', bg: 'bg-blue-600', textColor: 'text-white' } },
+      stock: { visible: true, color: { value: 'from-orange-600 to-orange-700', bg: 'bg-orange-600', textColor: 'text-white' } },
+      customers: { visible: true, color: { value: 'from-purple-600 to-purple-700', bg: 'bg-purple-600', textColor: 'text-white' } },
+      lowStock: { visible: true, color: { value: 'from-red-500 to-red-600', bg: 'bg-red-500', textColor: 'text-white' } }
     };
     const saved = localStorage.getItem('dashboardCardSettings');
     if (saved) {
@@ -66,9 +69,20 @@ export default function Dashboard() {
         const mergedSettings = { ...defaultSettings };
         for (const key in parsedSaved) {
           if (parsedSaved.hasOwnProperty(key) && mergedSettings.hasOwnProperty(key)) {
-            mergedSettings[key] = { ...mergedSettings[key], ...parsedSaved[key] };
+            // Ensure color is an object, not just a string
+            if (typeof parsedSaved[key].color === 'string') {
+              // Fallback to default if saved color is old format
+              mergedSettings[key] = { ...mergedSettings[key], ...parsedSettings[key], color: defaultCardColor };
+            } else {
+              mergedSettings[key] = { ...mergedSettings[key], ...parsedSaved[key] };
+            }
           } else if (parsedSaved.hasOwnProperty(key)) {
-            mergedSettings[key] = parsedSaved[key];
+            // Handle new cards added to settings
+            if (typeof parsedSaved[key].color === 'string') {
+              mergedSettings[key] = { ...parsedSaved[key], color: defaultCardColor };
+            } else {
+              mergedSettings[key] = parsedSaved[key];
+            }
           }
         }
         return mergedSettings;
@@ -192,7 +206,7 @@ export default function Dashboard() {
     }));
   };
 
-  const handleCardColorChange = (cardId: string, color: string) => {
+  const handleCardColorChange = (cardId: string, color: { value: string; bg: string; textColor: string; }) => {
     setCardSettings((prev: any) => ({
       ...prev,
       [cardId]: { ...prev[cardId], color }

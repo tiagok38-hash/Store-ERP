@@ -18,7 +18,8 @@ import {
   AlertTriangle, // Importar AlertTriangle para estoque baixo
   DollarSign, // Importar DollarSign para o botão de atualização de preços
   Settings, // Importar Settings para o novo botão
-  PackagePlus // Novo ícone para ajuste de estoque
+  PackagePlus, // Novo ícone para ajuste de estoque
+  MoreVertical // Importar MoreVertical para o dropdown
 } from 'lucide-react';
 import { Link } from 'react-router-dom'; // Importar Link para navegação
 import PurchaseModal from '@/react-app/components/PurchaseModal';
@@ -28,6 +29,7 @@ import ProductHistoryModal from '@/react-app/components/ProductHistoryModal';
 import ProductModal from '@/react-app/components/ProductModal'; // Importar ProductModal
 import BulkPriceUpdateModal from '@/react-app/components/BulkPriceUpdateModal'; // Importar o novo modal
 import StockAdjustmentModal from '@/react-app/components/StockAdjustmentModal'; // Importar o novo modal de ajuste de estoque
+import ProductActionsDropdown from '@/react-app/components/ProductActionsDropdown'; // Importar o novo dropdown
 import { useNotification } from '@/react-app/components/NotificationSystem';
 
 interface InventoryUnit {
@@ -85,7 +87,7 @@ const mockAuditLog = (logEntry: any) => {
 };
 
 export default function Inventory() {
-  const { showSuccess } = useNotification();
+  const { showSuccess, showError } = useNotification();
   const [activeTab, setActiveTab] = useState<'inventory' | 'purchases'>('inventory');
   const [inventoryUnits, setInventoryUnits] = useState<InventoryUnit[]>([]);
   const [purchases, setPurchases] = useState<Purchase[]>([]);
@@ -567,9 +569,12 @@ export default function Inventory() {
   };
 
   // New functions for editing inventory units
-  const handleEditProductUnit = (unit: InventoryUnit) => {
-    setEditingProductUnit(unit);
-    setIsProductEditModalOpen(true);
+  const handleEditProductUnit = (unitId: string) => {
+    const unitToEdit = inventoryUnits.find(unit => unit.id === unitId);
+    if (unitToEdit) {
+      setEditingProductUnit(unitToEdit);
+      setIsProductEditModalOpen(true);
+    }
   };
 
   const handleProductUnitSaved = (updatedUnit: InventoryUnit) => {
@@ -581,13 +586,37 @@ export default function Inventory() {
     setEditingProductUnit(null);
   };
 
+  // New function for deleting inventory units
+  const handleDeleteProductUnit = (unitId: string) => {
+    if (confirm('Tem certeza que deseja excluir este item do estoque? Esta ação não pode ser desfeita.')) {
+      setInventoryUnits(prev => prev.filter(unit => unit.id !== unitId));
+      showSuccess('Item Excluído', 'O item foi removido do estoque com sucesso.');
+      // Log to audit
+      mockAuditLog({
+        id: `AUDIT-${Date.now()}-PRODUCT-DELETE`,
+        userId: 'current_user_id', // Replace with actual user ID
+        userName: 'Current User', // Replace with actual user name
+        action: 'PRODUCT_DELETE',
+        tableName: 'inventory_units',
+        recordId: unitId,
+        oldValues: inventoryUnits.find(unit => unit.id === unitId), // Store old values
+        ipAddress: '127.0.0.1', // Mock IP
+        userAgent: navigator.userAgent,
+        createdAt: new Date().toISOString()
+      });
+    }
+  };
+
   // New functions for stock adjustment
-  const handleOpenStockAdjustmentModal = (unit: InventoryUnit) => {
-    setSelectedProductForStockAdjustment(unit);
-    // Calculate current stock for this specific SKU
-    const currentStockCount = inventoryUnits.filter(u => u.productSku === unit.productSku && u.status === 'available').length;
-    setCurrentStockForAdjustment(currentStockCount);
-    setIsStockAdjustmentModalOpen(true);
+  const handleOpenStockAdjustmentModal = (unitId: string) => {
+    const unitToAdjust = inventoryUnits.find(unit => unit.id === unitId);
+    if (unitToAdjust) {
+      setSelectedProductForStockAdjustment(unitToAdjust);
+      // Calculate current stock for this specific SKU
+      const currentStockCount = inventoryUnits.filter(u => u.productSku === unitToAdjust.productSku && u.status === 'available').length;
+      setCurrentStockForAdjustment(currentStockCount);
+      setIsStockAdjustmentModalOpen(true);
+    }
   };
 
   const handleConfirmStockAdjustment = (
@@ -1002,36 +1031,13 @@ export default function Inventory() {
                         </td>
                         
                         <td className="py-3 px-4 text-center">
-                          <div className="flex justify-center gap-2">
-                            <button
-                              onClick={() => handleOpenStockAdjustmentModal(unit)} // Novo botão de ajuste de estoque
-                              className="p-2 hover:bg-blue-100 rounded-lg transition-colors"
-                              title="Ajustar Estoque"
-                            >
-                              <PackagePlus size={16} className="text-blue-600" />
-                            </button>
-                            <button
-                              onClick={() => handleViewProductHistory(unit)}
-                              className="p-2 hover:bg-purple-100 rounded-lg transition-colors"
-                              title="Histórico do Produto"
-                            >
-                              <Clock size={16} className="text-purple-600" />
-                            </button>
-                            <button
-                              onClick={() => handleEditProductUnit(unit)} // Updated to open ProductModal
-                              className="p-2 hover:bg-green-100 rounded-lg transition-colors"
-                              title="Editar"
-                            >
-                              <Edit size={16} className="text-green-600" />
-                            </button>
-                            <button
-                              onClick={() => alert(`Excluir item ${unit.id}`)}
-                              className="p-2 hover:bg-red-100 rounded-lg transition-colors"
-                              title="Excluir"
-                            >
-                              <Trash2 size={16} className="text-red-600" />
-                            </button>
-                          </div>
+                          <ProductActionsDropdown
+                            unitId={unit.id}
+                            onViewHistory={() => handleViewProductHistory(unit)}
+                            onEdit={() => handleEditProductUnit(unit.id)}
+                            onDelete={() => handleDeleteProductUnit(unit.id)}
+                            onAdjustStock={() => handleOpenStockAdjustmentModal(unit.id)}
+                          />
                         </td>
                       </tr>
                     );
