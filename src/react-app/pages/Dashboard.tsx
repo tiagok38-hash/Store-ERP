@@ -13,7 +13,7 @@ import {
   AlertTriangle // Importar AlertTriangle para estoque baixo
 } from 'lucide-react';
 import DashboardCard from '@/react-app/components/DashboardCard';
-import { useTheme } from '@/react-app/hooks/useTheme';
+import { useTheme } => '@/react-app/hooks/useTheme';
 import { useAuth } from '@/react-app/hooks/useAuth';
 import { UserPermissions } from '@/shared/auth-types';
 import { useNavigate } from 'react-router'; // Importar useNavigate
@@ -355,7 +355,7 @@ export default function Dashboard() {
             trend={parseInt(data.lowStockTrend.replace('%', '').replace('+', ''))}
             isVisible={cardSettings.lowStock.visible}
             customColor={cardSettings.lowStock.color}
-            onClick={() => navigate('/inventory?filter=low-stock')} {/* Atualizado para incluir o filtro */}
+            onClick={() => navigate('/inventory?filter=low-stock')}
             onVisibilityChange={handleCardVisibilityChange}
             onColorChange={handleCardColorChange}
           />
