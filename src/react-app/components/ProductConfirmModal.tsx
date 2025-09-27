@@ -4,7 +4,7 @@ import { useState } from 'react';
 
 interface Product {
   id: string;
-  name: string;
+  productDescription: string; // Alterado de 'name' para 'productDescription'
   price: number;
   cost: number;
   sku?: string;
@@ -86,7 +86,7 @@ export default function ProductConfirmModal({
             <h3 className={`font-bold text-lg mb-3 ${
               theme === 'dark' ? 'text-white' : 'text-slate-800'
             }`}>
-              {product?.name}
+              {product?.productDescription} {/* Alterado de 'name' para 'productDescription' */}
             </h3>
             
             <div className="space-y-3">
