@@ -118,30 +118,6 @@ interface WarrantyTerm {
   months: number;
 }
 
-// Estrutura hierárquica: Marca → Categoria → Subcategoria → Variações
-// Esta estrutura será preenchida dinamicamente do Supabase
-interface HierarchicalProductData {
-  [brandName: string]: {
-    [categoryName: string]: {
-      subcategories: {
-        [subCategoryName: string]: {
-          variations: { id: string; name: string }[];
-        };
-      };
-    };
-  };
-}
-
-// Mapa de tradução para os tipos de variação (se necessário, pode ser dinâmico também)
-const variationTypeTranslations: { [key: string]: string } = {
-  storage: 'Armazenamento',
-  colors: 'Cor',
-  size: 'Tamanho',
-  compatibility: 'Compatibilidade',
-  power: 'Potência',
-  type: 'Tipo',
-};
-
 interface PurchaseModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -172,9 +148,6 @@ export default function PurchaseModal({
     observations: editingPurchase?.observations || ''
   });
 
-  const [productType, setProductType] = useState<'apple' | 'product'>(
-    editingPurchase?.productType || 'product' // Default to 'product' for more generic use
-  );
   const [selectedSupplier, setSelectedSupplier] = useState(editingPurchase?.supplier_id || '');
   const [supplierSearchTerm, setSupplierSearchTerm] = useState('');
   const [showSupplierDropdown, setShowSupplierDropdown] = useState(false);
@@ -188,15 +161,12 @@ export default function PurchaseModal({
   const [stockLocations, setStockLocations] = useState<StockLocation[]>([]);
   const [warrantyTerms, setWarrantyTerms] = useState<WarrantyTerm[]>([]);
 
-  // Product selection states
+  // Product selection states (simplified to always be structured)
   const [selectedBrandId, setSelectedBrandId] = useState('');
   const [selectedCategoryId, setSelectedCategoryId] = useState('');
   const [selectedSubcategoryId, setSelectedSubcategoryId] = useState('');
   const [selectedVariationId, setSelectedVariationId] = useState('');
-  const [customProductDescription, setCustomProductDescription] = useState(''); // For generic products
-  const [currentVariationInput, setCurrentVariationInput] = useState(''); // For generic product variations
-  const [genericProductVariations, setGenericProductVariations] = useState<string[]>([]); // For generic products
-
+  
   const [hasImeiSn, setHasImeiSn] = useState<'sim' | 'nao'>('sim');
   
   const [currentItem, setCurrentItem] = useState({
@@ -296,6 +266,9 @@ export default function PurchaseModal({
   // Effect to initialize form data when modal opens or editingPurchase/tradeInCustomer changes
   useEffect(() => {
     if (isOpen) {
+      // Determine default brand ID for Apple
+      const appleBrandId = brands.find(b => b.name === 'Apple')?.id || '';
+
       if (isTradeIn && tradeInCustomer) {
         setFormData(prev => ({
           ...prev,
@@ -306,13 +279,10 @@ export default function PurchaseModal({
         }));
         setSelectedSupplier(tradeInCustomer.id);
         setSupplierSearchTerm(tradeInCustomer.name);
-        setProductType('product'); // Default to generic product for trade-in
-        setSelectedBrandId('');
+        setSelectedBrandId(appleBrandId); // Default to Apple for trade-in
         setSelectedCategoryId('');
         setSelectedSubcategoryId('');
         setSelectedVariationId('');
-        setCustomProductDescription('');
-        setGenericProductVariations([]);
         setItems([]);
         setAdditionalCost(0);
       } else if (editingPurchase) {
@@ -323,7 +293,6 @@ export default function PurchaseModal({
           observations: editingPurchase.observations || ''
         });
         setSelectedSupplier(editingPurchase.supplier_id || '');
-        // Melhoria: Usar editingPurchase.supplier_name como fallback se a lista de suppliers ainda não carregou
         const foundSupplierName = suppliers.find(s => s.id === editingPurchase.supplier_id)?.name;
         setSupplierSearchTerm(foundSupplierName || editingPurchase.supplier_name || '');
         setItems(editingPurchase.items || []);
@@ -335,8 +304,6 @@ export default function PurchaseModal({
           setSelectedCategoryId(firstItem.category_id || '');
           setSelectedSubcategoryId(firstItem.subcategory_id || '');
           setSelectedVariationId(firstItem.variation_id || '');
-          setCustomProductDescription(firstItem.description || '');
-          setGenericProductVariations(firstItem.variations || []);
         }
       } else {
         // Reset form for new purchase
@@ -346,15 +313,12 @@ export default function PurchaseModal({
           invoiceNumber: '',
           observations: ''
         });
-        setProductType('product');
         setSelectedSupplier('');
         setSupplierSearchTerm('');
-        setSelectedBrandId('');
+        setSelectedBrandId(appleBrandId); // Default to Apple for new purchase
         setSelectedCategoryId('');
         setSelectedSubcategoryId('');
         setSelectedVariationId('');
-        setCustomProductDescription('');
-        setGenericProductVariations([]);
         setItems([]);
         setAdditionalCost(0);
       }
@@ -366,7 +330,7 @@ export default function PurchaseModal({
         setCurrentItem(prev => ({ ...prev, warranty_term_id: warrantyTerms[0].id }));
       }
     }
-  }, [isOpen, editingPurchase, isTradeIn, tradeInCustomer, suppliers, stockLocations, warrantyTerms]);
+  }, [isOpen, editingPurchase, isTradeIn, tradeInCustomer, suppliers, stockLocations, warrantyTerms, brands]); // Added brands to dependency array
 
   const filteredSuppliers = suppliers.filter(supplier => 
     supplier.name.toLowerCase().includes(supplierSearchTerm.toLowerCase())
@@ -383,10 +347,9 @@ export default function PurchaseModal({
       costPrice: '',
       additionalCost: ''
     });
-    setCustomProductDescription('');
-    setGenericProductVariations([]);
-    setCurrentVariationInput('');
-    setSelectedBrandId('');
+    // Reset product selection fields
+    const appleBrandId = brands.find(b => b.name === 'Apple')?.id || '';
+    setSelectedBrandId(appleBrandId);
     setSelectedCategoryId('');
     setSelectedSubcategoryId('');
     setSelectedVariationId('');
@@ -404,13 +367,6 @@ export default function PurchaseModal({
     if (subcategoryName) description += ` ${subcategoryName}`;
     if (variationName) description += ` ${variationName}`;
     
-    if (productType === 'product' && customProductDescription) {
-      description = customProductDescription;
-      if (genericProductVariations.length > 0) {
-        description += ` - ${genericProductVariations.join(', ')}`;
-      }
-    }
-    
     return description.trim();
   };
 
@@ -426,18 +382,6 @@ export default function PurchaseModal({
     if (subcategoryName) sku += subcategoryName.replace(/[^a-zA-Z0-9]/g, '').substring(0, 3).toUpperCase();
     if (variationName) sku += variationName.replace(/[^a-zA-Z0-9]/g, '').substring(0, 3).toUpperCase();
 
-    if (productType === 'product' && customProductDescription) {
-      sku = customProductDescription
-        .replace(/[^a-zA-Z0-9\s]/g, '')
-        .split(' ')
-        .map((word: string) => word.substring(0, 2))
-        .join('')
-        .toUpperCase()
-        .substring(0, 6);
-      if (genericProductVariations.length > 0) {
-        sku += genericProductVariations.map(v => v.replace(/[^a-zA-Z0-9]/g, '').substring(0, 3)).join('').toUpperCase();
-      }
-    }
     return sku.trim();
   };
 
@@ -743,13 +687,6 @@ export default function PurchaseModal({
 
   const isSupplierInputDisabled = isTradeIn && tradeInCustomer !== null;
 
-  const addGenericVariation = () => {
-    if (currentVariationInput.trim()) {
-      setGenericProductVariations([...genericProductVariations, currentVariationInput.trim()]);
-      setCurrentVariationInput('');
-    }
-  };
-
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div 
@@ -881,54 +818,6 @@ export default function PurchaseModal({
             </div>
           </div>
 
-          {/* Product Type Selection */}
-          <div className="mb-3">
-            <div className="flex gap-4">
-              <label className="flex items-center">
-                <input
-                  type="radio"
-                  name="productType"
-                  value="product"
-                  checked={productType === 'product'}
-                  onChange={(e) => {
-                    setProductType(e.target.value as 'apple' | 'product');
-                    setSelectedBrandId('');
-                    setSelectedCategoryId('');
-                    setSelectedSubcategoryId('');
-                    setSelectedVariationId('');
-                    setCustomProductDescription('');
-                    setGenericProductVariations([]);
-                  }}
-                  className="mr-1"
-                />
-                <span className={`font-medium text-xs ${
-                  theme === 'dark' ? 'text-slate-200' : 'text-slate-800'
-                }`}>Produto Genérico</span>
-              </label>
-              <label className="flex items-center">
-                <input
-                  type="radio"
-                  name="productType"
-                  value="apple"
-                  checked={productType === 'apple'}
-                  onChange={(e) => {
-                    setProductType(e.target.value as 'apple' | 'product');
-                    setSelectedBrandId(brands.find(b => b.name === 'Apple')?.id || ''); // Auto-select Apple
-                    setSelectedCategoryId('');
-                    setSelectedSubcategoryId('');
-                    setSelectedVariationId('');
-                    setCustomProductDescription('');
-                    setGenericProductVariations([]);
-                  }}
-                  className="mr-1"
-                />
-                <span className={`font-medium text-xs ${
-                  theme === 'dark' ? 'text-slate-200' : 'text-slate-800'
-                }`}>Apple (Estruturado)</span>
-              </label>
-            </div>
-          </div>
-
           {/* Compact Row - Garantia, Local e Condição */}
           <div className="grid grid-cols-4 gap-2 mb-3">
             <div>
@@ -1033,248 +922,114 @@ export default function PurchaseModal({
             </div>
           </div>
 
-          {/* Product Form */}
+          {/* Product Form (always structured) */}
           <div className="space-y-3 mb-4">
-            {/* Product Registration */}
             <div className="space-y-3">
-              {productType === 'apple' ? (
-                // Fluxo Apple - todos os filtros em uma única linha
-                <>
-                  {/* Linha única compacta - Marca, Categoria, Subcategoria, Variação */}
-                  <div className="grid grid-cols-4 gap-2 mb-2">
-                    <div>
-                      <label className={`block text-xs font-medium mb-1 ${
-                        theme === 'dark' ? 'text-slate-300' : 'text-slate-700'
-                      }`}>
-                        Marca*
-                      </label>
-                      <select
-                        value={selectedBrandId}
-                        onChange={(e) => {
-                          setSelectedBrandId(e.target.value);
-                          setSelectedCategoryId('');
-                          setSelectedSubcategoryId('');
-                          setSelectedVariationId('');
-                        }}
-                        className={`w-full px-1.5 py-1 text-xs border rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                          theme === 'dark'
-                            ? 'bg-slate-700 border-slate-600 text-white'
-                            : 'bg-white border-slate-300 text-slate-900'
-                        }`}
-                      >
-                        <option value="">Marca</option>
-                        {brands.map(brand => (
-                          <option key={brand.id} value={brand.id}>{brand.name}</option>
-                        ))}
-                      </select>
-                    </div>
+              {/* Linha única compacta - Marca, Categoria, Subcategoria, Variação */}
+              <div className="grid grid-cols-4 gap-2 mb-2">
+                <div>
+                  <label className={`block text-xs font-medium mb-1 ${
+                    theme === 'dark' ? 'text-slate-300' : 'text-slate-700'
+                  }`}>
+                    Marca*
+                  </label>
+                  <select
+                    value={selectedBrandId}
+                    onChange={(e) => {
+                      setSelectedBrandId(e.target.value);
+                      setSelectedCategoryId('');
+                      setSelectedSubcategoryId('');
+                      setSelectedVariationId('');
+                    }}
+                    className={`w-full px-1.5 py-1 text-xs border rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                      theme === 'dark'
+                        ? 'bg-slate-700 border-slate-600 text-white'
+                        : 'bg-white border-slate-300 text-slate-900'
+                    }`}
+                  >
+                    <option value="">Marca</option>
+                    {brands.map(brand => (
+                      <option key={brand.id} value={brand.id}>{brand.name}</option>
+                    ))}
+                  </select>
+                </div>
 
-                    <div>
-                      <label className={`block text-xs font-medium mb-1 ${
-                        theme === 'dark' ? 'text-slate-300' : 'text-slate-700'
-                      }`}>
-                        Categoria*
-                      </label>
-                      <select
-                        value={selectedCategoryId}
-                        onChange={(e) => {
-                          setSelectedCategoryId(e.target.value);
-                          setSelectedSubcategoryId('');
-                          setSelectedVariationId('');
-                        }}
-                        className={`w-full px-1.5 py-1 text-xs border rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                          theme === 'dark'
-                            ? 'bg-slate-700 border-slate-600 text-white'
-                            : 'bg-white border-slate-300 text-slate-900'
-                        }`}
-                        disabled={!selectedBrandId}
-                      >
-                        <option value="">Categoria</option>
-                        {availableCategories.map(category => (
-                          <option key={category.id} value={category.id}>{category.name}</option>
-                        ))}
-                      </select>
-                    </div>
+                <div>
+                  <label className={`block text-xs font-medium mb-1 ${
+                    theme === 'dark' ? 'text-slate-300' : 'text-slate-700'
+                  }`}>
+                    Categoria*
+                  </label>
+                  <select
+                    value={selectedCategoryId}
+                    onChange={(e) => {
+                      setSelectedCategoryId(e.target.value);
+                      setSelectedSubcategoryId('');
+                      setSelectedVariationId('');
+                    }}
+                    className={`w-full px-1.5 py-1 text-xs border rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                      theme === 'dark'
+                        ? 'bg-slate-700 border-slate-600 text-white'
+                        : 'bg-white border-slate-300 text-slate-900'
+                    }`}
+                    disabled={!selectedBrandId}
+                  >
+                    <option value="">Categoria</option>
+                    {availableCategories.map(category => (
+                      <option key={category.id} value={category.id}>{category.name}</option>
+                    ))}
+                  </select>
+                </div>
 
-                    <div>
-                      <label className={`block text-xs font-medium mb-1 ${
-                        theme === 'dark' ? 'text-slate-300' : 'text-slate-700'
-                      }`}>
-                        Subcategoria*
-                      </label>
-                      <select
-                        value={selectedSubcategoryId}
-                        onChange={(e) => {
-                          setSelectedSubcategoryId(e.target.value);
-                          setSelectedVariationId('');
-                        }}
-                        className={`w-full px-1.5 py-1 text-xs border rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                          theme === 'dark'
-                            ? 'bg-slate-700 border-slate-600 text-white'
-                            : 'bg-white border-slate-300 text-slate-900'
-                        }`}
-                        disabled={!selectedCategoryId}
-                      >
-                        <option value="">Subcategoria</option>
-                        {availableSubcategories.map(subcategory => (
-                          <option key={subcategory.id} value={subcategory.id}>{subcategory.name}</option>
-                        ))}
-                      </select>
-                    </div>
+                <div>
+                  <label className={`block text-xs font-medium mb-1 ${
+                    theme === 'dark' ? 'text-slate-300' : 'text-slate-700'
+                  }`}>
+                    Subcategoria*
+                  </label>
+                  <select
+                    value={selectedSubcategoryId}
+                    onChange={(e) => {
+                      setSelectedSubcategoryId(e.target.value);
+                      setSelectedVariationId('');
+                    }}
+                    className={`w-full px-1.5 py-1 text-xs border rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                      theme === 'dark'
+                        ? 'bg-slate-700 border-slate-600 text-white'
+                        : 'bg-white border-slate-300 text-slate-900'
+                    }`}
+                    disabled={!selectedCategoryId}
+                  >
+                    <option value="">Subcategoria</option>
+                    {availableSubcategories.map(subcategory => (
+                      <option key={subcategory.id} value={subcategory.id}>{subcategory.name}</option>
+                    ))}
+                  </select>
+                </div>
 
-                    <div>
-                      <label className={`block text-xs font-medium mb-1 ${
-                        theme === 'dark' ? 'text-slate-300' : 'text-slate-700'
-                      }`}>
-                        Variação
-                      </label>
-                      <select
-                        value={selectedVariationId}
-                        onChange={(e) => setSelectedVariationId(e.target.value)}
-                        className={`w-full px-1.5 py-1 text-xs border rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                          theme === 'dark'
-                            ? 'bg-slate-700 border-slate-600 text-white'
-                            : 'bg-white border-slate-300 text-slate-900'
-                        }`}
-                        disabled={!selectedSubcategoryId || availableVariations.length === 0}
-                      >
-                        <option value="">Variação</option>
-                        {availableVariations.map(variation => (
-                          <option key={variation.id} value={variation.id}>{variation.name}</option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-                </>
-              ) : (
-                // Fluxo Produto genérico compacto
-                <>
-                  {/* Primeira linha compacta - Marca, Categoria, Descrição */}
-                  <div className="grid grid-cols-3 gap-2 mb-2">
-                    <div>
-                      <label className={`block text-xs font-medium mb-1 ${
-                        theme === 'dark' ? 'text-slate-300' : 'text-slate-700'
-                      }`}>
-                        Marca*
-                      </label>
-                      <select
-                        value={selectedBrandId}
-                        onChange={(e) => {
-                          setSelectedBrandId(e.target.value);
-                          setSelectedCategoryId('');
-                          setCustomProductDescription('');
-                          setGenericProductVariations([]);
-                        }}
-                        className={`w-full px-1.5 py-1 text-xs border rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                          theme === 'dark'
-                            ? 'bg-slate-700 border-slate-600 text-white'
-                            : 'bg-white border-slate-300 text-slate-900'
-                        }`}
-                      >
-                        <option value="">Marca</option>
-                        {brands.map(brand => (
-                          <option key={brand.id} value={brand.id}>{brand.name}</option>
-                        ))}
-                      </select>
-                    </div>
-
-                    {selectedBrandId && (
-                      <div>
-                        <label className={`block text-xs font-medium mb-1 ${
-                          theme === 'dark' ? 'text-slate-300' : 'text-slate-700'
-                        }`}>
-                          Categoria*
-                        </label>
-                        <select
-                          value={selectedCategoryId}
-                          onChange={(e) => {
-                            setSelectedCategoryId(e.target.value);
-                            setCustomProductDescription('');
-                            setGenericProductVariations([]);
-                          }}
-                          className={`w-full px-1.5 py-1 text-xs border rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                            theme === 'dark'
-                              ? 'bg-slate-700 border-slate-600 text-white'
-                              : 'bg-white border-slate-300 text-slate-900'
-                          }`}
-                        >
-                          <option value="">Categoria</option>
-                          {availableCategories.map(category => (
-                            <option key={category.id} value={category.id}>{category.name}</option>
-                          ))}
-                        </select>
-                      </div>
-                    )}
-
-                    {selectedCategoryId && (
-                      <div>
-                        <label className={`block text-xs font-medium mb-1 ${
-                          theme === 'dark' ? 'text-slate-300' : 'text-slate-700'
-                        }`}>
-                          Descrição*
-                        </label>
-                        <input
-                          type="text"
-                          value={customProductDescription}
-                          onChange={(e) => setCustomProductDescription(e.target.value)}
-                          className={`w-full px-1.5 py-1 text-xs border rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                            theme === 'dark'
-                              ? 'bg-slate-700 border-slate-600 text-white'
-                              : 'bg-white border-slate-300 text-slate-900'
-                          }`}
-                          placeholder="Ex: Capinha de Silicone"
-                        />
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Variações genéricas */}
-                  {customProductDescription && (
-                    <div className="mb-2">
-                      <div className="flex gap-2">
-                        <input
-                          type="text"
-                          value={currentVariationInput}
-                          onChange={(e) => setCurrentVariationInput(e.target.value)}
-                          className={`flex-1 px-1.5 py-1 text-xs border rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                            theme === 'dark'
-                              ? 'bg-slate-700 border-slate-600 text-white'
-                              : 'bg-white border-slate-300 text-slate-900'
-                          }`}
-                          placeholder="Variação (ex: 128GB, Azul)"
-                        />
-                        <button
-                          type="button"
-                          onClick={addGenericVariation}
-                          className="px-2 py-1 bg-green-500 text-white rounded hover:bg-green-600 transition-colors"
-                        >
-                          <Plus size={12} />
-                        </button>
-                      </div>
-                      
-                      {genericProductVariations.length > 0 && (
-                        <div className="mt-1 flex flex-wrap gap-1">
-                          {genericProductVariations.map((variation, index) => (
-                            <span
-                              key={index}
-                              className="bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded text-xs flex items-center gap-1"
-                            >
-                              {variation}
-                              <button
-                                type="button"
-                                onClick={() => setGenericProductVariations(genericProductVariations.filter((_, i) => i !== index))}
-                                className="text-blue-600 hover:text-blue-800"
-                              >
-                                <X size={8} />
-                              </button>
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </>
-              )}
+                <div>
+                  <label className={`block text-xs font-medium mb-1 ${
+                    theme === 'dark' ? 'text-slate-300' : 'text-slate-700'
+                  }`}>
+                    Variação
+                  </label>
+                  <select
+                    value={selectedVariationId}
+                    onChange={(e) => setSelectedVariationId(e.target.value)}
+                    className={`w-full px-1.5 py-1 text-xs border rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                      theme === 'dark'
+                        ? 'bg-slate-700 border-slate-600 text-white'
+                        : 'bg-white border-slate-300 text-slate-900'
+                    }`}
+                    disabled={!selectedSubcategoryId || availableVariations.length === 0}
+                  >
+                    <option value="">Variação</option>
+                    {availableVariations.map(variation => (
+                      <option key={variation.id} value={variation.id}>{variation.name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
 
               {/* Linha de Quantidade, Preço de Custo e Custo Adicional - compacta */}
               <div className="grid grid-cols-3 gap-2 mb-2">
