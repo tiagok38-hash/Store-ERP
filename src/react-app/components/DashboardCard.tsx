@@ -153,7 +153,8 @@ export default function DashboardCard({
         <h3 className="text-3xl font-bold mb-1">{value}</h3> {/* Aumentado de text-2xl para text-3xl */}
         <p className="text-white/90 text-lg">{title}</p> {/* Aumentado de text-sm para text-lg */}
         {subtitle && (
-          <p className="text-base text-white/80 mt-1">{subtitle}</p> {/* Aumentado de text-xs para text-base */}
+          // Aumentado de text-xs para text-base
+          <p className="text-base text-white/80 mt-1">{subtitle}</p> 
         )}
       </div>
     </div>
