@@ -9,7 +9,8 @@ import {
   X,
   Percent,
   Settings,
-  ChevronLeft
+  ChevronLeft,
+  RefreshCw // Importar ícone para Trade-in
 } from 'lucide-react';
 import { useTheme } from '@/react-app/hooks/useTheme';
 import { Link } from 'react-router-dom';
@@ -17,7 +18,7 @@ import { Link } from 'react-router-dom';
 interface PaymentMethod {
   id: string;
   name: string;
-  type: 'money' | 'pix' | 'debit' | 'credit';
+  type: 'money' | 'pix' | 'debit' | 'credit' | 'trade_in'; // Adicionado 'trade_in'
   isActive: boolean;
   requiresApproval: boolean;
   feePercentage: number;
@@ -39,7 +40,7 @@ export default function PaymentMethodsPage() {
   const [selectedMethod, setSelectedMethod] = useState<PaymentMethod | null>(null);
   const [formData, setFormData] = useState({
     name: '',
-    type: 'money' as 'money' | 'pix' | 'debit' | 'credit',
+    type: 'money' as 'money' | 'pix' | 'debit' | 'credit' | 'trade_in', // Adicionado 'trade_in'
     feePercentage: '0',
     requiresApproval: false,
     // Credit card specific
@@ -115,6 +116,16 @@ export default function PaymentMethodsPage() {
         },
         createdAt: '2025-01-15T00:00:00Z',
         updatedAt: '2025-01-15T00:00:00Z'
+      },
+      { // Novo método de pagamento para Trade-in
+        id: '5',
+        name: 'Troca (Aparelho)',
+        type: 'trade_in',
+        isActive: true,
+        requiresApproval: false,
+        feePercentage: 0,
+        createdAt: '2025-09-14T00:00:00Z',
+        updatedAt: '2025-09-14T00:00:00Z'
       }
     ]);
   }, []);
@@ -215,14 +226,26 @@ export default function PaymentMethodsPage() {
     }));
   };
 
-  const getTypeLabel = (type: string) => {
+  const getTypeLabel = (type: PaymentMethod['type']) => { // Usar o tipo da interface
     const types = {
       money: 'Dinheiro',
       pix: 'PIX',
       debit: 'Débito',
-      credit: 'Crédito'
+      credit: 'Crédito',
+      trade_in: 'Troca (Aparelho)' // Adicionado rótulo para trade_in
     };
-    return types[type as keyof typeof types] || type;
+    return types[type] || type;
+  };
+
+  const getMethodIcon = (type: PaymentMethod['type']) => {
+    switch (type) {
+      case 'money': return <CreditCard size={24} className="text-white" />;
+      case 'pix': return <CreditCard size={24} className="text-white" />; // Pode ser um ícone de smartphone
+      case 'debit': return <CreditCard size={24} className="text-white" />;
+      case 'credit': return <CreditCard size={24} className="text-white" />;
+      case 'trade_in': return <RefreshCw size={24} className="text-white" />; // Ícone para Trade-in
+      default: return <CreditCard size={24} className="text-white" />;
+    }
   };
 
   return (
@@ -312,6 +335,7 @@ export default function PaymentMethodsPage() {
             <option value="pix">PIX</option>
             <option value="debit">Débito</option>
             <option value="credit">Crédito</option>
+            <option value="trade_in">Troca (Aparelho)</option> {/* Adicionado ao filtro */}
           </select>
         </div>
       </div>
@@ -330,7 +354,7 @@ export default function PaymentMethodsPage() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center flex-1">
                   <div className="w-12 h-12 bg-gradient-to-r from-blue-400 to-purple-400 rounded-lg flex items-center justify-center mr-4">
-                    <CreditCard size={24} className="text-white" />
+                    {getMethodIcon(method.type)} {/* Usar a função para o ícone */}
                   </div>
                   
                   <div className="flex-1">
@@ -462,6 +486,7 @@ export default function PaymentMethodsPage() {
                       <option value="pix">PIX</option>
                       <option value="debit">Cartão de Débito</option>
                       <option value="credit">Cartão de Crédito</option>
+                      <option value="trade_in">Troca (Aparelho)</option> {/* Adicionado ao select */}
                     </select>
                   </div>
                 </div>
@@ -480,6 +505,7 @@ export default function PaymentMethodsPage() {
                         theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-slate-300 text-slate-900'
                       }`}
                       placeholder="0.00"
+                      disabled={formData.type === 'trade_in'} // Desabilitar taxa para trade_in
                     />
                   </div>
 
@@ -490,6 +516,7 @@ export default function PaymentMethodsPage() {
                         checked={formData.requiresApproval}
                         onChange={(e) => setFormData({ ...formData, requiresApproval: e.target.checked })}
                         className="rounded border-slate-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+                        disabled={formData.type === 'trade_in'} // Desabilitar para trade_in
                       />
                       <span className={`ml-2 text-sm ${theme === 'dark' ? 'text-slate-200' : 'text-slate-700'}`}>Requer aprovação</span>
                     </label>
@@ -519,7 +546,7 @@ export default function PaymentMethodsPage() {
                             <input
                               type="number"
                               min="1"
-                              max="18" // Changed max to 18
+                              max="18" 
                               value={formData.maxInterestFreeInstallments}
                               onChange={(e) => setFormData({ ...formData, maxInterestFreeInstallments: parseInt(e.target.value) })}
                               className={`w-16 px-2 py-1 border rounded text-center focus:ring-2 focus:ring-blue-500 ${
@@ -534,7 +561,7 @@ export default function PaymentMethodsPage() {
                       <div>
                         <h4 className={`text-sm font-medium mb-3 ${theme === 'dark' ? 'text-slate-200' : 'text-slate-700'}`}>Taxa de Juros por Parcela:</h4>
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                          {Array.from({ length: 18 }, (_, i) => i + 1).map(installments => ( // Changed range to 1 to 18
+                          {Array.from({ length: 18 }, (_, i) => i + 1).map(installments => ( 
                             <div key={installments} className="flex items-center gap-2">
                               <label className={`text-sm w-8 ${theme === 'dark' ? 'text-slate-200' : 'text-slate-700'}`}>{installments}x:</label>
                               <input
