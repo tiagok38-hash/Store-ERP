@@ -161,11 +161,16 @@ export default function PurchaseModal({
   const [stockLocations, setStockLocations] = useState<StockLocation[]>([]);
   const [warrantyTerms, setWarrantyTerms] = useState<WarrantyTerm[]>([]);
 
-  // Product selection states (simplified to always be structured)
+  // Product selection states
   const [selectedBrandId, setSelectedBrandId] = useState('');
   const [selectedCategoryId, setSelectedCategoryId] = useState('');
   const [selectedSubcategoryId, setSelectedSubcategoryId] = useState('');
   const [selectedVariationId, setSelectedVariationId] = useState('');
+  
+  // States for generic product custom description and variations
+  const [customProductDescription, setCustomProductDescription] = useState('');
+  const [currentVariationInput, setCurrentVariationInput] = useState('');
+  const [genericProductVariations, setGenericProductVariations] = useState<string[]>([]);
   
   const [hasImeiSn, setHasImeiSn] = useState<'sim' | 'nao'>('sim');
   
@@ -287,6 +292,8 @@ export default function PurchaseModal({
         setSelectedCategoryId('');
         setSelectedSubcategoryId('');
         setSelectedVariationId('');
+        setCustomProductDescription('');
+        setGenericProductVariations([]);
         setItems([]);
         setAdditionalCost(0);
       } else if (editingPurchase) {
@@ -313,6 +320,11 @@ export default function PurchaseModal({
             setProductTypeSelection('apple');
           } else {
             setProductTypeSelection('generic');
+            // Note: Custom description and generic variations are not automatically re-populated
+            // from a single description string when editing a generic product.
+            // User would need to re-enter if modifying.
+            setCustomProductDescription(''); 
+            setGenericProductVariations([]);
           }
         }
       } else {
@@ -330,6 +342,8 @@ export default function PurchaseModal({
         setSelectedCategoryId('');
         setSelectedSubcategoryId('');
         setSelectedVariationId('');
+        setCustomProductDescription('');
+        setGenericProductVariations([]);
         setItems([]);
         setAdditionalCost(0);
       }
@@ -354,6 +368,9 @@ export default function PurchaseModal({
     setSelectedCategoryId('');
     setSelectedSubcategoryId('');
     setSelectedVariationId('');
+    setCustomProductDescription(''); // Clear custom description
+    setGenericProductVariations([]); // Clear generic variations
+    setCurrentVariationInput(''); // Clear current variation input
   }, [productTypeSelection, brands]);
 
   const filteredSuppliers = suppliers.filter(supplier => 
@@ -369,6 +386,13 @@ export default function PurchaseModal({
 
   const availableSubcategories = subcategories.filter(subcat => subcat.category_id === selectedCategoryId);
   const availableVariations = variations.filter(v => v.subcategory_id === selectedSubcategoryId);
+
+  const addGenericVariation = () => {
+    if (currentVariationInput.trim()) {
+      setGenericProductVariations([...genericProductVariations, currentVariationInput.trim()]);
+      setCurrentVariationInput('');
+    }
+  };
 
   const resetCurrentItem = () => {
     setCurrentItem({
@@ -387,6 +411,9 @@ export default function PurchaseModal({
     setSelectedCategoryId('');
     setSelectedSubcategoryId('');
     setSelectedVariationId('');
+    setCustomProductDescription(''); // Reset custom description
+    setGenericProductVariations([]); // Reset generic variations
+    setCurrentVariationInput(''); // Reset current variation input
   };
 
   const getProductDescription = () => {
@@ -396,10 +423,18 @@ export default function PurchaseModal({
     const subcategoryName = subcategories.find(s => s.id === selectedSubcategoryId)?.name;
     const variationName = variations.find(v => v.id === selectedVariationId)?.name;
 
-    if (brandName) description += brandName;
-    if (categoryName) description += ` ${categoryName}`;
-    if (subcategoryName) description += ` ${subcategoryName}`;
-    if (variationName) description += ` ${variationName}`;
+    // Prioritize custom description for generic products if provided
+    if (productTypeSelection === 'generic' && customProductDescription) {
+      description = customProductDescription;
+      if (genericProductVariations.length > 0) {
+        description += ` - ${genericProductVariations.join(', ')}`;
+      }
+    } else { // Structured flow (Apple or Generic using structured fields)
+      if (brandName) description += brandName;
+      if (categoryName) description += ` ${categoryName}`;
+      if (subcategoryName) description += ` ${subcategoryName}`;
+      if (variationName) description += ` ${variationName}`;
+    }
     
     return description.trim();
   };
@@ -411,11 +446,24 @@ export default function PurchaseModal({
     const subcategoryName = subcategories.find(s => s.id === selectedSubcategoryId)?.name;
     const variationName = variations.find(v => v.id === selectedVariationId)?.name;
 
-    if (brandName) sku += brandName.substring(0, 3).toUpperCase();
-    if (categoryName) sku += categoryName.substring(0, 3).toUpperCase();
-    if (subcategoryName) sku += subcategoryName.replace(/[^a-zA-Z0-9]/g, '').substring(0, 3).toUpperCase();
-    if (variationName) sku += variationName.replace(/[^a-zA-Z0-9]/g, '').substring(0, 3).toUpperCase();
-
+    // Prioritize custom description for generic products if provided
+    if (productTypeSelection === 'generic' && customProductDescription) {
+      sku = customProductDescription
+        .replace(/[^a-zA-Z0-9\s]/g, '')
+        .split(' ')
+        .map((word: string) => word.substring(0, 2))
+        .join('')
+        .toUpperCase()
+        .substring(0, 6);
+      if (genericProductVariations.length > 0) {
+        sku += genericProductVariations.map(v => v.replace(/[^a-zA-Z0-9]/g, '').substring(0, 3)).join('').toUpperCase();
+      }
+    } else { // Structured flow
+      if (brandName) sku += brandName.substring(0, 3).toUpperCase();
+      if (categoryName) sku += categoryName.substring(0, 3).toUpperCase();
+      if (subcategoryName) sku += subcategoryName.replace(/[^a-zA-Z0-9]/g, '').substring(0, 3).toUpperCase();
+      if (variationName) sku += variationName.replace(/[^a-zA-Z0-9]/g, '').substring(0, 3).toUpperCase();
+    }
     return sku.trim();
   };
 
@@ -988,7 +1036,7 @@ export default function PurchaseModal({
             </div>
           </div>
 
-          {/* Product Form (always structured) */}
+          {/* Product Form (always structured, but with conditional generic fields) */}
           <div className="space-y-3 mb-4">
             <div className="space-y-3">
               {/* Linha única compacta - Marca, Categoria, Subcategoria, Variação */}
@@ -1097,6 +1145,78 @@ export default function PurchaseModal({
                   </select>
                 </div>
               </div>
+
+              {/* Generic Product Custom Description and Variations (conditional) */}
+              {productTypeSelection === 'generic' && (
+                <>
+                  <div className="mb-2">
+                    <label className={`block text-xs font-medium mb-1 ${
+                      theme === 'dark' ? 'text-slate-300' : 'text-slate-700'
+                    }`}>
+                      Descrição Customizada (Opcional)
+                    </label>
+                    <input
+                      type="text"
+                      value={customProductDescription}
+                      onChange={(e) => setCustomProductDescription(e.target.value)}
+                      className={`w-full px-1.5 py-1 text-xs border rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                        theme === 'dark'
+                          ? 'bg-slate-700 border-slate-600 text-white'
+                          : 'bg-white border-slate-300 text-slate-900'
+                      }`}
+                      placeholder="Ex: Capinha de Silicone"
+                    />
+                  </div>
+
+                  <div className="mb-2">
+                    <label className={`block text-xs font-medium mb-1 ${
+                      theme === 'dark' ? 'text-slate-300' : 'text-slate-700'
+                    }`}>
+                      Variações Genéricas (Opcional)
+                    </label>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={currentVariationInput}
+                        onChange={(e) => setCurrentVariationInput(e.target.value)}
+                        className={`flex-1 px-1.5 py-1 text-xs border rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                          theme === 'dark'
+                            ? 'bg-slate-700 border-slate-600 text-white'
+                            : 'bg-white border-slate-300 text-slate-900'
+                        }`}
+                        placeholder="Ex: 128GB, Azul"
+                      />
+                      <button
+                        type="button"
+                        onClick={addGenericVariation}
+                        className="px-2 py-1 bg-green-500 text-white rounded hover:bg-green-600 transition-colors"
+                      >
+                        <Plus size={12} />
+                      </button>
+                    </div>
+                    
+                    {genericProductVariations.length > 0 && (
+                      <div className="mt-1 flex flex-wrap gap-1">
+                        {genericProductVariations.map((variation, index) => (
+                          <span
+                            key={index}
+                            className="bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded text-xs flex items-center gap-1"
+                          >
+                            {variation}
+                            <button
+                              type="button"
+                              onClick={() => setGenericProductVariations(genericProductVariations.filter((_, i) => i !== index))}
+                              className="text-blue-600 hover:text-blue-800"
+                            >
+                              <X size={8} />
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
 
               {/* Linha de Quantidade, Preço de Custo e Custo Adicional - compacta */}
               <div className="grid grid-cols-3 gap-2 mb-2">
