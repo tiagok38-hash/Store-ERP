@@ -793,16 +793,10 @@ export default function Inventory() {
                         </td>
                         
                         <td className="py-3 px-4">
-                          <div className="flex items-center">
-                            <div className="w-8 h-8 bg-gradient-to-r from-blue-400 to-purple-400 rounded-lg flex items-center justify-center mr-3">
-                              <span className="text-white text-xs font-bold">
-                                {unit.brand.charAt(0)}
-                              </span>
-                            </div>
-                            <div>
-                              <div className="font-medium text-slate-800">{unit.brand}</div>
-                              <div className="text-sm text-slate-600">{unit.category}</div>
-                            </div>
+                          {/* Removido o div com a inicial da marca */}
+                          <div>
+                            <div className="font-medium text-slate-800">{unit.brand}</div>
+                            <div className="text-sm text-slate-600">{unit.category}</div>
                           </div>
                         </td>
                         
