@@ -353,62 +353,64 @@ export default function Sales() {
       </div>
 
       {/* Seller Ranking */}
-      <div className="p-6 pt-0">
-        <div className={`rounded-lg shadow-lg overflow-hidden mb-6 ${
-          theme === 'dark' ? 'bg-slate-800' : 'bg-white'
-        }`}>
-          <div className={`p-4 border-b ${theme === 'dark' ? 'border-slate-700' : 'border-slate-200'} flex justify-between items-center`}>
-            <h3 className={`text-lg font-semibold flex items-center ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>
-              <Award className="mr-2 text-yellow-500" size={20} />
-              Ranking de Vendedores
-            </h3>
-            <button
-              onClick={() => setSellerRankingSortOrder(prev => prev === 'desc' ? 'asc' : 'desc')}
-              className={`px-3 py-1 rounded-lg text-sm font-medium flex items-center transition-colors ${
-                theme === 'dark'
-                  ? 'bg-slate-700 text-white hover:bg-slate-600'
-                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-              }`}
-            >
-              Ordenar por Vendas {sellerRankingSortOrder === 'desc' ? '↓' : '↑'}
-            </button>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className={theme === 'dark' ? 'bg-slate-700' : 'bg-slate-50'}>
-                <tr>
-                  <th className={`text-left py-3 px-4 font-semibold text-sm ${theme === 'dark' ? 'text-slate-200' : 'text-slate-700'}`}>Posição</th>
-                  <th className={`text-left py-3 px-4 font-semibold text-sm ${theme === 'dark' ? 'text-slate-200' : 'text-slate-700'}`}>Vendedor</th>
-                  <th className={`text-left py-3 px-4 font-semibold text-sm ${theme === 'dark' ? 'text-slate-200' : 'text-slate-700'}`}>Total Vendido</th>
-                  <th className={`text-left py-3 px-4 font-semibold text-sm ${theme === 'dark' ? 'text-slate-200' : 'text-slate-700'}`}>Nº de Vendas</th>
-                </tr>
-              </thead>
-              <tbody>
-                {sellerRanking.map((seller, index) => (
-                  <tr key={seller.name} className={`border-b transition-colors ${
-                    theme === 'dark' 
-                      ? 'border-slate-700 hover:bg-slate-700/50' 
-                      : 'border-slate-100 hover:bg-slate-50'
-                  }`}>
-                    <td className={`py-3 px-4 font-medium text-sm ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>
-                      {index + 1}º
-                    </td>
-                    <td className={`py-3 px-4 text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-slate-600'}`}>
-                      {seller.name}
-                    </td>
-                    <td className={`py-3 px-4 text-sm font-semibold ${theme === 'dark' ? 'text-green-400' : 'text-green-600'}`}>
-                      R$ {seller.totalSales.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                    </td>
-                    <td className={`py-3 px-4 text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-slate-600'}`}>
-                      {seller.salesCount}
-                    </td>
+      {hasPermission(UserPermissions.SALES_VIEW_SELLER_RANKING) && (
+        <div className="p-6 pt-0">
+          <div className={`rounded-lg shadow-lg overflow-hidden mb-6 ${
+            theme === 'dark' ? 'bg-slate-800' : 'bg-white'
+          }`}>
+            <div className={`p-4 border-b ${theme === 'dark' ? 'border-slate-700' : 'border-slate-200'} flex justify-between items-center`}>
+              <h3 className={`text-lg font-semibold flex items-center ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>
+                <Award className="mr-2 text-yellow-500" size={20} />
+                Ranking de Vendedores
+              </h3>
+              <button
+                onClick={() => setSellerRankingSortOrder(prev => prev === 'desc' ? 'asc' : 'desc')}
+                className={`px-3 py-1 rounded-lg text-sm font-medium flex items-center transition-colors ${
+                  theme === 'dark'
+                    ? 'bg-slate-700 text-white hover:bg-slate-600'
+                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                }`}
+              >
+                Ordenar por Vendas {sellerRankingSortOrder === 'desc' ? '↓' : '↑'}
+              </button>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className={theme === 'dark' ? 'bg-slate-700' : 'bg-slate-50'}>
+                  <tr>
+                    <th className={`text-left py-3 px-4 font-semibold text-sm ${theme === 'dark' ? 'text-slate-200' : 'text-slate-700'}`}>Posição</th>
+                    <th className={`text-left py-3 px-4 font-semibold text-sm ${theme === 'dark' ? 'text-slate-200' : 'text-slate-700'}`}>Vendedor</th>
+                    <th className={`text-left py-3 px-4 font-semibold text-sm ${theme === 'dark' ? 'text-slate-200' : 'text-slate-700'}`}>Total Vendido</th>
+                    <th className={`text-left py-3 px-4 font-semibold text-sm ${theme === 'dark' ? 'text-slate-200' : 'text-slate-700'}`}>Nº de Vendas</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {sellerRanking.map((seller, index) => (
+                    <tr key={seller.name} className={`border-b transition-colors ${
+                      theme === 'dark' 
+                        ? 'border-slate-700 hover:bg-slate-700/50' 
+                        : 'border-slate-100 hover:bg-slate-50'
+                    }`}>
+                      <td className={`py-3 px-4 font-medium text-sm ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>
+                        {index + 1}º
+                      </td>
+                      <td className={`py-3 px-4 text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-slate-600'}`}>
+                        {seller.name}
+                      </td>
+                      <td className={`py-3 px-4 text-sm font-semibold ${theme === 'dark' ? 'text-green-400' : 'text-green-600'}`}>
+                        R$ {seller.totalSales.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      </td>
+                      <td className={`py-3 px-4 text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-slate-600'}`}>
+                        {seller.salesCount}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Sales Table */}
       <div className="p-6 pt-0">
