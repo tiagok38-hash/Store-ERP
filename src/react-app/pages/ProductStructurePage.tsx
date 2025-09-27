@@ -9,9 +9,11 @@ import {
   Trash2,
   Save,
   X,
-  ChevronRight
+  ChevronRight,
+  ChevronLeft
 } from 'lucide-react';
 import { useTheme } from '@/react-app/hooks/useTheme';
+import { Link } from 'react-router-dom';
 
 interface Brand {
   id: string;
@@ -260,6 +262,15 @@ export default function ProductStructurePage() {
       {/* Header */}
       <div className="flex justify-between items-center mb-6">
         <div>
+          <Link 
+            to="/administration" 
+            className={`inline-flex items-center text-sm font-medium mb-4 transition-colors ${
+              theme === 'dark' ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-800'
+            }`}
+          >
+            <ChevronLeft size={16} className="mr-1" />
+            Voltar para Administração
+          </Link>
           <h1 className={`text-3xl font-bold mb-2 flex items-center ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>
             <Building2 className="mr-3 text-blue-600" size={32} />
             Estrutura de Produtos

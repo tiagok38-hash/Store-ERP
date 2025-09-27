@@ -12,10 +12,12 @@ import {
   Eye,
   EyeOff,
   Save,
-  X
+  X,
+  ChevronLeft
 } from 'lucide-react';
 import { UserPermissions } from '@/shared/auth-types';
 import { useTheme } from '@/react-app/hooks/useTheme';
+import { Link } from 'react-router-dom';
 
 interface User {
   id: string;
@@ -371,6 +373,15 @@ export default function UsersManagementPage() {
       {/* Header */}
       <div className="flex justify-between items-center mb-6">
         <div>
+          <Link 
+            to="/administration" 
+            className={`inline-flex items-center text-sm font-medium mb-4 transition-colors ${
+              theme === 'dark' ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-800'
+            }`}
+          >
+            <ChevronLeft size={16} className="mr-1" />
+            Voltar para Administração
+          </Link>
           <h1 className={`text-3xl font-bold mb-2 flex items-center ${
             theme === 'dark' ? 'text-white' : 'text-slate-800'
           }`}>
@@ -600,17 +611,19 @@ export default function UsersManagementPage() {
                     <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-200' : 'text-slate-700'}`}>
                       Email *
                     </label>
-                    <input
-                      type="email"
-                      value={formData.email}
-                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
-                        errors.email 
-                          ? 'border-red-300' 
-                          : (theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'border-slate-300 text-slate-900')
-                      }`}
-                      placeholder="usuario@email.com"
-                    />
+                    <div className="relative">
+                      <input
+                        type="email"
+                        value={formData.email}
+                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                        className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
+                          errors.email 
+                            ? 'border-red-300' 
+                            : (theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'border-slate-300 text-slate-900')
+                        }`}
+                        placeholder="usuario@email.com"
+                      />
+                    </div>
                     {errors.email && <p className="text-red-600 text-sm mt-1">{errors.email}</p>}
                   </div>
 

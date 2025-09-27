@@ -6,10 +6,12 @@ import {
   Edit, 
   Trash2,
   Save,
-  X
+  X,
+  ChevronLeft
 } from 'lucide-react';
 import DeleteConfirmModal from '@/react-app/components/DeleteConfirmModal';
 import { useNotification } from '@/react-app/components/NotificationSystem';
+import { Link } from 'react-router-dom';
 
 interface Category {
   id: string;
@@ -203,6 +205,15 @@ export default function Categories() {
       {/* Header */}
       <div className="flex justify-between items-center mb-6">
         <div>
+          <Link 
+            to="/administration" 
+            className={`inline-flex items-center text-sm font-medium mb-4 transition-colors ${
+              false ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-800'
+            }`}
+          >
+            <ChevronLeft size={16} className="mr-1" />
+            Voltar para Administração
+          </Link>
           <h1 className="text-3xl font-bold text-slate-800 mb-2 flex items-center">
             <Tag className="mr-3 text-blue-600" size={32} />
             Categorias
