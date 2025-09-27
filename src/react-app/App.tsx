@@ -35,7 +35,7 @@ function AppContent() {
 
   // --- INÍCIO DA REMOÇÃO TEMPORÁRIA DA LÓGICA DE LOGIN ---
   // Comentando o useEffect que lida com redirecionamentos de autenticação
-  
+  /*
   useEffect(() => {
     if (!isLoading) {
       if (session && location.pathname === '/login') {
@@ -45,10 +45,10 @@ function AppContent() {
       }
     }
   }, [session, isLoading, location.pathname, navigate]);
-  
+  */
 
   // Comentando o bloco que mostra o loader ou a página de Login
-  
+  /*
   if (isLoading) {
     return <Home />;
   }
@@ -61,7 +61,7 @@ function AppContent() {
       </Routes>
     );
   }
-  
+  */
   // --- FIM DA REMOÇÃO TEMPORÁRIA DA LÓGICA DE LOGIN ---
 
   // Se a lógica de login estiver comentada, sempre renderizamos o layout completo
