@@ -52,14 +52,20 @@ export default function Dashboard() {
   const [customDateFrom, setCustomDateFrom] = useState('');
   const [customDateTo, setCustomDateTo] = useState('');
   const [cardSettings, setCardSettings] = useState(() => {
-    const saved = localStorage.getItem('dashboardCardSettings');
-    return saved ? JSON.parse(saved) : {
+    const defaultSettings = {
       sales: { visible: true, color: 'from-blue-600 to-blue-700' },
       revenue: { visible: true, color: 'from-green-600 to-green-700' },
       stock: { visible: true, color: 'from-orange-600 to-orange-700' },
       customers: { visible: true, color: 'from-purple-600 to-purple-700' },
       lowStock: { visible: true, color: 'from-red-500 to-red-600' } // Novo card
     };
+    const saved = localStorage.getItem('dashboardCardSettings');
+    if (saved) {
+      const parsedSaved = JSON.parse(saved);
+      // Merge saved settings with default settings to ensure new cards are included
+      return { ...defaultSettings, ...parsedSaved };
+    }
+    return defaultSettings;
   });
 
   useEffect(() => {
