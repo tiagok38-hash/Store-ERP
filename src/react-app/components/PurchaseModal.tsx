@@ -472,10 +472,10 @@ export default function PurchaseModal({
       return;
     }
 
-    // Generate unique SKUs for each item
+    // Generate unique SKUs for each item following the #1, #2, #3 pattern
     const itemsWithSkus = items.map((item, index) => ({
       ...item,
-      sku: editingPurchase ? item.sku || `#${128 + index}` : `#${128 + Math.floor(Math.random() * 9000) + 1000}`
+      sku: item.sku || `#${index + 1}` // Use existing SKU or generate #1, #2, etc.
     }));
 
     const supplierName = mockSuppliers.find(s => s.id === selectedSupplier)?.name || 'Fornecedor';
