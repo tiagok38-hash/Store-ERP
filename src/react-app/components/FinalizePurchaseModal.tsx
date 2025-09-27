@@ -1,8 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Dialog, DialogPanel, DialogTitle, Transition, TransitionChild } from '@headlessui/react';
-import { X, CheckCircle, Package, Hash, Smartphone, Barcode, MapPin, ShieldCheck, DollarSign, AlertTriangle } from 'lucide-react';
-import { v4 as uuidv4 } from 'uuid';
-import { useNotification } from '@/react-app/components/NotificationSystem'; // Importar useNotification
+import { X, CheckCircle, Package } from 'lucide-react';
+import { formatCurrencyInput, parseCurrencyBR, formatCurrencyBR } from '@/react-app/utils/currency';
 
 interface PurchaseItem {
   id: string;
@@ -10,538 +8,344 @@ interface PurchaseItem {
   quantity: number;
   costPrice: number;
   finalPrice: number;
-  condition: 'novo' | 'seminovo' | 'usado';
-  location?: string;
-  warranty?: string;
-  hasImeiSerial: boolean;
+}
+
+interface ItemUnit {
+  unitId: string;
   imei1?: string;
   imei2?: string;
   serialNumber?: string;
-  barcode?: string;
-}
-
-interface Purchase {
-  id: string;
-  locatorCode: string;
-  supplierId: string;
-  supplierName: string;
-  purchaseDate: string;
-  invoiceNumber: string;
-  observations: string;
-  items: PurchaseItem[];
-  subtotal: number;
-  additionalCost: number;
-  total: number;
-  status: 'completed' | 'pending' | 'partial';
-  createdAt: string;
+  batteryHealth?: number;
+  condition: string;
+  warranty: string;
+  location: string;
+  markup: number | null; // Pode ser null se não preenchido
+  salePrice?: number; // Pode ser undefined para começar vazio
+  displaySalePrice: string; // Novo campo para o valor formatado do input
 }
 
 interface FinalizePurchaseModalProps {
   isOpen: boolean;
   onClose: () => void;
-  purchase: Purchase | null;
-  onFinalized: (finalizedItems: any[]) => void;
-  checkDuplicateImeiSerial: (
-    imei1: string | undefined,
-    imei2: string | undefined,
-    serialNumber: string | undefined,
-    currentUnitId?: string
-  ) => { isDuplicate: boolean; type: string; value: string }; // Nova prop
+  purchase: any;
+  onFinalized?: (finalizedItems: any[]) => void;
 }
 
-export default function FinalizePurchaseModal({
-  isOpen,
-  onClose,
-  purchase,
-  onFinalized,
-  checkDuplicateImeiSerial, // Recebendo a nova prop
+export default function FinalizePurchaseModal({ 
+  isOpen, 
+  onClose, 
+  purchase, 
+  onFinalized 
 }: FinalizePurchaseModalProps) {
-  const { showSuccess, showError } = useNotification();
+  const [itemUnits, setItemUnits] = useState<{[key: string]: ItemUnit[]}>({});
+  const [isAnimatingOut, setIsAnimatingOut] = useState(false);
 
-  const [finalizedItems, setFinalizedItems] = useState<PurchaseItem[]>([]);
-  const [isItemDetailsModalOpen, setIsItemDetailsModalOpen] = useState(false);
-  const [currentPurchaseItem, setCurrentPurchaseItem] = useState<PurchaseItem | null>(null);
-
-  // States for item details form
-  const [imei1, setImei1] = useState('');
-  const [imei2, setImei2] = useState('');
-  const [serialNumber, setSerialNumber] = useState('');
-  const [barcode, setBarcode] = useState('');
-  const [location, setLocation] = useState('');
-  const [condition, setCondition] = useState<'novo' | 'seminovo' | 'usado'>('novo');
-  const [warranty, setWarranty] = useState('3 meses');
-  const [finalPrice, setFinalPrice] = useState(0);
+  const handleClose = () => {
+    setIsAnimatingOut(true);
+    setTimeout(() => {
+      onClose();
+      setIsAnimatingOut(false);
+    }, 300); // Match animation duration
+  };
 
   useEffect(() => {
-    if (isOpen && purchase) {
-      // Initialize finalizedItems with existing items from the purchase
-      // For items with quantity > 1 and hasImeiSerial, we need to create multiple entries
-      const initialFinalized: PurchaseItem[] = [];
-      purchase.items.forEach(item => {
-        if (item.hasImeiSerial && item.quantity > 1) {
-          // Create multiple placeholder entries for unique identification
-          for (let i = 0; i < item.quantity; i++) {
-            initialFinalized.push({
-              ...item,
-              id: uuidv4(), // Assign a new unique ID for each unit
-              quantity: 1, // Each entry represents one unit
-              imei1: undefined, // Clear for new input
-              imei2: undefined,
-              serialNumber: undefined,
-              barcode: undefined,
-            });
-          }
-        } else {
-          initialFinalized.push(item);
+    if (purchase && purchase.items) {
+      const unitsMap: {[key: string]: ItemUnit[]} = {};
+      
+      purchase.items.forEach((item: PurchaseItem) => {
+        const units: ItemUnit[] = [];
+        for (let i = 0; i < item.quantity; i++) {
+          units.push({
+            unitId: `${item.id}-${i}`,
+            imei1: '',
+            imei2: '',
+            serialNumber: '',
+            batteryHealth: 100,
+            condition: 'Seminovo',
+            warranty: '1 ano',
+            location: 'Loja',
+            markup: null, // Inicializa como null
+            salePrice: undefined, // Inicializa como undefined para começar vazio
+            displaySalePrice: '' // Inicializa o displaySalePrice como vazio
+          });
         }
+        unitsMap[item.id] = units;
       });
-      setFinalizedItems(initialFinalized);
-    } else if (!isOpen) {
-      // Reset states when modal closes
-      setFinalizedItems([]);
-      setIsItemDetailsModalOpen(false);
-      setCurrentPurchaseItem(null);
-      resetItemDetailsForm();
+      
+      setItemUnits(unitsMap);
     }
-  }, [isOpen, purchase]);
+  }, [purchase]);
 
-  const resetItemDetailsForm = () => {
-    setImei1('');
-    setImei2('');
-    setSerialNumber('');
-    setBarcode('');
-    setLocation('');
-    setCondition('novo');
-    setWarranty('3 meses');
-    setFinalPrice(0);
-  };
+  const updateItemUnit = (itemId: string, unitIndex: number, field: keyof ItemUnit, value: any) => {
+    setItemUnits(prev => {
+      const newUnits = { ...prev };
+      if (!newUnits[itemId]) return prev;
+      
+      newUnits[itemId] = [...newUnits[itemId]];
+      const updatedUnit = { ...newUnits[itemId][unitIndex], [field]: value };
 
-  const handleEditItemDetails = (item: PurchaseItem) => {
-    setCurrentPurchaseItem(item);
-    setImei1(item.imei1 || '');
-    setImei2(item.imei2 || '');
-    setSerialNumber(item.serialNumber || '');
-    setBarcode(item.barcode || '');
-    setLocation(item.location || '');
-    setCondition(item.condition || 'novo');
-    setWarranty(item.warranty || '3 meses');
-    setFinalPrice(item.finalPrice || item.costPrice * 1.3);
-    setIsItemDetailsModalOpen(true);
-  };
-
-  const handleSaveItemDetails = () => {
-    if (!currentPurchaseItem) return;
-
-    // Validação de campos obrigatórios para itens com IMEI/Serial
-    if (currentPurchaseItem.hasImeiSerial) {
-      if (!imei1.trim() && !imei2.trim() && !serialNumber.trim()) {
-        showError('Erro', 'Para produtos com IMEI/Serial, pelo menos um campo de identificação deve ser preenchido.');
-        return;
+      // Se o campo atualizado for displaySalePrice, também atualiza salePrice
+      if (field === 'displaySalePrice') {
+        updatedUnit.salePrice = parseCurrencyBR(value);
       }
-
-      // Verificar duplicidade com itens já existentes no estoque
-      const duplicateCheck = checkDuplicateImeiSerial(imei1.trim(), imei2.trim(), serialNumber.trim());
-      if (duplicateCheck.isDuplicate) {
-        showError(
-          'Erro de Duplicidade',
-          `O ${duplicateCheck.type} "${duplicateCheck.value}" já está cadastrado no sistema.`
-        );
-        return; // Impedir salvamento dos detalhes do item
+      
+      // Quando o markup muda, APENAS o markup é atualizado no estado.
+      // O salePrice não é alterado por aqui.
+      if (field === 'markup') {
+        const markup = value === null ? null : (parseFloat(value) || 0);
+        updatedUnit.markup = markup;
       }
-
-      // Verificar duplicidade com outros itens já finalizados nesta mesma compra
-      for (const existingFinalizedItem of finalizedItems) {
-        if (existingFinalizedItem.id !== currentPurchaseItem.id && existingFinalizedItem.hasImeiSerial) {
-          if (imei1.trim() && existingFinalizedItem.imei1 === imei1.trim()) {
-            showError('Erro de Duplicidade Interna', `O IMEI 1 "${imei1.trim()}" já foi atribuído a outro item nesta compra.`);
-            return;
-          }
-          if (imei2.trim() && existingFinalizedItem.imei2 === imei2.trim()) {
-            showError('Erro de Duplicidade Interna', `O IMEI 2 "${imei2.trim()}" já foi atribuído a outro item nesta compra.`);
-            return;
-          }
-          if (serialNumber.trim() && existingFinalizedItem.serialNumber === serialNumber.trim()) {
-            showError('Erro de Duplicidade Interna', `O Número de Série "${serialNumber.trim()}" já foi atribuído a outro item nesta compra.`);
-            return;
-          }
-        }
-      }
-    }
-
-    const updatedItem = {
-      ...currentPurchaseItem,
-      imei1: currentPurchaseItem.hasImeiSerial ? imei1.trim() : undefined,
-      imei2: currentPurchaseItem.hasImeiSerial ? imei2.trim() : undefined,
-      serialNumber: currentPurchaseItem.hasImeiSerial ? serialNumber.trim() : undefined,
-      barcode: barcode.trim() || undefined,
-      location,
-      condition,
-      warranty,
-      finalPrice,
-    };
-
-    setFinalizedItems(prev => {
-      const existingIndex = prev.findIndex(item => item.id === updatedItem.id);
-      if (existingIndex > -1) {
-        return prev.map((item, index) => index === existingIndex ? updatedItem : item);
-      }
-      return [...prev, updatedItem];
+      
+      newUnits[itemId][unitIndex] = updatedUnit;
+      return newUnits;
     });
-
-    showSuccess('Item Atualizado', `Detalhes do item "${currentPurchaseItem.description}" salvos.`);
-    setIsItemDetailsModalOpen(false);
-    setCurrentPurchaseItem(null);
-    resetItemDetailsForm();
   };
 
   const handleFinalize = () => {
-    if (!purchase) return;
+    // Validate required fields - salePrice is mandatory
+    const allUnits = Object.values(itemUnits).flat();
+    const hasErrors = allUnits.some(unit => unit.salePrice === undefined || unit.salePrice <= 0);
 
-    // Contar itens que precisam de identificação única
-    const itemsNeedingIdentification = finalizedItems.filter(item => item.hasImeiSerial);
-    const identifiedItemsCount = itemsNeedingIdentification.filter(item => item.imei1 || item.imei2 || item.serialNumber).length;
-
-    if (identifiedItemsCount < itemsNeedingIdentification.length) {
-      showError('Erro', 'Nem todos os itens que exigem IMEI/Serial foram identificados. Por favor, preencha os detalhes de todos os itens.');
+    if (hasErrors) {
+      alert('Preço de venda é obrigatório para todas as unidades');
       return;
     }
 
-    // Verificação final de duplicidade para IMEI/Serial dentro da lista de itens finalizados
-    const allImeiSerialsInThisPurchase = new Set<string>();
-    for (const item of finalizedItems) {
-      if (item.hasImeiSerial) {
-        if (item.imei1) {
-          if (allImeiSerialsInThisPurchase.has(item.imei1)) {
-            showError(
-              'Erro de Duplicidade',
-              `O IMEI 1 "${item.imei1}" está duplicado dentro desta mesma compra. Por favor, corrija.`
-            );
-            return;
-          }
-          allImeiSerialsInThisPurchase.add(item.imei1);
+    // Check for duplicate IMEI/Serial numbers
+    const imeiSerialList: string[] = [];
+    for (const units of Object.values(itemUnits)) {
+      for (const unit of units) {
+        if (unit.imei1 && imeiSerialList.includes(unit.imei1)) {
+          alert(`IMEI 1 duplicado encontrado: ${unit.imei1}`);
+          return;
         }
-        if (item.imei2) {
-          if (allImeiSerialsInThisPurchase.has(item.imei2)) {
-            showError(
-              'Erro de Duplicidade',
-              `O IMEI 2 "${item.imei2}" está duplicado dentro desta mesma compra. Por favor, corrija.`
-            );
-            return;
-          }
-          allImeiSerialsInThisPurchase.add(item.imei2);
+        if (unit.imei1) imeiSerialList.push(unit.imei1);
+        
+        if (unit.imei2 && imeiSerialList.includes(unit.imei2)) {
+          alert(`IMEI 2 duplicado encontrado: ${unit.imei2}`);
+          return;
         }
-        if (item.serialNumber) {
-          if (allImeiSerialsInThisPurchase.has(item.serialNumber)) {
-            showError(
-              'Erro de Duplicidade',
-              `O Número de Série "${item.serialNumber}" está duplicado dentro desta mesma compra. Por favor, corrija.`
-            );
-            return;
-          }
-          allImeiSerialsInThisPurchase.add(item.serialNumber);
+        if (unit.imei2) imeiSerialList.push(unit.imei2);
+        
+        if (unit.serialNumber && imeiSerialList.includes(unit.serialNumber)) {
+          alert(`Número de série duplicado encontrado: ${unit.serialNumber}`);
+          return;
         }
+        if (unit.serialNumber) imeiSerialList.push(unit.serialNumber);
       }
     }
 
-    onFinalized(finalizedItems);
-    onClose();
+    if (onFinalized) {
+      onFinalized({ itemUnits, purchase });
+    }
+    
+    handleClose(); // Use the animated close
   };
 
-  const getStatusBadge = (item: PurchaseItem) => {
-    if (item.hasImeiSerial && (!item.imei1 && !item.imei2 && !item.serialNumber)) {
-      return { label: 'Pendente ID', color: 'bg-yellow-100 text-yellow-800' };
-    }
-    return { label: 'Completo', color: 'bg-green-100 text-green-800' };
-  };
+  if (!isOpen || !purchase && !isAnimatingOut) return null;
 
   return (
-    <Transition appear show={isOpen} as="div">
-      <Dialog as="div" className="relative z-50" onClose={onClose}>
-        <TransitionChild
-          as="div"
-          enter="ease-out duration-300"
-          enterFrom="opacity-0"
-          enterTo="opacity-100"
-          leave="ease-in duration-200"
-          leaveFrom="opacity-100"
-          leaveTo="opacity-0"
-        >
-          <div className="fixed inset-0 bg-black bg-opacity-40" />
-        </TransitionChild>
-
-        <div className="fixed inset-0 overflow-y-auto">
-          <div className="flex min-h-full items-center justify-center p-4 text-center">
-            <TransitionChild
-              as="div"
-              enter="ease-out duration-300"
-              enterFrom="opacity-0 scale-95"
-              enterTo="opacity-100 scale-100"
-              leave="ease-in duration-200"
-              leaveFrom="opacity-100 scale-100"
-              leaveTo="opacity-0 scale-95"
-            >
-              <DialogPanel className="w-full max-w-3xl transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all">
-                <DialogTitle as="h3" className="text-2xl font-bold leading-6 text-slate-900 flex items-center justify-between">
-                  <div className="flex items-center">
-                    <Package className="mr-3 text-blue-600" size={28} />
-                    Finalizar Entrada de Compra: {purchase?.locatorCode}
-                  </div>
-                  <button
-                    type="button"
-                    className="inline-flex justify-center rounded-md border border-transparent bg-slate-100 px-2 py-2 text-sm font-medium text-slate-900 hover:bg-slate-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
-                    onClick={onClose}
-                  >
-                    <X size={20} />
-                  </button>
-                </DialogTitle>
-
-                <div className="mt-6 space-y-6">
-                  <p className="text-slate-600">
-                    Preencha os detalhes de cada item para finalizar a entrada no estoque.
-                    Itens com "Identificação Única" (IMEI/Serial) precisam ter seus dados preenchidos individualmente.
-                  </p>
-
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-slate-200">
-                      <thead className="bg-slate-50">
-                        <tr>
-                          <th scope="col" className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Produto</th>
-                          <th scope="col" className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Identificação</th>
-                          <th scope="col" className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Status</th>
-                          <th scope="col" className="px-4 py-2 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">Ações</th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-slate-200">
-                        {finalizedItems.map((item) => {
-                          const statusBadge = getStatusBadge(item);
-                          return (
-                            <tr key={item.id}>
-                              <td className="px-4 py-2 whitespace-nowrap text-sm font-medium text-slate-900">
-                                {item.description} ({item.quantity} un.)
-                              </td>
-                              <td className="px-4 py-2 whitespace-nowrap text-sm text-slate-500">
-                                {item.hasImeiSerial ? (
-                                  <div className="flex flex-col">
-                                    {item.imei1 && <span className="text-xs text-slate-600">IMEI1: {item.imei1}</span>}
-                                    {item.imei2 && <span className="text-xs text-slate-600">IMEI2: {item.imei2}</span>}
-                                    {item.serialNumber && <span className="text-xs text-slate-600">SN: {item.serialNumber}</span>}
-                                    {!item.imei1 && !item.imei2 && !item.serialNumber && <span className="text-xs text-red-500 flex items-center"><AlertTriangle size={12} className="mr-1"/>Faltando ID</span>}
-                                  </div>
-                                ) : (
-                                  <span className="text-xs text-slate-400">N/A (Não requer ID única)</span>
-                                )}
-                              </td>
-                              <td className="px-4 py-2 whitespace-nowrap">
-                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusBadge.color}`}>
-                                  {statusBadge.label}
-                                </span>
-                              </td>
-                              <td className="px-4 py-2 whitespace-nowrap text-right text-sm font-medium">
-                                {item.hasImeiSerial && (
-                                  <button
-                                    onClick={() => handleEditItemDetails(item)}
-                                    className="text-blue-600 hover:text-blue-900"
-                                  >
-                                    Preencher Detalhes
-                                  </button>
-                                )}
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-
-                <div className="mt-8 flex justify-end gap-3">
-                  <button
-                    type="button"
-                    className="inline-flex justify-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
-                    onClick={onClose}
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    type="button"
-                    className="inline-flex items-center rounded-md border border-transparent bg-green-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-green-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-green-500 focus-visible:ring-offset-2"
-                    onClick={handleFinalize}
-                  >
-                    <CheckCircle className="mr-2" size={18} /> Finalizar Entrada
-                  </button>
-                </div>
-              </DialogPanel>
-            </TransitionChild>
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div 
+        className={`bg-white rounded-lg shadow-2xl max-w-7xl w-full max-h-[90vh] overflow-hidden ${isAnimatingOut ? 'animate-modal-out' : 'animate-modal-in'}`}
+      >
+        {/* Header */}
+        <div className="bg-blue-600 text-white px-4 py-3 flex justify-between items-center rounded-t-lg">
+          <div className="text-center flex-1">
+            <h2 className="text-lg font-semibold flex items-center justify-center">
+              <Package className="mr-2" size={20} />
+              Lançar o estoque da compra #{purchase?.locatorCode}
+            </h2>
           </div>
+          <button
+            onClick={handleClose}
+            className="hover:bg-white/20 p-1 rounded transition-colors"
+          >
+            <X size={20} />
+          </button>
         </div>
 
-        {/* Item Details Modal */}
-        <Transition appear show={isItemDetailsModalOpen} as="div">
-          <Dialog as="div" className="relative z-50" onClose={() => setIsItemDetailsModalOpen(false)}>
-            <TransitionChild
-              as="div"
-              enter="ease-out duration-300"
-              enterFrom="opacity-0"
-              enterTo="opacity-100"
-              leave="ease-in duration-200"
-              leaveFrom="opacity-100"
-              leaveTo="opacity-0"
-            >
-              <div className="fixed inset-0 bg-black bg-opacity-25" />
-            </TransitionChild>
+        <div className="p-4 max-h-[calc(90vh-120px)] overflow-y-auto">
+          {/* Instructions */}
+          <div className="text-center mb-4">
+            <p className="text-slate-600 text-sm">
+              Complete os campos dos itens abaixo para que sejam lançados no Estoque com as informações corretas.
+            </p>
+            <p className="text-slate-600 text-sm">
+              Ignorar os campos podem ocasionar falhas como por exemplo na Garantia, se não for preenchida, ao vender o item, não será calculado a data de expiração da garantia do item.
+            </p>
+          </div>
 
-            <div className="fixed inset-0 overflow-y-auto">
-              <div className="flex min-h-full items-center justify-center p-4 text-center">
-                <TransitionChild
-                  as="div"
-                  enter="ease-out duration-300"
-                  enterFrom="opacity-0 scale-95"
-                  enterTo="opacity-100 scale-100"
-                  leave="ease-in duration-200"
-                  leaveFrom="opacity-100 scale-100"
-                  leaveTo="opacity-0 scale-95"
-                >
-                  <DialogPanel className="w-full max-w-xl transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all">
-                    <DialogTitle as="h3" className="text-lg font-bold leading-6 text-slate-900 flex items-center justify-between">
-                      <div className="flex items-center">
-                        <Package className="mr-2 text-blue-600" size={24} />
-                        Detalhes do Item: {currentPurchaseItem?.description}
-                      </div>
-                      <button
-                        type="button"
-                        className="inline-flex justify-center rounded-md border border-transparent bg-slate-100 px-2 py-2 text-sm font-medium text-slate-900 hover:bg-slate-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
-                        onClick={() => setIsItemDetailsModalOpen(false)}
-                      >
-                        <X size={18} />
-                      </button>
-                    </DialogTitle>
-
-                    <div className="mt-4 space-y-4">
-                      {currentPurchaseItem?.hasImeiSerial && (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div>
-                            <label htmlFor="imei1" className="block text-sm font-medium text-slate-700 mb-1">IMEI 1 (Opcional)</label>
-                            <input
-                              type="text"
-                              id="imei1"
-                              value={imei1}
-                              onChange={(e) => setImei1(e.target.value)}
-                              className="w-full border border-slate-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
-                              placeholder="IMEI 1"
-                            />
-                          </div>
-                          <div>
-                            <label htmlFor="imei2" className="block text-sm font-medium text-slate-700 mb-1">IMEI 2 (Opcional)</label>
-                            <input
-                              type="text"
-                              id="imei2"
-                              value={imei2}
-                              onChange={(e) => setImei2(e.target.value)}
-                              className="w-full border border-slate-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
-                              placeholder="IMEI 2"
-                            />
-                          </div>
-                          <div>
-                            <label htmlFor="serialNumber" className="block text-sm font-medium text-slate-700 mb-1">Número de Série (Opcional)</label>
-                            <input
-                              type="text"
-                              id="serialNumber"
-                              value={serialNumber}
-                              onChange={(e) => setSerialNumber(e.target.value)}
-                              className="w-full border border-slate-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
-                              placeholder="Número de Série"
-                            />
-                          </div>
-                          <div>
-                            <label htmlFor="barcode" className="block text-sm font-medium text-slate-700 mb-1">Código de Barras (Opcional)</label>
-                            <input
-                              type="text"
-                              id="barcode"
-                              value={barcode}
-                              onChange={(e) => setBarcode(e.target.value)}
-                              className="w-full border border-slate-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
-                              placeholder="Código de Barras"
-                            />
-                          </div>
-                          <p className="md:col-span-2 text-sm text-slate-600 flex items-center">
-                            <Info size={16} className="mr-1 text-blue-500" />
-                            Preencha pelo menos um dos campos (IMEI 1, IMEI 2 ou Número de Série).
-                          </p>
-                        </div>
-                      )}
-
-                      <div>
-                        <label htmlFor="location" className="block text-sm font-medium text-slate-700 mb-1">Localização</label>
+          {/* Table */}
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse border border-slate-300">
+              <thead>
+                <tr className="bg-slate-50">
+                  <th className="border border-slate-300 px-2 py-2 text-xs font-semibold text-slate-700 text-left min-w-[120px]">Descrição</th>
+                  <th className="border border-slate-300 px-2 py-2 text-xs font-semibold text-slate-700 text-center w-12">Qtd</th>
+                  <th className="border border-slate-300 px-2 py-2 text-xs font-semibold text-slate-700 text-center min-w-[140px]">IMEI1</th>
+                  <th className="border border-slate-300 px-2 py-2 text-xs font-semibold text-slate-700 text-center min-w-[140px]">IMEI2</th>
+                  <th className="border border-slate-300 px-2 py-2 text-xs font-semibold text-slate-700 text-center min-w-[120px]">Serial Number</th>
+                  <th className="border border-slate-300 px-2 py-2 text-xs font-semibold text-slate-700 text-center w-20">Condição</th>
+                  <th className="border border-slate-300 px-2 py-2 text-xs font-semibold text-slate-700 text-center w-16">Saúde</th>
+                  <th className="border border-slate-300 px-2 py-2 text-xs font-semibold text-slate-700 text-center w-20">Garantia</th>
+                  <th className="border border-slate-300 px-2 py-2 text-xs font-semibold text-slate-700 text-center w-24">Local de Estoque</th>
+                  <th className="border border-slate-300 px-2 py-2 text-xs font-semibold text-slate-700 text-center w-20">Preço de Custo</th>
+                  <th className="border border-slate-300 px-2 py-2 text-xs font-semibold text-slate-700 text-center w-16">Markup</th>
+                  <th className="border border-slate-300 px-2 py-2 text-xs font-semibold text-slate-700 text-center w-24">Preço sugerido com Markup</th>
+                  <th className="border border-slate-300 px-2 py-2 text-xs font-semibold text-slate-700 text-center w-20 bg-red-50">Preço de Venda</th>
+                </tr>
+              </thead>
+              <tbody>
+                {purchase?.items.map((item: PurchaseItem) => 
+                  itemUnits[item.id]?.map((unit, unitIndex) => (
+                    <tr key={unit.unitId} className="hover:bg-slate-50">
+                      <td className="border border-slate-300 px-2 py-2">
+                        <div className="text-xs font-medium text-slate-800">{item.description}</div>
+                      </td>
+                      <td className="border border-slate-300 px-2 py-2 text-center">
+                        <div className="text-xs">{unitIndex + 1}</div>
+                      </td>
+                      <td className="border border-slate-300 px-1 py-2">
                         <input
                           type="text"
-                          id="location"
-                          value={location}
-                          onChange={(e) => setLocation(e.target.value)}
-                          className="w-full border border-slate-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
-                          placeholder="Ex: Vitrine A1"
+                          value={unit.imei1 || ''}
+                          onChange={(e) => updateItemUnit(item.id, unitIndex, 'imei1', e.target.value)}
+                          className="w-full px-1 py-1 text-xs border border-slate-200 rounded focus:ring-1 focus:ring-blue-400 focus:border-blue-400 font-mono"
+                          placeholder=""
                         />
-                      </div>
-                      <div>
-                        <label htmlFor="condition" className="block text-sm font-medium text-slate-700 mb-1">Condição</label>
+                      </td>
+                      <td className="border border-slate-300 px-1 py-2">
+                        <input
+                          type="text"
+                          value={unit.imei2 || ''}
+                          onChange={(e) => updateItemUnit(item.id, unitIndex, 'imei2', e.target.value)}
+                          className="w-full px-1 py-1 text-xs border border-slate-200 rounded focus:ring-1 focus:ring-blue-400 focus:border-blue-400 font-mono"
+                          placeholder=""
+                        />
+                      </td>
+                      <td className="border border-slate-300 px-1 py-2">
+                        <input
+                          type="text"
+                          value={unit.serialNumber || ''}
+                          onChange={(e) => updateItemUnit(item.id, unitIndex, 'serialNumber', e.target.value)}
+                          className="w-full px-1 py-1 text-xs border border-slate-200 rounded focus:ring-1 focus:ring-blue-400 focus:border-blue-400 font-mono"
+                          placeholder=""
+                        />
+                      </td>
+                      <td className="border border-slate-300 px-1 py-2">
                         <select
-                          id="condition"
-                          value={condition}
-                          onChange={(e) => setCondition(e.target.value as 'novo' | 'seminovo' | 'usado')}
-                          className="w-full border border-slate-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
+                          value={unit.condition}
+                          onChange={(e) => updateItemUnit(item.id, unitIndex, 'condition', e.target.value)}
+                          className="w-full px-1 py-1 text-xs border border-slate-200 rounded focus:ring-1 focus:ring-blue-400 focus:border-blue-400"
                         >
-                          <option value="novo">Novo</option>
-                          <option value="seminovo">Seminovo</option>
-                          <option value="usado">Usado</option>
+                          <option value="Seminovo">Seminovo</option>
+                          <option value="Novo">Novo</option>
+                          <option value="Usado">Usado</option>
                         </select>
-                      </div>
-                      <div>
-                        <label htmlFor="warranty" className="block text-sm font-medium text-slate-700 mb-1">Garantia</label>
+                      </td>
+                      <td className="border border-slate-300 px-1 py-2">
                         <input
                           type="text"
-                          id="warranty"
-                          value={warranty}
-                          onChange={(e) => setWarranty(e.target.value)}
-                          className="w-full border border-slate-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
-                          placeholder="Ex: 3 meses"
+                          value={unit.batteryHealth ? `${unit.batteryHealth}%` : ''}
+                          onChange={(e) => {
+                            const value = e.target.value.replace('%', '');
+                            updateItemUnit(item.id, unitIndex, 'batteryHealth', parseInt(value) || 0);
+                          }}
+                          className="w-full px-1 py-1 text-xs border border-slate-200 rounded focus:ring-1 focus:ring-blue-400 focus:border-blue-400 text-center"
+                          placeholder="0%"
                         />
-                      </div>
-                      <div>
-                        <label htmlFor="finalPrice" className="block text-sm font-medium text-slate-700 mb-1">Preço de Venda</label>
+                      </td>
+                      <td className="border border-slate-300 px-1 py-2">
+                        <select
+                          value={unit.warranty}
+                          onChange={(e) => updateItemUnit(item.id, unitIndex, 'warranty', e.target.value)}
+                          className="w-full px-1 py-1 text-xs border border-slate-200 rounded focus:ring-1 focus:ring-blue-400 focus:border-blue-400"
+                        >
+                          <option value="1 ano">1 ano</option>
+                          <option value="6 meses">6 meses</option>
+                          <option value="3 meses">3 meses</option>
+                        </select>
+                      </td>
+                      <td className="border border-slate-300 px-1 py-2">
+                        <select
+                          value={unit.location}
+                          onChange={(e) => updateItemUnit(item.id, unitIndex, 'location', e.target.value)}
+                          className="w-full px-1 py-1 text-xs border border-slate-200 rounded focus:ring-1 focus:ring-blue-400 focus:border-blue-400"
+                        >
+                          <option value="Loja">Loja</option>
+                          <option value="Vitrine iS">Vitrine iS</option>
+                          <option value="Estoque A1-B2">Estoque A1-B2</option>
+                          <option value="Estoque B1-A3">Estoque B1-A3</option>
+                        </select>
+                      </td>
+                      <td className="border border-slate-300 px-1 py-2">
+                        <div className="text-xs text-slate-700 bg-slate-100 px-1 py-1 rounded text-center">
+                          R$ {formatCurrencyBR(item.costPrice)}
+                        </div>
+                      </td>
+                      <td className="border border-slate-300 px-1 py-2">
                         <input
-                          type="number"
-                          id="finalPrice"
-                          value={finalPrice}
-                          onChange={(e) => setFinalPrice(parseFloat(e.target.value) || 0)}
-                          min="0"
-                          step="0.01"
-                          className="w-full border border-slate-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
+                          type="text"
+                          value={unit.markup === null ? '' : unit.markup.toString()} // Exibe vazio se null
+                          onChange={(e) => {
+                            const value = e.target.value.replace(/[^\d,]/g, '');
+                            updateItemUnit(item.id, unitIndex, 'markup', value === '' ? null : parseFloat(value.replace(',', '.')));
+                          }}
+                          className="w-full px-1 py-1 text-xs border border-slate-200 rounded focus:ring-1 focus:ring-blue-400 focus:border-blue-400 text-center"
+                          placeholder="%"
                         />
-                      </div>
-                    </div>
+                      </td>
+                      <td className="border border-slate-300 px-1 py-2">
+                        <div className="text-xs text-green-600 bg-green-50 px-1 py-1 rounded text-center">
+                          {unit.markup === null ? '-' : `R$ ${formatCurrencyBR(item.costPrice + (item.costPrice * (unit.markup || 0) / 100))}`}
+                        </div>
+                      </td>
+                      <td className="border border-slate-300 px-1 py-2 bg-red-50">
+                        <input
+                          type="text"
+                          value={unit.displaySalePrice} // Usa o novo campo para exibição
+                          onChange={(e) => {
+                            const formattedValue = formatCurrencyInput(e.target.value);
+                            updateItemUnit(item.id, unitIndex, 'displaySalePrice', formattedValue);
+                          }}
+                          className="w-full px-1 py-1 text-xs border border-red-300 rounded focus:ring-1 focus:ring-red-400 focus:border-red-400 bg-white"
+                          placeholder="R$"
+                          required
+                        />
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
 
-                    <div className="mt-6 flex justify-end gap-3">
-                      <button
-                        type="button"
-                        className="inline-flex justify-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
-                        onClick={() => setIsItemDetailsModalOpen(false)}
-                      >
-                        Cancelar
-                      </button>
-                      <button
-                        type="button"
-                        className="inline-flex items-center rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
-                        onClick={handleSaveItemDetails}
-                      >
-                        <CheckCircle className="mr-2" size={18} /> Salvar Detalhes
-                      </button>
-                    </div>
-                  </DialogPanel>
-                </TransitionChild>
-              </div>
-            </div>
-          </Dialog>
-        </Transition>
-      </Dialog>
-    </Transition>
+          {/* Summary */}
+          <div className="mt-4 text-right">
+            <span className="text-sm text-slate-600">
+              Total de itens: {Object.values(itemUnits).reduce((acc, units) => acc + units.length, 0)}
+            </span>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex justify-between gap-4 mt-6">
+            <button
+              onClick={handleClose}
+              className="px-6 py-2 border border-slate-300 text-slate-700 rounded hover:bg-slate-50 transition-colors"
+            >
+              Fechar
+            </button>
+            <button
+              onClick={handleFinalize}
+              className="px-6 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors flex items-center font-medium"
+            >
+              <CheckCircle className="mr-2" size={16} />
+              SIM, LANÇAR
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
