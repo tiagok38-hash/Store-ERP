@@ -7,7 +7,7 @@ const adminSections = [
   { key: 'parameters', label: 'Parâmetros do Sistema', icon: Printer, path: '/administration/system-parameters' },
   { key: 'users', label: 'Gestão de Usuários', icon: UserCheck, path: '/administration/users-management' },
   { key: 'payment-methods', label: 'Meios de Pagamento', icon: CreditCard, path: '/administration/payment-methods' },
-  { key: 'product-structure', label: 'Estrutura de Produtos', icon: Package, path: '/administration/product-structure' },
+  { key: 'product-structure', label: 'Marcas, Categorias e Variações', icon: Package, path: '/administration/product-structure' },
   { key: 'warranty-stock', label: 'Garantias e Estoque', icon: Clock, path: '/administration/warranty-stock' },
   { key: 'audit', label: 'Auditoria do Sistema', icon: History, path: '/administration/audit' }
 ];
