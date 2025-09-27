@@ -25,10 +25,10 @@ export default function SystemParametersPage() {
           theme === 'dark' ? 'text-white' : 'text-slate-800'
         }`}>
           <Printer className="mr-3 text-green-600" size={32} />
-          Parâmetros do Sistema
+          Termos de Compra e Impressão
         </h1>
         <p className={theme === 'dark' ? 'text-slate-300' : 'text-slate-600'}>
-          Ajuste as configurações gerais e de impressão do sistema.
+          Ajuste as configurações de termos de compra e impressão do sistema.
         </p>
       </div>
       <div className={`rounded-xl shadow-lg p-6 ${

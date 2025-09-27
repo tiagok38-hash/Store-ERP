@@ -4,7 +4,7 @@ import { useTheme } from '@/react-app/hooks/useTheme';
 
 const adminSections = [
   { key: 'company', label: 'Dados da Empresa', icon: Building2, path: '/administration/company-settings' },
-  { key: 'parameters', label: 'Parâmetros do Sistema', icon: Printer, path: '/administration/system-parameters' },
+  { key: 'parameters', label: 'Termos de Compra e Impressão', icon: Printer, path: '/administration/system-parameters' },
   { key: 'users', label: 'Gestão de Usuários', icon: UserCheck, path: '/administration/users-management' },
   { key: 'payment-methods', label: 'Meios de Pagamento', icon: CreditCard, path: '/administration/payment-methods' },
   { key: 'product-structure', label: 'Marcas, Categorias e Variações', icon: Package, path: '/administration/product-structure' },
