@@ -1,66 +1,73 @@
 import { useState, useEffect } from 'react';
-import { 
-  X, 
-  Save, 
-  User,
-  Users,
-  MapPin,
-  Building,
-  Calendar
-} from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/react-app/hooks/useAuth';
+import { X, Save, Building2, Mail, Phone, MapPin, Info } from 'lucide-react';
 import { useNotification } from '@/react-app/components/NotificationSystem';
+import { useTheme } from '@/react-app/hooks/useTheme';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/react-app/hooks/useAuth'; // Import useAuth
+
+interface Customer {
+  id: string;
+  name: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  document?: string;
+  is_active: boolean;
+  type: 'customer' | 'supplier';
+}
 
 interface CustomerModalProps {
   isOpen: boolean;
   onClose: () => void;
-  type: 'customer' | 'supplier';
-  data?: any;
-  onCustomerSaved?: (customerData: any) => void;
+  onCustomerSaved?: (customer: Customer) => void;
+  editingCustomer?: Customer | null;
+  type: 'customer' | 'supplier'; // 'customer' or 'supplier'
 }
 
-export default function CustomerModal({ isOpen, onClose, type, data, onCustomerSaved }: CustomerModalProps) {
-  const { user } = useAuth();
+export default function CustomerModal({ 
+  isOpen, 
+  onClose, 
+  onCustomerSaved, 
+  editingCustomer, 
+  type 
+}: CustomerModalProps) {
+  const { theme } = useTheme();
   const { showSuccess, showError } = useNotification();
-  const [formData, setFormData] = useState({
-    name: data?.name || '',
-    email: data?.email || '',
-    phone: data?.phone || '',
-    document: data?.document || '',
-    dateOfBirth: data?.date_of_birth || '', // Usar date_of_birth do Supabase
-    address: data?.address || '',
-    houseNumber: data?.house_number || '', // Usar house_number do Supabase
-    neighborhood: data?.neighborhood || '',
-    city: data?.city || '',
-    state: data?.state || '',
-    zipCode: data?.zip_code || '', // Usar zip_code do Supabase
-    observations: data?.observations || ''
-  });
+  const { user } = useAuth(); // Use the useAuth hook
 
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    address: '',
+    document: '',
+    is_active: true,
+  });
   const [isAnimatingOut, setIsAnimatingOut] = useState(false);
 
   useEffect(() => {
-    // Reset form data when modal opens for a new item or when data changes for editing
     if (isOpen) {
-      setFormData({
-        name: data?.name || '',
-        email: data?.email || '',
-        phone: data?.phone || '',
-        document: data?.document || '',
-        dateOfBirth: data?.date_of_birth || '',
-        address: data?.address || '',
-        houseNumber: data?.house_number || '',
-        neighborhood: data?.neighborhood || '',
-        city: data?.city || '',
-        state: data?.state || '',
-        zipCode: data?.zip_code || '',
-        observations: data?.observations || ''
-      });
-      setErrors({}); // Clear errors on open
+      if (editingCustomer) {
+        setFormData({
+          name: editingCustomer.name || '',
+          email: editingCustomer.email || '',
+          phone: editingCustomer.phone || '',
+          address: editingCustomer.address || '',
+          document: editingCustomer.document || '',
+          is_active: editingCustomer.is_active,
+        });
+      } else {
+        setFormData({
+          name: '',
+          email: '',
+          phone: '',
+          address: '',
+          document: '',
+          is_active: true,
+        });
+      }
     }
-  }, [isOpen, data]);
+  }, [isOpen, editingCustomer]);
 
   const handleClose = () => {
     setIsAnimatingOut(true);
@@ -70,412 +77,249 @@ export default function CustomerModal({ isOpen, onClose, type, data, onCustomerS
     }, 300); // Match animation duration
   };
 
-  const isCustomer = type === 'customer';
-  const title = isCustomer ? 'Cliente' : 'Fornecedor';
-  const tableName = isCustomer ? 'customers' : 'suppliers';
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value, type: inputType, checked } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: inputType === 'checkbox' ? checked : value
+    }));
+  };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    const newErrors: Record<string, string> = {};
-    
-    if (!formData.name.trim()) newErrors.name = 'Nome é obrigatório';
-    if (formData.email && !/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = 'Email inválido';
-    }
-
-    if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors);
+  const handleSubmit = async () => {
+    if (!formData.name.trim()) {
+      showError('Nome obrigatório', `O nome do ${type === 'customer' ? 'cliente' : 'fornecedor'} é obrigatório.`);
       return;
     }
 
-    if (!user) {
-      showError('Erro', 'Usuário não autenticado.');
-      return;
-    }
+    // --- TEMPORARY BYPASS FOR USER_ID WHEN LOGIN IS DISABLED ---
+    // In a production environment, user.id should always be present.
+    // For development/testing with login bypassed, we use a placeholder.
+    const userIdToUse = user?.id || '00000000-0000-0000-0000-000000000000'; 
+    // If 'user_id' column in your DB is nullable, you could use:
+    // const userIdToUse = user?.id || null;
+    // But typically it's not nullable for ownership tracking.
+    // --- END TEMPORARY BYPASS ---
 
-    const itemData = {
-      user_id: user.id,
+    const dataToSave = {
+      user_id: userIdToUse, // Use the determined user ID
       name: formData.name.trim(),
       email: formData.email.trim() || null,
       phone: formData.phone.trim() || null,
-      document: formData.document.trim() || null,
-      date_of_birth: isCustomer ? (formData.dateOfBirth || null) : null, // Apenas para clientes
       address: formData.address.trim() || null,
-      house_number: formData.houseNumber.trim() || null,
-      neighborhood: formData.neighborhood.trim() || null,
-      city: formData.city.trim() || null,
-      state: formData.state.trim() || null,
-      zip_code: formData.zipCode.trim() || null,
-      observations: formData.observations.trim() || null,
-      is_active: true,
+      document: formData.document.trim() || null,
+      is_active: formData.is_active,
     };
 
-    if (data) {
-      // Update existing item
-      const { data: updatedData, error } = await supabase
+    let tableName = type === 'customer' ? 'customers' : 'suppliers';
+    let savedCustomer: Customer | null = null;
+    let error: any = null;
+
+    if (editingCustomer) {
+      const { data, error: updateError } = await supabase
         .from(tableName)
-        .update(itemData)
-        .eq('id', data.id)
-        .select();
-
-      if (error) {
-        showError(`Erro ao atualizar ${title}`, error.message);
-        console.error(`Error updating ${tableName}:`, error);
-      } else {
-        showSuccess(`${title} Atualizado`, `O ${title} "${formData.name}" foi atualizado com sucesso.`);
-        onCustomerSaved?.(updatedData[0]); // Passar os dados atualizados
-        handleClose();
-      }
+        .update(dataToSave)
+        .eq('id', editingCustomer.id)
+        .select()
+        .single();
+      savedCustomer = data;
+      error = updateError;
     } else {
-      // Insert new item
-      const { data: newData, error } = await supabase
+      const { data, error: insertError } = await supabase
         .from(tableName)
-        .insert(itemData)
-        .select();
+        .insert(dataToSave)
+        .select()
+        .single();
+      savedCustomer = data;
+      error = insertError;
+    }
 
-      if (error) {
-        showError(`Erro ao criar ${title}`, error.message);
-        console.error(`Error creating ${tableName}:`, error);
-      } else {
-        showSuccess(`${title} Criado`, `O ${title} "${formData.name}" foi criado com sucesso.`);
-        onCustomerSaved?.(newData[0]); // Passar os dados criados
-        handleClose();
+    if (error) {
+      showError('Erro ao salvar', error.message);
+      console.error(`Error saving ${type}:`, error);
+      return;
+    }
+
+    if (savedCustomer) {
+      showSuccess(
+        `${type === 'customer' ? 'Cliente' : 'Fornecedor'} ${editingCustomer ? 'atualizado' : 'cadastrado'}!`,
+        `${formData.name} foi ${editingCustomer ? 'atualizado' : 'adicionado'} com sucesso.`
+      );
+      if (onCustomerSaved) {
+        onCustomerSaved({ ...savedCustomer, type }); // Pass the type back
       }
-    }
-  };
-
-  const formatDocument = (value: string) => {
-    const numbers = value.replace(/\D/g, '');
-    if (numbers.length <= 11) {
-      return numbers.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
-    } else {
-      return numbers.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
-    }
-  };
-
-  const formatPhone = (value: string) => {
-    const numbers = value.replace(/\D/g, '');
-    if (numbers.length <= 10) {
-      return numbers.replace(/(\d{2})(\d{4})(\d{4})/, '($1) $2-$3');
-    } else {
-      return numbers.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3');
-    }
-  };
-
-  const formatZipCode = (value: string) => {
-    const numbers = value.replace(/\D/g, '');
-    return numbers.replace(/(\d{5})(\d{3})/, '$1-$2');
-  };
-
-  const fetchAddressByCep = async (cep: string) => {
-    const cleanCep = cep.replace(/\D/g, '');
-    if (cleanCep.length === 8) {
-      try {
-        const response = await fetch(`https://viacep.com.br/ws/${cleanCep}/json/`);
-        const data = await response.json();
-        
-        if (!data.erro) {
-          setFormData(prev => ({
-            ...prev,
-            address: data.logradouro || '',
-            neighborhood: data.bairro || '',
-            city: data.localidade || '',
-            state: data.uf || '',
-            zipCode: formatZipCode(cleanCep)
-          }));
-        }
-      } catch (error) {
-        console.error('Erro ao buscar CEP:', error);
-      }
+      handleClose();
     }
   };
 
   if (!isOpen && !isAnimatingOut) return null;
 
+  const modalTitle = editingCustomer 
+    ? `Editar ${type === 'customer' ? 'Cliente' : 'Fornecedor'}` 
+    : `Novo ${type === 'customer' ? 'Cliente' : 'Fornecedor'}`;
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div 
-        className={`bg-white rounded-xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto ${isAnimatingOut ? 'animate-modal-out' : 'animate-modal-in'}`}
+        className={`rounded-xl shadow-2xl max-w-lg w-full max-h-[95vh] overflow-y-auto ${
+          theme === 'dark' ? 'bg-slate-800' : 'bg-white'
+        } ${isAnimatingOut ? 'animate-modal-out' : 'animate-modal-in'}`}
       >
         {/* Header */}
-        <div className={`bg-gradient-to-r ${
-          isCustomer 
-            ? 'from-indigo-500 to-indigo-600' 
-            : 'from-purple-500 to-purple-600'
-        } text-white p-4 flex justify-between items-center rounded-t-xl`}>
-          <h2 className="text-xl font-bold flex items-center">
-            {isCustomer ? <User className="mr-2" size={24} /> : <Building className="mr-2" size={24} />}
-            {data ? `Editar ${title}` : `Novo ${title}`}
+        <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white p-3 flex justify-between items-center rounded-t-xl">
+          <h2 className="text-lg font-bold flex items-center">
+            {type === 'customer' ? <Info className="mr-2" size={20} /> : <Building2 className="mr-2" size={20} />}
+            {modalTitle}
           </h2>
           <button
             onClick={handleClose}
             className="hover:bg-white/20 p-2 rounded-lg transition-colors"
           >
-            <X size={20} />
+            <X size={18} />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Informações Básicas */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-slate-700 mb-4 flex items-center">
-                <Users className="mr-2 text-indigo-500" size={18} />
-                Informações Básicas
-              </h3>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Nome {isCustomer ? 'do Cliente' : 'da Empresa'} *
-                </label>
-                <input
-                  type="text"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
-                    errors.name ? 'border-red-300' : 'border-slate-300'
-                  }`}
-                  placeholder={isCustomer ? "João Silva" : "Empresa ABC Ltda"}
-                />
-                {errors.name && <p className="text-red-600 text-sm mt-1">{errors.name}</p>}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  {isCustomer ? 'CPF/CNPJ' : 'CNPJ/CPF'}
-                </label>
-                <input
-                  type="text"
-                  value={formData.document}
-                  onChange={(e) => setFormData({ ...formData, document: formatDocument(e.target.value) })}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                  placeholder={isCustomer ? "000.000.000-00" : "00.000.000/0000-00"}
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Email
-                  </label>
-                  <input
-                    type="email"
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
-                      errors.email ? 'border-red-300' : 'border-slate-300'
-                    }`}
-                    placeholder="email@exemplo.com"
-                  />
-                  {errors.email && <p className="text-red-600 text-sm mt-1">{errors.email}</p>}
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Telefone
-                  </label>
-                  <input
-                    type="tel"
-                    value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: formatPhone(e.target.value) })}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                    placeholder="(11) 99999-9999"
-                  />
-                </div>
-              </div>
-
-              {isCustomer && ( // Apenas para clientes
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Data de Nascimento
-                  </label>
-                  <div className="relative">
-                    <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={20} />
-                    <input
-                      type="date"
-                      value={formData.dateOfBirth}
-                      onChange={(e) => setFormData({ ...formData, dateOfBirth: e.target.value })}
-                      className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                    />
-                  </div>
-                </div>
-              )}
-
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Observações
-                </label>
-                <textarea
-                  value={formData.observations}
-                  onChange={(e) => setFormData({ ...formData, observations: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                  rows={3}
-                  placeholder="Observações adicionais..."
-                />
-              </div>
+        <div className={`p-4 ${theme === 'dark' ? 'text-white' : ''}`}>
+          <div className="space-y-3 mb-4">
+            <div>
+              <label className={`block text-xs font-medium mb-1 ${
+                theme === 'dark' ? 'text-slate-300' : 'text-slate-700'
+              }`}>
+                Nome *
+              </label>
+              <input
+                type="text"
+                name="name"
+                value={formData.name}
+                onChange={handleChange}
+                className={`w-full px-3 py-2 text-sm border rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                  theme === 'dark'
+                    ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-400'
+                    : 'bg-white border-slate-300 text-slate-900'
+                }`}
+                placeholder={`Nome do ${type === 'customer' ? 'cliente' : 'fornecedor'}`}
+              />
             </div>
 
-            {/* Endereço */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-slate-700 mb-4 flex items-center">
-                <MapPin className="mr-2 text-green-500" size={18} />
+            <div>
+              <label className={`block text-xs font-medium mb-1 ${
+                theme === 'dark' ? 'text-slate-300' : 'text-slate-700'
+              }`}>
+                Email
+              </label>
+              <input
+                type="email"
+                name="email"
+                value={formData.email}
+                onChange={handleChange}
+                className={`w-full px-3 py-2 text-sm border rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                  theme === 'dark'
+                    ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-400'
+                    : 'bg-white border-slate-300 text-slate-900'
+                }`}
+                placeholder="email@exemplo.com"
+              />
+            </div>
+
+            <div>
+              <label className={`block text-xs font-medium mb-1 ${
+                theme === 'dark' ? 'text-slate-300' : 'text-slate-700'
+              }`}>
+                Telefone
+              </label>
+              <input
+                type="text"
+                name="phone"
+                value={formData.phone}
+                onChange={handleChange}
+                className={`w-full px-3 py-2 text-sm border rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                  theme === 'dark'
+                    ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-400'
+                    : 'bg-white border-slate-300 text-slate-900'
+                }`}
+                placeholder="(XX) XXXXX-XXXX"
+              />
+            </div>
+
+            <div>
+              <label className={`block text-xs font-medium mb-1 ${
+                theme === 'dark' ? 'text-slate-300' : 'text-slate-700'
+              }`}>
                 Endereço
-              </h3>
+              </label>
+              <input
+                type="text"
+                name="address"
+                value={formData.address}
+                onChange={handleChange}
+                className={`w-full px-3 py-2 text-sm border rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                  theme === 'dark'
+                    ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-400'
+                    : 'bg-white border-slate-300 text-slate-900'
+                }`}
+                placeholder="Rua, Número, Bairro, Cidade"
+              />
+            </div>
 
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  CEP
-                </label>
-                <input
-                  type="text"
-                  value={formData.zipCode}
-                  onChange={(e) => {
-                    const formatted = formatZipCode(e.target.value);
-                    setFormData({ ...formData, zipCode: formatted });
-                    
-                    // Buscar endereço automaticamente quando CEP estiver completo
-                    if (formatted.replace(/\D/g, '').length === 8) {
-                      fetchAddressByCep(formatted);
-                    }
-                  }}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                  placeholder="00000-000"
-                />
-              </div>
+            <div>
+              <label className={`block text-xs font-medium mb-1 ${
+                theme === 'dark' ? 'text-slate-300' : 'text-slate-700'
+              }`}>
+                CPF/CNPJ
+              </label>
+              <input
+                type="text"
+                name="document"
+                value={formData.document}
+                onChange={handleChange}
+                className={`w-full px-3 py-2 text-sm border rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                  theme === 'dark'
+                    ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-400'
+                    : 'bg-white border-slate-300 text-slate-900'
+                }`}
+                placeholder="CPF ou CNPJ"
+              />
+            </div>
 
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Endereço Completo
-                </label>
-                <input
-                  type="text"
-                  value={formData.address}
-                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                  placeholder="Rua, número, complemento"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Número
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.houseNumber}
-                    onChange={(e) => setFormData({ ...formData, houseNumber: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                    placeholder="123"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Bairro
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.neighborhood}
-                    onChange={(e) => setFormData({ ...formData, neighborhood: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                    placeholder="Centro"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Cidade
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.city}
-                    onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                    placeholder="São Paulo"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Estado
-                  </label>
-                  <select
-                    value={formData.state}
-                    onChange={(e) => setFormData({ ...formData, state: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                  >
-                    <option value="">Selecione</option>
-                    <option value="AC">Acre</option>
-                    <option value="AL">Alagoas</option>
-                    <option value="AP">Amapá</option>
-                    <option value="AM">Amazonas</option>
-                    <option value="BA">Bahia</option>
-                    <option value="CE">Ceará</option>
-                    <option value="DF">Distrito Federal</option>
-                    <option value="ES">Espírito Santo</option>
-                    <option value="GO">Goiás</option>
-                    <option value="MA">Maranhão</option>
-                    <option value="MT">Mato Grosso</option>
-                    <option value="MS">Mato Grosso do Sul</option>
-                    <option value="MG">Minas Gerais</option>
-                    <option value="PA">Pará</option>
-                    <option value="PB">Paraíba</option>
-                    <option value="PR">Paraná</option>
-                    <option value="PE">Pernambuco</option>
-                    <option value="PI">Piauí</option>
-                    <option value="RJ">Rio de Janeiro</option>
-                    <option value="RN">Rio Grande do Norte</option>
-                    <option value="RS">Rio Grande do Sul</option>
-                    <option value="RO">Rondônia</option>
-                    <option value="RR">Roraima</option>
-                    <option value="SC">Santa Catarina</option>
-                    <option value="SP">São Paulo</option>
-                    <option value="SE">Sergipe</option>
-                    <option value="TO">Tocantins</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Informações Adicionais para Clientes */}
-              {isCustomer && (
-                <div className="mt-6 p-4 bg-indigo-50 rounded-lg">
-                  <h4 className="text-sm font-medium text-indigo-800 mb-2">
-                    Informações de Cliente
-                  </h4>
-                  <p className="text-sm text-indigo-600">
-                    Histórico de compras e preferências do cliente serão 
-                    exibidos automaticamente após o primeiro cadastro.
-                  </p>
-                </div>
-              )}
+            <div className="flex items-center">
+              <input
+                type="checkbox"
+                name="is_active"
+                checked={formData.is_active}
+                onChange={handleChange}
+                className={`mr-2 ${
+                  theme === 'dark' ? 'form-checkbox text-blue-500 bg-slate-700 border-slate-600' : 'form-checkbox text-blue-600'
+                }`}
+              />
+              <label className={`text-sm ${
+                theme === 'dark' ? 'text-slate-300' : 'text-slate-700'
+              }`}>
+                {type === 'customer' ? 'Cliente Ativo' : 'Fornecedor Ativo'}
+              </label>
             </div>
           </div>
 
-          <div className="flex justify-end gap-3 mt-8 pt-6 border-t border-slate-200">
+          <div className="flex justify-end gap-3">
             <button
               type="button"
               onClick={handleClose}
-              className="px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors"
+              className={`px-4 py-2 border rounded hover:bg-slate-50 transition-colors text-sm ${
+                theme === 'dark'
+                  ? 'border-slate-600 text-slate-300 hover:bg-slate-700'
+                  : 'border-slate-300 text-slate-700'
+              }`}
             >
               Cancelar
             </button>
             <button
-              type="submit"
-              className={`px-6 py-2 bg-gradient-to-r ${
-                isCustomer 
-                  ? 'from-indigo-500 to-indigo-600' 
-                  : 'from-purple-500 to-purple-600'
-              } text-white rounded-lg hover:shadow-lg transition-all duration-200 flex items-center`}
+              type="button"
+              onClick={handleSubmit}
+              className="px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white rounded hover:shadow-lg transition-all duration-200 flex items-center text-sm"
             >
-              <Save className="mr-2" size={16} />
-              {data ? `Salvar ${title}` : `Criar ${title}`}
+              <Save className="mr-2" size={14} />
+              {editingCustomer ? 'Atualizar' : 'Salvar'}
             </button>
           </div>
-        </form>
+        </div>
       </div>
     </div>
   );
