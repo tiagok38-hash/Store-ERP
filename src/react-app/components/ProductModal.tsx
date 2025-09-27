@@ -7,8 +7,11 @@ import {
   Hash,
   Tag,
   Smartphone,
-  Plus
+  Plus,
+  Info // Importar o ícone Info
 } from 'lucide-react';
+import { Link } from 'react-router-dom'; // Importar Link
+import { useTheme } from '@/react-app/hooks/useTheme'; // Importar useTheme
 
 interface ProductModalProps {
   isOpen: boolean;
@@ -156,6 +159,7 @@ const hierarchicalData = {
 };
 
 export default function ProductModal({ isOpen, onClose, product }: ProductModalProps) {
+  const { theme } = useTheme();
   const [formData, setFormData] = useState({
     sku: product?.sku || '',
     brand: product?.brand || '',
@@ -386,6 +390,36 @@ export default function ProductModal({ isOpen, onClose, product }: ProductModalP
                 Identificação Hierárquica
               </h3>
 
+              {/* Link para estrutura de produtos */}
+              <div className={`rounded p-2 ${
+                theme === 'dark' 
+                  ? 'bg-blue-900/50 border border-blue-700' 
+                  : 'bg-blue-50 border border-blue-200'
+              }`}>
+                <div className="flex items-start">
+                  <Info className={`mr-1 mt-0.5 ${
+                    theme === 'dark' ? 'text-blue-400' : 'text-blue-600'
+                  }`} size={12} />
+                  <div className={`text-xs ${
+                    theme === 'dark' ? 'text-blue-300' : 'text-blue-800'
+                  }`}>
+                    Para cadastrar Marcas, Categorias e Grades,{' '}
+                    <Link 
+                      to="/administration/product-structure" 
+                      target="_blank"
+                      className={`underline font-medium transition-colors ${
+                        theme === 'dark' 
+                          ? 'hover:text-blue-200' 
+                          : 'hover:text-blue-900'
+                      }`}
+                    >
+                      clique aqui
+                    </Link>
+                    .
+                  </div>
+                </div>
+              </div>
+
               {/* Marca */}
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">
@@ -575,7 +609,7 @@ export default function ProductModal({ isOpen, onClose, product }: ProductModalP
                     }`}
                     placeholder="0,00"
                   />
-                  {errors.salePrice && <p className="text-red-600 text-sm mt-1">{errors.salePrice}</p>}
+                  {errors.salePrice && <p className className="text-red-600 text-sm mt-1">{errors.salePrice}</p>}
                 </div>
               </div>
 
