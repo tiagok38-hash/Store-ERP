@@ -190,8 +190,6 @@ export default function ProductModal({ isOpen, onClose, product }: ProductModalP
     defaultLocationId: product?.defaultLocationId || '', // Alterado para ID
     defaultWarrantyTermId: product?.defaultWarrantyTermId || '', // Alterado para ID
     barcode: product?.barcode || '', // Novo campo
-    requiresImei: product?.requiresImei || false,
-    requiresSerial: product?.requiresSerial || false,
     imei1: product?.imei1 || '', // Adicionado IMEI 1
     imei2: product?.imei2 || '', // Adicionado IMEI 2
     serialNumber: product?.serialNumber || '', // Adicionado Número de Série
@@ -384,8 +382,6 @@ export default function ProductModal({ isOpen, onClose, product }: ProductModalP
       Localização Padrão: ${stockLocations.find(loc => loc.id === formData.defaultLocationId)?.name}
       Garantia Padrão: ${warrantyTerms.find(term => term.id === formData.defaultWarrantyTermId)?.name}
       Código de Barras: ${formData.barcode || '-'}
-      Requer IMEI: ${formData.requiresImei ? 'Sim' : 'Não'}
-      Requer Serial: ${formData.requiresSerial ? 'Sim' : 'Não'}
       IMEI 1: ${formData.imei1 || '-'}
       IMEI 2: ${formData.imei2 || '-'}
       Número de Série: ${formData.serialNumber || '-'}
@@ -843,39 +839,6 @@ export default function ProductModal({ isOpen, onClose, product }: ProductModalP
                   </select>
                 </div>
                 {errors.defaultLocationId && <p className="text-red-600 text-sm mt-1">{errors.defaultLocationId}</p>}
-              </div>
-
-              {/* Controles Especiais */}
-              <div className="space-y-3">
-                <h4 className="text-sm font-medium text-slate-700">Controles Especiais</h4>
-                
-                <div className="space-y-3">
-                  <label className="flex items-center">
-                    <input
-                      type="checkbox"
-                      checked={formData.requiresImei}
-                      onChange={(e) => setFormData({ ...formData, requiresImei: e.target.checked })}
-                      className="rounded border-slate-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
-                    />
-                    <span className="ml-2 text-sm text-slate-700 flex items-center">
-                      <Smartphone size={14} className="mr-1" />
-                      Requer IMEI
-                    </span>
-                  </label>
-
-                  <label className="flex items-center">
-                    <input
-                      type="checkbox"
-                      checked={formData.requiresSerial}
-                      onChange={(e) => setFormData({ ...formData, requiresSerial: e.target.checked })}
-                      className="rounded border-slate-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
-                    />
-                    <span className="ml-2 text-sm text-slate-700 flex items-center">
-                      <Hash size={14} className="mr-1" />
-                      Requer Número de Série
-                    </span>
-                  </label>
-                </div>
               </div>
 
               {/* Preview do Produto Final */}
