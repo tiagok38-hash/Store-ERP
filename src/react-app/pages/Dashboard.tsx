@@ -13,7 +13,7 @@ import {
   AlertTriangle // Importar AlertTriangle para estoque baixo
 } from 'lucide-react';
 import DashboardCard from '@/react-app/components/DashboardCard';
-import { useTheme } => '@/react-app/hooks/useTheme';
+import { useTheme } from '@/react-app/hooks/useTheme';
 import { useAuth } from '@/react-app/hooks/useAuth';
 import { UserPermissions } from '@/shared/auth-types';
 import { useNavigate } from 'react-router'; // Importar useNavigate
