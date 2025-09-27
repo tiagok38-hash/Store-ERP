@@ -1,19 +1,16 @@
 import { useState } from 'react';
-import { useLocation, useNavigate, Link } from 'react-router-dom'; // Importar useNavigate
+import { useLocation, useNavigate, Link } from 'react-router-dom';
 import {
   LayoutDashboard,
   ShoppingCart,
   Package,
-  Wrench,
-  DollarSign,
-  CreditCard,
   Users,
   FileText,
   Settings,
   ChevronDown,
   ChevronRight,
-  ChevronLeft, // Importar ChevronLeft
-  ChevronUp, // Importar ChevronUp
+  ChevronLeft,
+  ChevronUp,
   UserCheck,
   Building2,
   History,
@@ -77,10 +74,17 @@ const navigationItems: NavItem[] = [
     permission: UserPermissions.REPORTS_VIEW
   },
   {
+    id: 'user-profile', // Novo ID para o perfil do usuário
+    label: 'Usuário (Perfil)', // Novo nome
+    icon: UserIcon, // Usar o ícone renomeado
+    path: '/administration/user-profile-settings',
+    permission: UserPermissions.SETTINGS_VIEW // Manter a permissão
+  },
+  {
     id: 'admin',
     label: 'Administração',
     icon: Settings,
-    path: '/administration', // O item pai também tem um path
+    path: '/administration',
     permission: UserPermissions.SETTINGS_VIEW,
     children: [
       { id: 'admin-company', label: 'Dados da Empresa', icon: Building2, path: '/administration/company-settings', permission: UserPermissions.SETTINGS_VIEW },
@@ -96,10 +100,10 @@ const navigationItems: NavItem[] = [
 
 export default function Sidebar() {
   const location = useLocation();
-  const navigate = useNavigate(); // Usar useNavigate
+  const navigate = useNavigate();
   const { user, logout, hasPermission } = useAuth();
   const { theme, toggleTheme } = useTheme();
-  const [expandedItems, setExpandedItems] = useState<string[]>(['admin']); // Keep admin expanded by default
+  const [expandedItems, setExpandedItems] = useState<string[]>(['admin']);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
 
@@ -134,7 +138,7 @@ export default function Sidebar() {
           : 'text-text-light hover:bg-background-light hover:text-slate-900'}`;
 
     const handleClick = (e: React.MouseEvent) => {
-      setIsMobileOpen(false); // Fechar sidebar mobile em qualquer clique
+      setIsMobileOpen(false);
 
       if (item.path) {
         navigate(item.path);
@@ -163,7 +167,6 @@ export default function Sidebar() {
             <>
               <span className="font-medium flex-1">{item.label}</span>
               {hasChildren && (
-                // Apenas o ícone de expansão, o clique é tratado pelo botão pai
                 <span className={`p-1 rounded transition-colors ${
                   theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-slate-200'
                 }`}>
@@ -251,28 +254,6 @@ export default function Sidebar() {
         {/* Navigation */}
         <nav className="flex-1 overflow-y-auto py-4">
           {navigationItems.map(item => renderNavItem(item))}
-          {/* Novo item de navegação para Ajustes do Usuário */}
-          <button
-            onClick={() => {
-              setIsMobileOpen(false);
-              navigate('/administration/user-profile-settings');
-            }}
-            className={`flex items-center w-full px-4 py-3 text-left transition-all duration-200 group ${
-              location.pathname === '/administration/user-profile-settings'
-                ? `${theme === 'dark' ? 'bg-primary-dark text-primary-light border-r-2 border-primary' : 'bg-primary-light/20 text-primary-dark border-r-2 border-primary'}`
-                : `${theme === 'dark' ? 'text-text-dark hover:bg-card-dark hover:text-white' : 'text-text-light hover:bg-background-light hover:text-slate-900'}`
-            }`}
-          >
-            <UserIcon 
-              size={20} 
-              className={`${isCollapsed ? 'mx-auto' : 'mr-3'} ${
-                location.pathname === '/administration/user-profile-settings'
-                  ? theme === 'dark' ? 'text-primary-light' : 'text-primary'
-                  : theme === 'dark' ? 'text-text-dark' : 'text-text-light'
-              }`} 
-            />
-            {!isCollapsed && <span className="font-medium">Ajustes do Usuário</span>}
-          </button>
         </nav>
 
         {/* Theme Toggle and Logout */}

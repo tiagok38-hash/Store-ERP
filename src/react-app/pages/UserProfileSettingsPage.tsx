@@ -37,10 +37,10 @@ export default function UserProfileSettingsPage() {
           theme === 'dark' ? 'text-white' : 'text-slate-800'
         }`}>
           <User className="mr-3 text-blue-600" size={32} />
-          Ajustes do Usuário
+          Usuário (Perfil)
         </h1>
         <p className={theme === 'dark' ? 'text-slate-300' : 'text-slate-600'}>
-          Gerencie suas informações pessoais e senha.
+          Gerencie suas informações de perfil e senha.
         </p>
       </div>
 
