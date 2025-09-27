@@ -1044,7 +1044,7 @@ export default function Inventory() {
                           <ProductActionsDropdown
                             unitId={unit.id}
                             onViewHistory={() => handleViewProductHistory(unit)}
-                            onEdit={() => handleEditInventoryUnit(unit.id)} {/* Chamar o novo handler */}
+                            onEdit={() => handleEditInventoryUnit(unit.id)}
                             onDelete={() => handleDeleteProductUnit(unit.id)}
                             onAdjustStock={() => handleOpenStockAdjustmentModal(unit.id)}
                           />
