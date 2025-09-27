@@ -187,13 +187,14 @@ export default function ProductModal({ isOpen, onClose, product }: ProductModalP
     costPrice: product?.costPrice ? formatCurrencyBR(product.costPrice) : '',
     salePrice: product?.salePrice ? formatCurrencyBR(product.salePrice) : '',
     additionalCost: product?.additionalCost ? formatCurrencyBR(product.additionalCost) : '', // Novo campo
-    minStock: product?.minStock || '5',
-    maxStock: product?.maxStock || '50',
     defaultLocationId: product?.defaultLocationId || '', // Alterado para ID
     defaultWarrantyTermId: product?.defaultWarrantyTermId || '', // Alterado para ID
     barcode: product?.barcode || '', // Novo campo
     requiresImei: product?.requiresImei || false,
     requiresSerial: product?.requiresSerial || false,
+    imei1: product?.imei1 || '', // Adicionado IMEI 1
+    imei2: product?.imei2 || '', // Adicionado IMEI 2
+    serialNumber: product?.serialNumber || '', // Adicionado Número de Série
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -385,6 +386,9 @@ export default function ProductModal({ isOpen, onClose, product }: ProductModalP
       Código de Barras: ${formData.barcode || '-'}
       Requer IMEI: ${formData.requiresImei ? 'Sim' : 'Não'}
       Requer Serial: ${formData.requiresSerial ? 'Sim' : 'Não'}
+      IMEI 1: ${formData.imei1 || '-'}
+      IMEI 2: ${formData.imei2 || '-'}
+      Número de Série: ${formData.serialNumber || '-'}
     `);
     handleClose(); // Use the animated close
   };
@@ -647,7 +651,7 @@ export default function ProductModal({ isOpen, onClose, product }: ProductModalP
             <div className="space-y-4">
               <h3 className="text-lg font-semibold text-slate-700 mb-4 flex items-center">
                 <DollarSign className="mr-2 text-green-500" size={18} />
-                Preços e Estoque
+                Preços
               </h3>
 
               {/* SKU */}
@@ -718,36 +722,6 @@ export default function ProductModal({ isOpen, onClose, product }: ProductModalP
                   <span className="text-lg font-bold text-green-600">{calculateMarkup()}%</span>
                 </div>
               </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Estoque Mínimo
-                  </label>
-                  <input
-                    type="number"
-                    value={formData.minStock}
-                    onFocus={(e) => e.target.select()}
-                    onChange={(e) => setFormData({ ...formData, minStock: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    min="0"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Estoque Máximo
-                  </label>
-                  <input
-                    type="number"
-                    value={formData.maxStock}
-                    onFocus={(e) => e.target.select()}
-                    onChange={(e) => setFormData({ ...formData, maxStock: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    min="0"
-                  />
-                </div>
-              </div>
             </div>
 
             {/* Coluna 3: Configurações */}
@@ -770,6 +744,57 @@ export default function ProductModal({ isOpen, onClose, product }: ProductModalP
                     onChange={(e) => setFormData({ ...formData, barcode: e.target.value })}
                     className="w-full pl-10 pr-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     placeholder="Digite o código de barras"
+                  />
+                </div>
+              </div>
+
+              {/* IMEI 1 */}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  IMEI 1
+                </label>
+                <div className="relative">
+                  <Smartphone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={18} />
+                  <input
+                    type="text"
+                    value={formData.imei1}
+                    onChange={(e) => setFormData({ ...formData, imei1: e.target.value })}
+                    className="w-full pl-10 pr-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Digite o IMEI 1 (opcional)"
+                  />
+                </div>
+              </div>
+
+              {/* IMEI 2 */}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  IMEI 2
+                </label>
+                <div className="relative">
+                  <Smartphone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={18} />
+                  <input
+                    type="text"
+                    value={formData.imei2}
+                    onChange={(e) => setFormData({ ...formData, imei2: e.target.value })}
+                    className="w-full pl-10 pr-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Digite o IMEI 2 (opcional)"
+                  />
+                </div>
+              </div>
+
+              {/* Número de Série */}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Número de Série
+                </label>
+                <div className="relative">
+                  <Hash className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={18} />
+                  <input
+                    type="text"
+                    value={formData.serialNumber}
+                    onChange={(e) => setFormData({ ...formData, serialNumber: e.target.value })}
+                    className="w-full pl-10 pr-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Digite o número de série (opcional)"
                   />
                 </div>
               </div>
@@ -870,6 +895,15 @@ export default function ProductModal({ isOpen, onClose, product }: ProductModalP
                     )}
                     {formData.barcode && (
                       <p><strong>Cód. Barras:</strong> {formData.barcode}</p>
+                    )}
+                    {formData.imei1 && (
+                      <p><strong>IMEI 1:</strong> {formData.imei1}</p>
+                    )}
+                    {formData.imei2 && (
+                      <p><strong>IMEI 2:</strong> {formData.imei2}</p>
+                    )}
+                    {formData.serialNumber && (
+                      <p><strong>Número de Série:</strong> {formData.serialNumber}</p>
                     )}
                     {formData.defaultLocationId && (
                       <p><strong>Local Padrão:</strong> {stockLocations.find(loc => loc.id === formData.defaultLocationId)?.name}</p>
