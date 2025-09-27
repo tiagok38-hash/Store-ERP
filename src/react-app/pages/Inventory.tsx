@@ -20,6 +20,7 @@ import PurchaseModal from '@/react-app/components/PurchaseModal';
 import FinalizePurchaseModal from '@/react-app/components/FinalizePurchaseModal';
 import PurchaseViewModal from '@/react-app/components/PurchaseViewModal';
 import ProductHistoryModal from '@/react-app/components/ProductHistoryModal';
+import ProductModal from '@/react-app/components/ProductModal'; // Importar ProductModal
 import { useNotification } from '@/react-app/components/NotificationSystem';
 
 interface InventoryUnit {
@@ -90,6 +91,10 @@ export default function Inventory() {
   const [isProductHistoryModalOpen, setIsProductHistoryModalOpen] = useState(false);
   const [selectedProductForHistory, setSelectedProductForHistory] = useState<InventoryUnit | null>(null);
   
+  // New states for ProductModal (editing inventory units)
+  const [isProductEditModalOpen, setIsProductEditModalOpen] = useState(false);
+  const [editingProductUnit, setEditingProductUnit] = useState<InventoryUnit | null>(null);
+
   // Purchase filters
   const [purchaseDateFrom, setPurchaseDateFrom] = useState('');
   const [purchaseDateTo, setPurchaseDateTo] = useState('');
@@ -524,6 +529,21 @@ export default function Inventory() {
     setIsProductHistoryModalOpen(true);
   };
 
+  // New functions for editing inventory units
+  const handleEditProductUnit = (unit: InventoryUnit) => {
+    setEditingProductUnit(unit);
+    setIsProductEditModalOpen(true);
+  };
+
+  const handleProductUnitSaved = (updatedUnit: InventoryUnit) => {
+    setInventoryUnits(prev => 
+      prev.map(unit => unit.id === updatedUnit.id ? updatedUnit : unit)
+    );
+    showSuccess('Produto Atualizado', `O item ${updatedUnit.productDescription} foi atualizado com sucesso.`);
+    setIsProductEditModalOpen(false);
+    setEditingProductUnit(null);
+  };
+
   return (
     <div className="p-6 bg-gradient-to-br from-slate-50 to-slate-100 min-h-screen">
       {/* Header */}
@@ -844,7 +864,7 @@ export default function Inventory() {
                               <Clock size={16} className="text-purple-600" />
                             </button>
                             <button
-                              onClick={() => alert(`Editar item ${unit.id}`)}
+                              onClick={() => handleEditProductUnit(unit)} // Updated to open ProductModal
                               className="p-2 hover:bg-green-100 rounded-lg transition-colors"
                               title="Editar"
                             >
@@ -1121,6 +1141,17 @@ export default function Inventory() {
           setSelectedProductForHistory(null);
         }}
         product={selectedProductForHistory}
+      />
+
+      {/* Product Edit Modal (for Inventory Units) */}
+      <ProductModal
+        isOpen={isProductEditModalOpen}
+        onClose={() => {
+          setIsProductEditModalOpen(false);
+          setEditingProductUnit(null);
+        }}
+        product={editingProductUnit} // Pass the selected unit for editing
+        onProductSaved={handleProductUnitSaved} // Handle saving updates
       />
     </div>
   );
