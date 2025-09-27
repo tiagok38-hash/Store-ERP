@@ -300,7 +300,7 @@ export default function Reports() {
           <button 
             onClick={handleGenerateReport}
             disabled={isLoading}
-            className="bg-gradient-to-r from-blue-500 to-blue-600 text-white px-6 py-3 rounded-lg hover:shadow-lg transition-all duration-200 flex items-center font-medium disabled:opacity-50"
+            className="bg-gradient-to-r from-green-500 to-green-600 text-white px-6 py-3 rounded-lg hover:shadow-lg transition-all duration-200 flex items-center font-medium disabled:opacity-50"
           >
             {isLoading ? (
               <RefreshCw className="mr-2 animate-spin" size={20} />
