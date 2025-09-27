@@ -273,9 +273,9 @@ export default function ProductStructurePage() {
           </Link>
           <h1 className={`text-3xl font-bold mb-2 flex items-center ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>
             <Building2 className="mr-3 text-blue-600" size={32} />
-            Estrutura de Produtos
+            Marcas e Categorias
           </h1>
-          <p className={`text-slate-600 ${theme === 'dark' ? 'text-slate-300' : ''}`}>Estrutura hierárquica dos produtos</p>
+          <p className={`text-slate-600 ${theme === 'dark' ? 'text-slate-300' : ''}`}>Gerencie as marcas, categorias, subcategorias e variações dos seus produtos.</p>
         </div>
       </div>
 
