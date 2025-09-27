@@ -16,7 +16,7 @@ import {
 import { Link } from 'react-router-dom'; // Importar Link
 import { useTheme } from '@/react-app/hooks/useTheme'; // Importar useTheme
 import { supabase } from '@/integrations/supabase/client'; // Importar supabase
-import { useAuth } => '@/react-app/hooks/useAuth'; // Importar useAuth
+import { useAuth } from '@/react-app/hooks/useAuth'; // Importar useAuth
 import { formatCurrencyInput, parseCurrencyBR, formatCurrencyBR } from '@/react-app/utils/currency'; // Importar utilitários de moeda
 
 interface ProductModalProps {
