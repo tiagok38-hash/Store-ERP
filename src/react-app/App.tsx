@@ -4,7 +4,7 @@ import AuthProvider from "@/react-app/components/AuthProvider";
 import ProtectedRoute from "@/react-app/components/ProtectedRoute";
 import Sidebar from "@/react-app/components/Sidebar";
 import { NotificationProvider } from "@/react-app/components/NotificationSystem";
-import { ThemeProvider } from "@/react-app/hooks/useTheme";
+import { ThemeProvider, useTheme } from "@/react-app/hooks/useTheme"; // Importar useTheme
 import { SessionContextProvider, useSession } from "@/react-app/components/SessionContextProvider";
 import Dashboard from "@/react-app/pages/Dashboard";
 import Sales from "@/react-app/pages/Sales";
@@ -31,6 +31,7 @@ function AppContent() {
   const location = useLocation();
   const navigate = useNavigate();
   const { session, isLoading } = useSession();
+  const { theme } = useTheme(); // Usar o tema para aplicar classes de fundo
 
   // --- INÍCIO DA REMOÇÃO TEMPORÁRIA DA LÓGICA DE LOGIN ---
   // Comentando o useEffect que lida com redirecionamentos de autenticação
@@ -65,7 +66,11 @@ function AppContent() {
 
   // Se a lógica de login estiver comentada, sempre renderizamos o layout completo
   return (
-    <div className="flex h-screen">
+    <div className={`flex h-screen ${
+      theme === 'dark' 
+        ? 'bg-gradient-to-br from-background-dark to-slate-900' 
+        : 'bg-gradient-to-br from-background-light to-slate-100'
+    }`}>
       <Sidebar />
       <main className="flex-1 overflow-auto">
         <div key={location.pathname}>

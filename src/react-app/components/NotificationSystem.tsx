@@ -84,39 +84,39 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
   const getNotificationIcon = (type: NotificationType) => {
     switch (type) {
       case 'success':
-        return <CheckCircle size={22} className="text-green-600 animate-pulse" />;
+        return <CheckCircle size={22} className="text-secondary animate-pulse" />;
       case 'error':
         return <AlertCircle size={22} className="text-red-600 animate-bounce" />;
       case 'warning':
-        return <AlertTriangle size={22} className="text-yellow-600 animate-pulse" />;
+        return <AlertTriangle size={22} className="text-accent animate-pulse" />;
       case 'info':
-        return <Info size={22} className="text-blue-600 animate-pulse" />;
+        return <Info size={22} className="text-primary animate-pulse" />;
     }
   };
 
   const getNotificationStyles = (type: NotificationType) => {
     switch (type) {
       case 'success':
-        return 'bg-gradient-to-r from-green-50 to-emerald-50 border-green-300 text-green-900 shadow-green-200/50';
+        return 'bg-gradient-to-r from-secondary-light/20 to-secondary/20 border-secondary text-text-light shadow-soft-md';
       case 'error':
-        return 'bg-gradient-to-r from-red-50 to-rose-50 border-red-300 text-red-900 shadow-red-200/50';
+        return 'bg-gradient-to-r from-red-100 to-red-50 border-red-300 text-red-900 shadow-soft-md';
       case 'warning':
-        return 'bg-gradient-to-r from-yellow-50 to-amber-50 border-yellow-300 text-yellow-900 shadow-yellow-200/50';
+        return 'bg-gradient-to-r from-accent-light/20 to-accent/20 border-accent text-text-light shadow-soft-md';
       case 'info':
-        return 'bg-gradient-to-r from-blue-50 to-cyan-50 border-blue-300 text-blue-900 shadow-blue-200/50';
+        return 'bg-gradient-to-r from-primary-light/20 to-primary/20 border-primary text-text-light shadow-soft-md';
     }
   };
 
   const getProgressBarColor = (type: NotificationType) => {
     switch (type) {
       case 'success':
-        return 'bg-gradient-to-r from-green-400 to-emerald-500';
+        return 'bg-gradient-to-r from-secondary-light to-secondary';
       case 'error':
         return 'bg-gradient-to-r from-red-400 to-rose-500';
       case 'warning':
-        return 'bg-gradient-to-r from-yellow-400 to-amber-500';
+        return 'bg-gradient-to-r from-accent-light to-accent';
       case 'info':
-        return 'bg-gradient-to-r from-blue-400 to-cyan-500';
+        return 'bg-gradient-to-r from-primary-light to-primary';
     }
   };
 
@@ -137,10 +137,10 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
             key={notification.id}
             data-notification-id={notification.id}
             className={`
-              relative overflow-hidden border-2 rounded-xl p-5 shadow-2xl backdrop-blur-sm
+              relative overflow-hidden border-2 rounded-xl p-5 shadow-soft-lg backdrop-blur-sm
               transform transition-all duration-500 ease-out
               animate-in slide-in-from-right-full fade-in zoom-in-95
-              hover:scale-105 hover:shadow-3xl
+              hover:scale-105 hover:shadow-soft-xl
               ${getNotificationStyles(notification.type)}
             `}
             style={{
@@ -193,9 +193,9 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
             {/* Floating particles effect for success */}
             {notification.type === 'success' && (
               <div className="absolute inset-0 pointer-events-none">
-                <div className="absolute top-2 left-4 w-1 h-1 bg-green-400 rounded-full animate-ping" style={{ animationDelay: '0.5s' }}></div>
-                <div className="absolute top-6 right-8 w-1 h-1 bg-emerald-400 rounded-full animate-ping" style={{ animationDelay: '1s' }}></div>
-                <div className="absolute bottom-4 left-8 w-0.5 h-0.5 bg-green-300 rounded-full animate-ping" style={{ animationDelay: '1.5s' }}></div>
+                <div className="absolute top-2 left-4 w-1 h-1 bg-secondary-light rounded-full animate-ping" style={{ animationDelay: '0.5s' }}></div>
+                <div className="absolute top-6 right-8 w-1 h-1 bg-secondary rounded-full animate-ping" style={{ animationDelay: '1s' }}></div>
+                <div className="absolute bottom-4 left-8 w-0.5 h-0.5 bg-secondary-light/50 rounded-full animate-ping" style={{ animationDelay: '1.5s' }}></div>
               </div>
             )}
           </div>

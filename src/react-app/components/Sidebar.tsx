@@ -124,11 +124,11 @@ export default function Sidebar() {
     
     const activeClasses = isActive
       ? `${theme === 'dark' 
-          ? 'bg-gradient-to-r from-blue-900/50 to-blue-800/50 text-blue-400 border-r-2 border-blue-400' 
-          : 'bg-gradient-to-r from-blue-50 to-blue-100 text-blue-700 border-r-2 border-blue-500'}`
+          ? 'bg-primary-dark text-primary-light border-r-2 border-primary' 
+          : 'bg-primary-light/20 text-primary-dark border-r-2 border-primary'}`
       : `${theme === 'dark' 
-          ? 'text-slate-300 hover:bg-slate-700/50 hover:text-white' 
-          : 'text-slate-700 hover:bg-slate-50 hover:text-slate-900'}`;
+          ? 'text-text-dark hover:bg-card-dark hover:text-white' 
+          : 'text-text-light hover:bg-background-light hover:text-slate-900'}`;
 
     const handleClick = (e: React.MouseEvent) => {
       setIsMobileOpen(false); // Fechar sidebar mobile em qualquer clique
@@ -152,8 +152,8 @@ export default function Sidebar() {
             size={20} 
             className={`${isCollapsed ? 'mx-auto' : 'mr-3'} ${
               isActive 
-                ? theme === 'dark' ? 'text-blue-400' : 'text-blue-600'
-                : theme === 'dark' ? 'text-white' : 'text-slate-700'
+                ? theme === 'dark' ? 'text-primary-light' : 'text-primary'
+                : theme === 'dark' ? 'text-text-dark' : 'text-text-light'
             }`} 
           />
           {!isCollapsed && (
@@ -162,7 +162,7 @@ export default function Sidebar() {
               {hasChildren && (
                 // Apenas o ícone de expansão, o clique é tratado pelo botão pai
                 <span className={`p-1 rounded transition-colors ${
-                  theme === 'dark' ? 'hover:bg-slate-600' : 'hover:bg-slate-200'
+                  theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-slate-200'
                 }`}>
                   {isExpanded ? (
                     <ChevronDown size={16} className={theme === 'dark' ? 'text-slate-300' : 'text-slate-500'} />
@@ -176,7 +176,7 @@ export default function Sidebar() {
         </button>
         
         {hasChildren && isExpanded && !isCollapsed && (
-          <div className={theme === 'dark' ? 'bg-slate-800/50' : 'bg-slate-25'}>
+          <div className={theme === 'dark' ? 'bg-card-dark/50' : 'bg-background-light/50'}>
             {item.children!.map(child => renderNavItem(child, level + 1))}
           </div>
         )}
@@ -189,10 +189,10 @@ export default function Sidebar() {
       {/* Mobile Menu Button */}
       <button
         onClick={() => setIsMobileOpen(!isMobileOpen)}
-        className={`lg:hidden fixed top-4 left-4 z-50 p-2 rounded-lg shadow-lg transition-colors ${
+        className={`lg:hidden fixed top-4 left-4 z-50 p-2 rounded-lg shadow-soft-md transition-colors ${
           theme === 'dark' 
-            ? 'bg-slate-800 text-white' 
-            : 'bg-white text-slate-700'
+            ? 'bg-card-dark text-text-dark' 
+            : 'bg-card-light text-text-light'
         }`}
       >
         {isMobileOpen ? <X size={20} /> : <Menu size={20} />}
@@ -209,14 +209,14 @@ export default function Sidebar() {
       {/* Sidebar */}
       <div className={`
         ${isMobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
-        fixed lg:relative z-40 ${isCollapsed ? 'w-16' : 'w-72'} h-full shadow-xl transition-all duration-300 ease-in-out
-        flex flex-col ${theme === 'dark' ? 'bg-slate-900' : 'bg-white'}
+        fixed lg:relative z-40 ${isCollapsed ? 'w-16' : 'w-72'} h-full shadow-soft-lg transition-all duration-300 ease-in-out
+        flex flex-col ${theme === 'dark' ? 'bg-background-dark' : 'bg-card-light'}
       `}>
         {/* Header */}
         <div className={`p-6 border-b ${theme === 'dark' ? 'border-slate-700' : 'border-slate-200'}`}>
           <div className="flex items-center justify-between">
             <div className="flex items-center">
-              <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
+              <div className="w-10 h-10 bg-gradient-to-r from-primary to-secondary rounded-lg flex items-center justify-center">
                 <span className="text-xl font-bold text-white">S</span>
               </div>
               {!isCollapsed && (
@@ -257,8 +257,8 @@ export default function Sidebar() {
             onClick={toggleTheme}
             className={`flex items-center w-full px-4 py-3 rounded-lg transition-all duration-200 ${
               theme === 'dark' 
-                ? 'text-yellow-400 hover:bg-slate-700/50' 
-                : 'text-slate-600 hover:bg-slate-100'
+                ? 'text-yellow-400 hover:bg-card-dark' 
+                : 'text-slate-600 hover:bg-background-light'
             }`}
             title={isCollapsed ? `Tema ${theme === 'dark' ? 'claro' : 'escuro'}` : ""}
           >
@@ -292,8 +292,8 @@ export default function Sidebar() {
         {/* User Info */}
         <div className={`p-4 border-t ${
           theme === 'dark' 
-            ? 'border-slate-700 bg-slate-800/50' 
-            : 'border-slate-200 bg-slate-50'
+            ? 'border-slate-700 bg-card-dark' 
+            : 'border-slate-200 bg-background-light'
         }`}>
           <div className="flex items-center">
             <div className="w-10 h-10 bg-gradient-to-r from-green-500 to-blue-500 rounded-full flex items-center justify-center">

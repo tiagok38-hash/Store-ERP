@@ -98,25 +98,25 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-600 via-purple-600 to-blue-600 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
+    <div className="min-h-screen bg-gradient-to-br from-primary-dark via-primary to-secondary flex items-center justify-center p-4">
+      <div className="bg-card-light rounded-2xl shadow-soft-2xl p-8 w-full max-w-md">
         {/* Logo e Header */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-xl mb-4">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-primary to-secondary rounded-xl mb-4 shadow-soft-md">
             <span className="text-2xl font-bold text-white">S</span>
           </div>
-          <h1 className="text-2xl font-bold text-gray-800">StoreFlow Pro</h1>
-          <p className="text-gray-600 mt-2">Sistema de Gestão Empresarial</p>
+          <h1 className="text-2xl font-bold text-text-light">StoreFlow Pro</h1>
+          <p className="text-slate-600 mt-2">Sistema de Gestão Empresarial</p>
         </div>
 
         {/* Tabs */}
-        <div className="flex mb-6 bg-gray-100 rounded-lg p-1">
+        <div className="flex mb-6 bg-background-light rounded-lg p-1 shadow-soft-sm">
           <button
             onClick={() => setActiveTab('login')}
             className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
               activeTab === 'login'
-                ? 'bg-white shadow-sm text-gray-800'
-                : 'text-gray-600 hover:text-gray-800'
+                ? 'bg-card-light shadow-soft-sm text-text-light'
+                : 'text-slate-600 hover:text-text-light'
             }`}
           >
             Login
@@ -125,8 +125,8 @@ export default function Login() {
             onClick={() => setActiveTab('register')}
             className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
               activeTab === 'register'
-                ? 'bg-white shadow-sm text-gray-800'
-                : 'text-gray-600 hover:text-gray-800'
+                ? 'bg-card-light shadow-soft-sm text-text-light'
+                : 'text-slate-600 hover:text-text-light'
             }`}
           >
             Cadastrar
@@ -137,16 +137,16 @@ export default function Login() {
           /* Login Form */
           <form onSubmit={handleLoginSubmit} className="space-y-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-slate-700 mb-2">
                 Email
               </label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={20} />
                 <input
                   type="email"
                   value={loginEmail}
                   onChange={(e) => setLoginEmail(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  className="w-full pl-10 pr-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
                   placeholder="seu@email.com"
                   required
                 />
@@ -154,23 +154,23 @@ export default function Login() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-slate-700 mb-2">
                 Senha
               </label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={20} />
                 <input
                   type={showLoginPassword ? 'text' : 'password'}
                   value={loginPassword}
                   onChange={(e) => setLoginPassword(e.target.value)}
-                  className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  className="w-full pl-10 pr-12 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
                   placeholder="••••••••"
                   required
                 />
                 <button
                   type="button"
                   onClick={() => setShowLoginPassword(!showLoginPassword)}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600"
                 >
                   {showLoginPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                 </button>
@@ -181,13 +181,13 @@ export default function Login() {
               <label className="flex items-center">
                 <input
                   type="checkbox"
-                  className="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+                  className="rounded border-slate-300 text-primary shadow-sm focus:border-primary-light focus:ring focus:ring-primary-light/50"
                 />
-                <span className="ml-2 text-sm text-gray-600">Lembrar-me</span>
+                <span className="ml-2 text-sm text-slate-600">Lembrar-me</span>
               </label>
               <button
                 type="button"
-                className="text-sm text-indigo-600 hover:text-indigo-500"
+                className="text-sm text-primary hover:text-primary-dark"
               >
                 Esqueceu a senha?
               </button>
@@ -196,7 +196,7 @@ export default function Login() {
             <button
               type="submit"
               disabled={isLoginLoading}
-              className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-3 rounded-lg hover:shadow-lg transition-all duration-200 flex items-center justify-center font-medium disabled:opacity-50"
+              className="w-full bg-gradient-to-r from-primary to-secondary text-white py-3 rounded-lg hover:shadow-soft-md transition-all duration-200 flex items-center justify-center font-medium disabled:opacity-50"
             >
               {isLoginLoading ? (
                 <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white" />
@@ -213,17 +213,17 @@ export default function Login() {
           <form onSubmit={handleRegisterSubmit} className="space-y-6">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-slate-700 mb-2">
                   Nome *
                 </label>
                 <div className="relative">
-                  <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+                  <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={20} />
                   <input
                     type="text"
                     value={registerFirstName}
                     onChange={(e) => setRegisterFirstName(e.target.value)}
-                    className={`w-full pl-10 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
-                      registerErrors.firstName ? 'border-red-500' : 'border-gray-300'
+                    className={`w-full pl-10 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent ${
+                      registerErrors.firstName ? 'border-red-500' : 'border-slate-300'
                     }`}
                     placeholder="Seu nome"
                     required
@@ -232,17 +232,17 @@ export default function Login() {
                 {registerErrors.firstName && <p className="text-red-500 text-xs mt-1">{registerErrors.firstName}</p>}
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-slate-700 mb-2">
                   Sobrenome *
                 </label>
                 <div className="relative">
-                  <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+                  <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={20} />
                   <input
                     type="text"
                     value={registerLastName}
                     onChange={(e) => setRegisterLastName(e.target.value)}
-                    className={`w-full pl-10 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
-                      registerErrors.lastName ? 'border-red-500' : 'border-gray-300'
+                    className={`w-full pl-10 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent ${
+                      registerErrors.lastName ? 'border-red-500' : 'border-slate-300'
                     }`}
                     placeholder="Seu sobrenome"
                     required
@@ -253,17 +253,17 @@ export default function Login() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-slate-700 mb-2">
                 Email *
               </label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={20} />
                 <input
                   type="email"
                   value={registerEmail}
                   onChange={(e) => setRegisterEmail(e.target.value)}
-                  className={`w-full pl-10 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
-                    registerErrors.email ? 'border-red-500' : 'border-gray-300'
+                  className={`w-full pl-10 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent ${
+                    registerErrors.email ? 'border-red-500' : 'border-slate-300'
                   }`}
                   placeholder="seu@email.com"
                   required
@@ -273,17 +273,17 @@ export default function Login() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-slate-700 mb-2">
                 Senha *
               </label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={20} />
                 <input
                   type={showRegisterPassword ? 'text' : 'password'}
                   value={registerPassword}
                   onChange={(e) => setRegisterPassword(e.target.value)}
-                  className={`w-full pl-10 pr-12 py-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
-                    registerErrors.password ? 'border-red-500' : 'border-gray-300'
+                  className={`w-full pl-10 pr-12 py-3 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent ${
+                    registerErrors.password ? 'border-red-500' : 'border-slate-300'
                   }`}
                   placeholder="••••••••"
                   required
@@ -291,7 +291,7 @@ export default function Login() {
                 <button
                   type="button"
                   onClick={() => setShowRegisterPassword(!showRegisterPassword)}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600"
                 >
                   {showRegisterPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                 </button>
@@ -300,17 +300,17 @@ export default function Login() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-slate-700 mb-2">
                 Confirmar Senha *
               </label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={20} />
                 <input
                   type={showRegisterPassword ? 'text' : 'password'}
                   value={registerConfirmPassword}
                   onChange={(e) => setRegisterConfirmPassword(e.target.value)}
-                  className={`w-full pl-10 pr-12 py-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
-                    registerErrors.confirmPassword ? 'border-red-500' : 'border-gray-300'
+                  className={`w-full pl-10 pr-12 py-3 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent ${
+                    registerErrors.confirmPassword ? 'border-red-500' : 'border-slate-300'
                   }`}
                   placeholder="••••••••"
                   required
@@ -318,7 +318,7 @@ export default function Login() {
                 <button
                   type="button"
                   onClick={() => setShowRegisterPassword(!showRegisterPassword)}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600"
                 >
                   {showRegisterPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                 </button>
@@ -329,7 +329,7 @@ export default function Login() {
             <button
               type="submit"
               disabled={isRegisterLoading}
-              className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-3 rounded-lg hover:shadow-lg transition-all duration-200 flex items-center justify-center font-medium disabled:opacity-50"
+              className="w-full bg-gradient-to-r from-primary to-secondary text-white py-3 rounded-lg hover:shadow-soft-md transition-all duration-200 flex items-center justify-center font-medium disabled:opacity-50"
             >
               {isRegisterLoading ? (
                 <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white" />
@@ -343,13 +343,13 @@ export default function Login() {
           </form>
         )}
 
-        <div className="mt-6 text-center text-sm text-gray-600">
+        <div className="mt-6 text-center text-sm text-slate-600">
           Ao continuar, você concorda com os{' '}
-          <a href="#" className="text-indigo-600 hover:text-indigo-500">
+          <a href="#" className="text-primary hover:text-primary-dark">
             Termos de Uso
           </a>{' '}
           e{' '}
-          <a href="#" className="text-indigo-600 hover:text-indigo-500">
+          <a href="#" className="text-primary hover:text-primary-dark">
             Política de Privacidade
           </a>
         </div>

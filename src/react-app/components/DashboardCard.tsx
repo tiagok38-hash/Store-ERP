@@ -16,10 +16,10 @@ interface DashboardCardProps {
 }
 
 const colorOptions = [
-  { name: 'Azul', value: 'from-blue-500 to-blue-600', bg: 'bg-blue-500' },
-  { name: 'Verde', value: 'from-green-500 to-green-600', bg: 'bg-green-500' },
+  { name: 'Azul', value: 'from-primary to-primary-dark', bg: 'bg-primary' },
+  { name: 'Verde', value: 'from-secondary to-secondary-dark', bg: 'bg-secondary' },
   { name: 'Roxo', value: 'from-purple-500 to-purple-600', bg: 'bg-purple-500' },
-  { name: 'Laranja', value: 'from-orange-500 to-orange-600', bg: 'bg-orange-500' },
+  { name: 'Laranja', value: 'from-accent to-accent-dark', bg: 'bg-accent' },
   { name: 'Rosa', value: 'from-pink-500 to-pink-600', bg: 'bg-pink-500' },
   { name: 'Vermelho', value: 'from-red-500 to-red-600', bg: 'bg-red-500' },
   { name: 'Índigo', value: 'from-indigo-500 to-indigo-600', bg: 'bg-indigo-500' },
@@ -34,7 +34,7 @@ export default function DashboardCard({
   subtitle, 
   id,
   isVisible = true,
-  customColor = 'from-blue-500 to-blue-600',
+  customColor = 'from-primary to-primary-dark', // Usar a nova cor primária como padrão
   onVisibilityChange,
   onColorChange
 }: DashboardCardProps) {
@@ -46,7 +46,7 @@ export default function DashboardCard({
   if (!isVisible) return null;
 
   return (
-    <div className={`rounded-xl shadow-lg p-6 hover:shadow-xl transition-all duration-200 relative group ${
+    <div className={`rounded-xl shadow-soft-lg p-6 hover:shadow-soft-xl transition-all duration-200 relative group ${
       theme === 'dark' 
         ? `bg-gradient-to-br ${customColor} text-white` 
         : `bg-gradient-to-br ${customColor} text-white`
@@ -62,12 +62,12 @@ export default function DashboardCard({
 
       {/* Customization Panel */}
       {showCustomization && (
-        <div className={`absolute top-12 right-3 p-4 rounded-lg shadow-xl z-10 min-w-48 ${
-          theme === 'dark' ? 'bg-slate-800 border border-slate-700' : 'bg-white border border-slate-200'
+        <div className={`absolute top-12 right-3 p-4 rounded-lg shadow-soft-xl z-10 min-w-48 ${
+          theme === 'dark' ? 'bg-card-dark border border-slate-700' : 'bg-card-light border border-slate-200'
         }`}>
           <div className="flex items-center justify-between mb-3">
             <h4 className={`text-sm font-medium ${
-              theme === 'dark' ? 'text-white' : 'text-slate-800'
+              theme === 'dark' ? 'text-text-dark' : 'text-text-light'
             }`}>
               Personalizar
             </h4>
