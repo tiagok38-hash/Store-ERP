@@ -8,51 +8,22 @@ import {
   Tag,
   Smartphone,
   Plus,
-  Info, // Importar o ícone Info
-  Barcode, // Importar o ícone Barcode
-  Clock, // Importar o ícone Clock para garantia
-  MapPin // Importar o ícone MapPin para localização
+  Info, 
+  Barcode, 
+  Clock, 
+  MapPin,
+  CheckSquare, // New icon for requiresImei/Serial
+  Square // New icon for requiresImei/Serial
 } from 'lucide-react';
-import { Link } from 'react-router-dom'; // Importar Link
-import { useTheme } from '@/react-app/hooks/useTheme'; // Importar useTheme
-import { supabase } from '@/integrations/supabase/client'; // Importar supabase
-import { useAuth } from '@/react-app/hooks/useAuth'; // Importar useAuth
-import { formatCurrencyInput, parseCurrencyBR, formatCurrencyBR } from '@/react-app/utils/currency'; // Importar utilitários de moeda
-import { useNotification } from '@/react-app/components/NotificationSystem'; // Importar useNotification
+import { Link } from 'react-router-dom'; 
+import { useTheme } from '@/react-app/hooks/useTheme'; 
+import { supabase } from '@/integrations/supabase/client'; 
+import { useAuth } from '@/react-app/hooks/useAuth'; 
+import { formatCurrencyInput, parseCurrencyBR, formatCurrencyBR } from '@/react-app/utils/currency'; 
+import { useNotification } from '@/react-app/components/NotificationSystem';
+import { Product as ProductDefinition } from '@/shared/types'; // Import Product from shared types
 
-interface InventoryUnit {
-  id: string;
-  productSku: string;
-  productDescription: string;
-  brand: string;
-  category: string;
-  model?: string;
-  color?: string;
-  storage?: string;
-  condition: 'novo' | 'seminovo' | 'usado';
-  location?: string;
-  imei1?: string;
-  imei2?: string;
-  serialNumber?: string;
-  barcode?: string;
-  costPrice: number;
-  salePrice: number;
-  status: 'available' | 'sold' | 'reserved' | 'defective';
-  createdAt: string;
-  updatedAt: string;
-  purchaseId?: string;
-  locatorCode?: string;
-  minStock?: number; // Adicionado minStock
-}
-
-interface ProductModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  product?: InventoryUnit; // Alterado para InventoryUnit para edição
-  onProductSaved?: (product: InventoryUnit) => void; // Callback para salvar/atualizar
-}
-
-// Estrutura hierárquica: Marca → Categoria → Descrição → Variações
+// Hierarchical data for product structure (remains the same)
 const hierarchicalData = {
   'Apple': {
     'iPhone': {
@@ -212,39 +183,43 @@ const variationTypeTranslations: { [key: string]: string } = {
   type: 'Tipo',
 };
 
+interface ProductModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  product?: ProductDefinition; // Now expects a ProductDefinition
+  onProductSaved?: (product: ProductDefinition) => void; // Callback returns ProductDefinition
+}
+
 export default function ProductModal({ isOpen, onClose, product, onProductSaved }: ProductModalProps) {
   const { theme } = useTheme();
-  const { user } = useAuth(); // Obter o usuário logado
-  const { showSuccess, showError } = useNotification(); // Usar notificações
+  const { user } = useAuth(); 
+  const { showSuccess, showError } = useNotification(); 
   const [formData, setFormData] = useState({
-    id: product?.id || '', // Adicionar ID para edição
-    productSku: product?.productSku || '',
+    id: product?.id || '', 
+    sku: product?.sku || '', // Changed from productSku to sku
     brand: product?.brand || '',
     category: product?.category || '',
-    productDescription: product?.productDescription || '', // Alterado de 'description' para 'productDescription'
-    variations: [] as string[], // Variações são strings no InventoryUnit
-    costPrice: product?.costPrice ? formatCurrencyBR(product.costPrice) : '',
-    salePrice: product?.salePrice ? formatCurrencyBR(product.salePrice) : '',
-    additionalCost: '0,00', // Custo adicional não é um campo direto do InventoryUnit, mas pode ser usado para cálculo
-    defaultLocationId: product?.location || '', // Usar 'location' do InventoryUnit
-    defaultWarrantyTermId: '', // Será preenchido com base no nome da garantia
+    description: product?.description || '', // Changed from productDescription to description
+    variations: [] as string[], 
+    costPrice: product?.cost_price ? formatCurrencyBR(product.cost_price) : '', // Changed from costPrice to cost_price
+    salePrice: product?.sale_price ? formatCurrencyBR(product.sale_price) : '', // Changed from salePrice to sale_price
+    additionalCost: '0,00', 
+    defaultLocationId: '', 
+    defaultWarrantyTermId: '', 
     barcode: product?.barcode || '',
-    imei1: product?.imei1 || '',
-    imei2: product?.imei2 || '',
-    serialNumber: product?.serialNumber || '',
-    condition: product?.condition || 'novo', // Adicionar condição
-    status: product?.status || 'available', // Adicionar status
-    minStock: product?.minStock || 0, // Adicionado minStock
+    requiresImei: product?.requires_imei || false, // New field
+    requiresSerial: product?.requires_serial || false, // New field
+    minStock: product?.min_stock || 0, // Changed from minStock to min_stock
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [availableBrands, setAvailableBrands] = useState<string[]>([]); // Adicionado estado para marcas
+  const [availableBrands, setAvailableBrands] = useState<string[]>([]); 
   const [availableCategories, setAvailableCategories] = useState<string[]>([]);
   const [availableDescriptions, setAvailableDescriptions] = useState<string[]>([]);
   const [availableVariations, setAvailableVariations] = useState<{[key: string]: string[]}>({});
   const [selectedVariations, setSelectedVariations] = useState<{[key: string]: string}>({});
-  const [stockLocations, setStockLocations] = useState<StockLocation[]>([]); // Estado para locais de estoque
-  const [warrantyTerms, setWarrantyTerms] = useState<WarrantyTerm[]>([]); // Estado para termos de garantia
+  const [stockLocations, setStockLocations] = useState<StockLocation[]>([]); 
+  const [warrantyTerms, setWarrantyTerms] = useState<WarrantyTerm[]>([]); 
   const [isAnimatingOut, setIsAnimatingOut] = useState(false);
 
   const handleClose = () => {
@@ -252,50 +227,40 @@ export default function ProductModal({ isOpen, onClose, product, onProductSaved 
     setTimeout(() => {
       onClose();
       setIsAnimatingOut(false);
-    }, 300); // Match animation duration
+    }, 300); 
   };
 
-  // Reset form data when modal opens or product changes
   useEffect(() => {
     if (isOpen) {
-      setErrors({}); // Clear errors on open
-      // Populate available brands
+      setErrors({}); 
       setAvailableBrands(Object.keys(hierarchicalData));
 
       if (product) {
-        // Editing existing product
         setFormData({
           id: product.id,
-          productSku: product.productSku || '',
+          sku: product.sku || '',
           brand: product.brand || '',
           category: product.category || '',
-          productDescription: product.productDescription || '',
-          variations: [], // Variations are not directly stored as an array in InventoryUnit
-          costPrice: product.costPrice ? formatCurrencyBR(product.costPrice) : '',
-          salePrice: product.salePrice ? formatCurrencyBR(product.salePrice) : '',
-          additionalCost: '0,00', // Not directly from InventoryUnit
-          defaultLocationId: product.location || '',
-          defaultWarrantyTermId: '', // Will be set after fetching terms
+          description: product.description || '',
+          variations: [], 
+          costPrice: product.cost_price ? formatCurrencyBR(product.cost_price) : '',
+          salePrice: product.sale_price ? formatCurrencyBR(product.sale_price) : '',
+          additionalCost: '0,00', 
+          defaultLocationId: '', 
+          defaultWarrantyTermId: '', 
           barcode: product.barcode || '',
-          imei1: product.imei1 || '',
-          imei2: product.imei2 || '',
-          serialNumber: product.serialNumber || '',
-          condition: product.condition || 'novo',
-          status: product.status || 'available',
-          minStock: product.minStock || 0, // Set minStock for editing
+          requiresImei: product.requires_imei || false,
+          requiresSerial: product.requires_serial || false,
+          minStock: product.min_stock || 0,
         });
-        // Set selected variations based on productDescription if possible
-        // This part is complex due to dynamic nature of variations, might need refinement
-        // For now, we'll rely on the user to re-select variations if needed.
         setSelectedVariations({});
       } else {
-        // Creating new product
         setFormData({
           id: '',
-          productSku: '',
+          sku: '',
           brand: '',
           category: '',
-          productDescription: '',
+          description: '',
           variations: [],
           costPrice: '',
           salePrice: '',
@@ -303,24 +268,19 @@ export default function ProductModal({ isOpen, onClose, product, onProductSaved 
           defaultLocationId: '',
           defaultWarrantyTermId: '',
           barcode: '',
-          imei1: '',
-          imei2: '',
-          serialNumber: '',
-          condition: 'novo',
-          status: 'available',
-          minStock: 0, // Default minStock to 0 for new products
+          requiresImei: false,
+          requiresSerial: false,
+          minStock: 0,
         });
         setSelectedVariations({});
       }
     }
   }, [isOpen, product]);
 
-  // Fetch stock locations and warranty terms
   useEffect(() => {
     const fetchAdminData = async () => {
       if (!user?.id) return;
 
-      // Fetch Stock Locations
       const { data: locationsData, error: locationsError } = await supabase
         .from('stock_locations')
         .select('id, name')
@@ -333,7 +293,6 @@ export default function ProductModal({ isOpen, onClose, product, onProductSaved 
         setStockLocations(locationsData || []);
       }
 
-      // Fetch Warranty Terms
       const { data: warrantyData, error: warrantyError } = await supabase
         .from('warranty_terms')
         .select('id, name, months')
@@ -344,12 +303,8 @@ export default function ProductModal({ isOpen, onClose, product, onProductSaved 
         console.error('Error fetching warranty terms:', warrantyError);
       } else {
         setWarrantyTerms(warrantyData || []);
-        // Set default warranty term if editing and product has one
-        if (product && product.warrantyTerm) {
-          const matchingTerm = warrantyData?.find(term => term.name === product.warrantyTerm);
-          if (matchingTerm) {
-            setFormData(prev => ({ ...prev, defaultWarrantyTermId: matchingTerm.id }));
-          }
+        if (product && product.warranty_term_id) { // Use warranty_term_id from Product
+          setFormData(prev => ({ ...prev, defaultWarrantyTermId: product.warranty_term_id }));
         }
       }
     };
@@ -359,14 +314,13 @@ export default function ProductModal({ isOpen, onClose, product, onProductSaved 
     }
   }, [isOpen, user, product]);
 
-  // Atualizar categorias quando marca muda
   useEffect(() => {
     if (formData.brand) {
       const brandData = hierarchicalData[formData.brand as keyof typeof hierarchicalData];
       if (brandData) {
         const categories = Object.keys(brandData);
         setAvailableCategories(categories);
-        setFormData(prev => ({ ...prev, category: '', productDescription: '' }));
+        setFormData(prev => ({ ...prev, category: '', description: '' }));
         setAvailableDescriptions([]);
         setAvailableVariations({});
         setSelectedVariations({});
@@ -379,7 +333,6 @@ export default function ProductModal({ isOpen, onClose, product, onProductSaved 
     }
   }, [formData.brand]);
 
-  // Atualizar descrições quando categoria muda
   useEffect(() => {
     if (formData.brand && formData.category) {
       const brandData = hierarchicalData[formData.brand as keyof typeof hierarchicalData];
@@ -387,7 +340,7 @@ export default function ProductModal({ isOpen, onClose, product, onProductSaved 
         const categoryData = brandData[formData.category as keyof typeof brandData] as any;
         if (categoryData && categoryData.descriptions) {
           setAvailableDescriptions(categoryData.descriptions);
-          setFormData(prev => ({ ...prev, productDescription: '' }));
+          setFormData(prev => ({ ...prev, description: '' }));
           setAvailableVariations({});
           setSelectedVariations({});
         }
@@ -399,9 +352,8 @@ export default function ProductModal({ isOpen, onClose, product, onProductSaved 
     }
   }, [formData.brand, formData.category]);
 
-  // Atualizar variações quando descrição muda
   useEffect(() => {
-    if (formData.brand && formData.category && formData.productDescription) {
+    if (formData.brand && formData.category && formData.description) {
       const brandData = hierarchicalData[formData.brand as keyof typeof hierarchicalData];
       if (brandData) {
         const categoryData = brandData[formData.category as keyof typeof brandData] as any;
@@ -414,21 +366,17 @@ export default function ProductModal({ isOpen, onClose, product, onProductSaved 
       setAvailableVariations({});
       setSelectedVariations({});
     }
-  }, [formData.brand, formData.category, formData.productDescription]);
+  }, [formData.brand, formData.category, formData.description]);
 
-  // Gerar SKU automaticamente
   useEffect(() => {
-    if (formData.brand && formData.category && formData.productDescription) {
+    if (formData.brand && formData.category && formData.description) {
       let sku = '';
       
-      // Prefixo da marca
       const brandPrefix = formData.brand.substring(0, 3).toUpperCase();
       
-      // Categoria
       const categoryCode = formData.category.substring(0, 3).toUpperCase();
       
-      // Descrição (pegar palavras importantes)
-      const descriptionCode = formData.productDescription
+      const descriptionCode = formData.description
         .replace(/[^a-zA-Z0-9\s]/g, '')
         .split(' ')
         .map((word: string) => word.substring(0, 2))
@@ -438,16 +386,15 @@ export default function ProductModal({ isOpen, onClose, product, onProductSaved 
       
       sku = `${brandPrefix}${categoryCode}${descriptionCode}`;
       
-      // Adicionar variações se disponível
       Object.values(selectedVariations).forEach(variation => {
         if (variation) {
           sku += variation.replace(/[^a-zA-Z0-9]/g, '').substring(0, 3).toUpperCase();
         }
       });
       
-      setFormData(prev => ({ ...prev, productSku: sku }));
+      setFormData(prev => ({ ...prev, sku: sku }));
     }
-  }, [formData.brand, formData.category, formData.productDescription, selectedVariations]);
+  }, [formData.brand, formData.category, formData.description, selectedVariations]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -456,11 +403,10 @@ export default function ProductModal({ isOpen, onClose, product, onProductSaved 
     
     if (!formData.brand) newErrors.brand = 'Marca é obrigatória';
     if (!formData.category) newErrors.category = 'Categoria é obrigatória';
-    if (!formData.productDescription) newErrors.productDescription = 'Descrição é obrigatória';
+    if (!formData.description) newErrors.description = 'Descrição é obrigatória';
     
     const parsedCostPrice = parseCurrencyBR(formData.costPrice);
     const parsedSalePrice = parseCurrencyBR(formData.salePrice);
-    // const parsedAdditionalCost = parseCurrencyBR(formData.additionalCost); // Not directly used for InventoryUnit
 
     if (parsedCostPrice <= 0) {
       newErrors.costPrice = 'Preço de custo deve ser maior que zero';
@@ -486,37 +432,36 @@ export default function ProductModal({ isOpen, onClose, product, onProductSaved 
     const selectedWarranty = warrantyTerms.find(term => term.id === formData.defaultWarrantyTermId);
     const selectedLocation = stockLocations.find(loc => loc.id === formData.defaultLocationId);
 
-    const newOrUpdatedProduct: InventoryUnit = {
-      id: formData.id || String(Date.now()), // Use existing ID or generate new one
-      productSku: formData.productSku,
-      productDescription: getProductDescription(), // Use the combined description
+    const newOrUpdatedProduct: ProductDefinition = {
+      id: formData.id || String(Date.now()), 
+      sku: formData.sku,
+      description: getProductDescription(), 
       brand: formData.brand,
       category: formData.category,
-      model: formData.productDescription, // Assuming description is the model for hierarchical data
-      color: selectedVariations['colors'] || undefined,
-      storage: selectedVariations['storage'] || undefined,
-      condition: formData.condition as 'novo' | 'seminovo' | 'usado',
-      location: selectedLocation?.name || undefined,
-      imei1: formData.imei1 || undefined,
-      imei2: formData.imei2 || undefined,
-      serialNumber: formData.serialNumber || undefined,
-      barcode: formData.barcode || undefined,
-      costPrice: parsedCostPrice,
-      salePrice: parsedSalePrice,
-      status: formData.status as 'available' | 'sold' | 'reserved' | 'defective',
-      createdAt: product?.createdAt || new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      purchaseId: product?.purchaseId, // Keep existing purchaseId if editing
-      locatorCode: product?.locatorCode, // Keep existing locatorCode if editing
-      warrantyTerm: selectedWarranty?.name || 'Sem garantia',
-      minStock: formData.minStock, // Incluir minStock
+      model: formData.description, 
+      variation: Object.values(selectedVariations).filter(v => v).join(', ') || undefined, // Combine variations into a single string
+      cost_price: parsedCostPrice,
+      sale_price: parsedSalePrice,
+      markup: parseFloat(calculateMarkup()), // Calculate markup
+      ncm: undefined, // Not collected in this modal
+      unit: 'UN', // Default unit
+      requires_imei: formData.requiresImei,
+      requires_serial: formData.requiresSerial,
+      is_active: true, // Always active on creation/edit
+      created_at: product?.created_at || new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      location_id: selectedLocation?.id || undefined, // Store location ID
+      warranty_term_id: selectedWarranty?.id || undefined, // Store warranty ID
+      min_stock: formData.minStock,
+      image_url: undefined, // Not collected in this modal
+      company_id: undefined, // Not collected in this modal
     };
 
     if (onProductSaved) {
       onProductSaved(newOrUpdatedProduct);
     }
     
-    handleClose(); // Use the animated close
+    handleClose(); 
   };
 
   const calculateMarkup = () => {
@@ -535,9 +480,8 @@ export default function ProductModal({ isOpen, onClose, product, onProductSaved 
   const getProductDescription = () => {
     let description = '';
     if (formData.brand) description += formData.brand;
-    if (formData.productDescription) description += ` ${formData.productDescription}`;
+    if (formData.description) description += ` ${formData.description}`;
     
-    // Adicionar variações selecionadas
     Object.values(selectedVariations).forEach((value) => {
       if (value) {
         description += ` ${value}`;
@@ -551,29 +495,6 @@ export default function ProductModal({ isOpen, onClose, product, onProductSaved 
     setSelectedVariations(prev => ({
       ...prev,
       [variationType]: value
-    }));
-  };
-
-  const addVariationToProduct = () => {
-    if (Object.keys(selectedVariations).length > 0) {
-      const variationString = Object.entries(selectedVariations)
-        .filter(([_, value]) => value)
-        .map(([key, value]) => `${variationTypeTranslations[key] || key}: ${value}`) // Usar tradução aqui
-        .join(', ');
-      
-      setFormData(prev => ({
-        ...prev,
-        variations: [...prev.variations, variationString]
-      }));
-      
-      setSelectedVariations({});
-    }
-  };
-
-  const removeVariation = (index: number) => {
-    setFormData(prev => ({
-      ...prev,
-      variations: prev.variations.filter((_: any, i: number) => i !== index)
     }));
   };
 
@@ -687,10 +608,10 @@ export default function ProductModal({ isOpen, onClose, product, onProductSaved 
                   3. Descrição do Produto *
                 </label>
                 <select
-                  value={formData.productDescription}
-                  onChange={(e) => setFormData({ ...formData, productDescription: e.target.value })}
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                    errors.productDescription ? 'border-red-300' : 'border-slate-300'
+                    errors.description ? 'border-red-300' : 'border-slate-300'
                   } ${!formData.category ? 'bg-slate-100' : ''}`}
                   disabled={!formData.category}
                 >
@@ -699,7 +620,7 @@ export default function ProductModal({ isOpen, onClose, product, onProductSaved 
                     <option key={description} value={description}>{description}</option>
                   ))}
                 </select>
-                {errors.productDescription && <p className="text-red-600 text-sm mt-1">{errors.productDescription}</p>}
+                {errors.description && <p className="text-red-600 text-sm mt-1">{errors.description}</p>}
                 {!formData.category && (
                   <p className="text-slate-500 text-xs mt-1">Selecione uma categoria primeiro</p>
                 )}
@@ -715,52 +636,20 @@ export default function ProductModal({ isOpen, onClose, product, onProductSaved 
                   {Object.entries(availableVariations).map(([variationType, options]) => (
                     <div key={variationType}>
                       <label className="block text-sm font-medium text-slate-700 mb-1 capitalize">
-                        {variationTypeTranslations[variationType] || variationType} {/* Traduzir o label */}
+                        {variationTypeTranslations[variationType] || variationType} 
                       </label>
                       <select
                         value={selectedVariations[variationType] || ''}
                         onChange={(e) => handleVariationChange(variationType, e.target.value)}
                         className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
                       >
-                        <option value="">Selecione {variationTypeTranslations[variationType] || variationType}</option> {/* Traduzir o placeholder */}
+                        <option value="">Selecione {variationTypeTranslations[variationType] || variationType}</option> 
                         {options.map(option => (
                           <option key={option} value={option}>{option}</option>
                         ))}
                       </select>
                     </div>
                   ))}
-                  
-                  {Object.values(selectedVariations).some(v => v) && (
-                    <button
-                      type="button"
-                      onClick={addVariationToProduct}
-                      className="mt-2 w-full bg-gradient-to-r from-green-400 to-green-500 text-white py-2 px-4 rounded-lg text-sm hover:shadow-lg transition-all duration-200 flex items-center justify-center"
-                    >
-                      <Plus className="mr-2" size={16} />
-                      Adicionar Variação
-                    </button>
-                  )}
-                </div>
-              )}
-
-              {/* Variações Adicionadas */}
-              {formData.variations.length > 0 && (
-                <div>
-                  <h4 className="text-sm font-medium text-slate-700 mb-2">Variações do Produto</h4>
-                  <div className="space-y-2 max-h-32 overflow-y-auto">
-                    {formData.variations.map((variation: string, index: number) => (
-                      <div key={index} className="flex items-center justify-between bg-blue-50 p-2 rounded-lg">
-                        <span className="text-sm text-blue-800">{variation}</span>
-                        <button
-                          type="button"
-                          onClick={() => removeVariation(index)}
-                          className="text-red-600 hover:text-red-800 p-1"
-                        >
-                          <X size={14} />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
                 </div>
               )}
 
@@ -787,8 +676,8 @@ export default function ProductModal({ isOpen, onClose, product, onProductSaved 
                 </label>
                 <input
                   type="text"
-                  value={formData.productSku}
-                  onChange={(e) => setFormData({ ...formData, productSku: e.target.value })}
+                  value={formData.sku}
+                  onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-slate-50"
                   placeholder="SKU será gerado automaticamente"
                   readOnly
@@ -892,55 +781,30 @@ export default function ProductModal({ isOpen, onClose, product, onProductSaved 
                 </div>
               </div>
 
-              {/* IMEI 1 */}
+              {/* Requires IMEI */}
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  IMEI 1
-                </label>
-                <div className="relative">
-                  <Smartphone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={18} />
+                <label className="flex items-center text-sm font-medium text-slate-700 mb-2">
                   <input
-                    type="text"
-                    value={formData.imei1}
-                    onChange={(e) => setFormData({ ...formData, imei1: e.target.value })}
-                    className="w-full pl-10 pr-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Digite o IMEI 1 (opcional)"
+                    type="checkbox"
+                    checked={formData.requiresImei}
+                    onChange={(e) => setFormData({ ...formData, requiresImei: e.target.checked })}
+                    className="rounded border-slate-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50 mr-2"
                   />
-                </div>
+                  Produto requer IMEI
+                </label>
               </div>
 
-              {/* IMEI 2 */}
+              {/* Requires Serial Number */}
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  IMEI 2
-                </label>
-                <div className="relative">
-                  <Smartphone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={18} />
+                <label className="flex items-center text-sm font-medium text-slate-700 mb-2">
                   <input
-                    type="text"
-                    value={formData.imei2}
-                    onChange={(e) => setFormData({ ...formData, imei2: e.target.value })}
-                    className="w-full pl-10 pr-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Digite o IMEI 2 (opcional)"
+                    type="checkbox"
+                    checked={formData.requiresSerial}
+                    onChange={(e) => setFormData({ ...formData, requiresSerial: e.target.checked })}
+                    className="rounded border-slate-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50 mr-2"
                   />
-                </div>
-              </div>
-
-              {/* Número de Série */}
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Número de Série
+                  Produto requer Número de Série
                 </label>
-                <div className="relative">
-                  <Hash className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={18} />
-                  <input
-                    type="text"
-                    value={formData.serialNumber}
-                    onChange={(e) => setFormData({ ...formData, serialNumber: e.target.value })}
-                    className="w-full pl-10 pr-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Digite o número de série (opcional)"
-                  />
-                </div>
               </div>
 
               {/* Garantia (Dropdown) */}
@@ -990,16 +854,16 @@ export default function ProductModal({ isOpen, onClose, product, onProductSaved 
               </div>
 
               {/* Preview do Produto Final */}
-              {formData.brand && formData.category && formData.productDescription && (
+              {formData.brand && formData.category && formData.description && (
                 <div className="bg-gradient-to-r from-green-50 to-blue-50 p-4 rounded-lg border border-green-200">
                   <h4 className="text-sm font-medium text-slate-700 mb-2">Resumo do Produto</h4>
                   <div className="space-y-1 text-sm">
-                    <p><strong>SKU:</strong> {formData.productSku}</p>
+                    <p><strong>SKU:</strong> {formData.sku}</p>
                     <p><strong>Descrição:</strong> {getProductDescription()}</p>
                     <p><strong>Marca:</strong> {formData.brand}</p>
                     <p><strong>Categoria:</strong> {formData.category}</p>
-                    {formData.variations.length > 0 && (
-                      <p><strong>Variações:</strong> {formData.variations.length}</p>
+                    {Object.values(selectedVariations).some(v => v) && (
+                      <p><strong>Variações:</strong> {Object.values(selectedVariations).filter(v => v).join(', ')}</p>
                     )}
                     {formData.salePrice && (
                       <p><strong>Preço:</strong> R$ {parseCurrencyBR(formData.salePrice).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
@@ -1007,14 +871,17 @@ export default function ProductModal({ isOpen, onClose, product, onProductSaved 
                     {formData.barcode && (
                       <p><strong>Cód. Barras:</strong> {formData.barcode}</p>
                     )}
-                    {formData.imei1 && (
-                      <p><strong>IMEI 1:</strong> {formData.imei1}</p>
+                    {formData.requiresImei && (
+                      <p className="flex items-center">
+                        <CheckSquare size={14} className="mr-1 text-blue-600" />
+                        Requer IMEI
+                      </p>
                     )}
-                    {formData.imei2 && (
-                      <p><strong>IMEI 2:</strong> {formData.imei2}</p>
-                    )}
-                    {formData.serialNumber && (
-                      <p><strong>Número de Série:</strong> {formData.serialNumber}</p>
+                    {formData.requiresSerial && (
+                      <p className="flex items-center">
+                        <CheckSquare size={14} className="mr-1 text-blue-600" />
+                        Requer Nº de Série
+                      </p>
                     )}
                     {formData.defaultLocationId && (
                       <p><strong>Local Padrão:</strong> {stockLocations.find(loc => loc.id === formData.defaultLocationId)?.name}</p>
