@@ -11,6 +11,7 @@ interface UserProfile {
   email: string;
   role: string;
   permissions: Permission[];
+  current_company_id: string | null; // Adicionado: ID da empresa ativa do usuário
 }
 
 interface AuthContextType {
@@ -41,7 +42,7 @@ export const useAuthState = () => {
       if (supabaseUser) {
         const { data, error } = await supabase
           .from('profiles')
-          .select('id, first_name, last_name, email, role, permissions')
+          .select('id, first_name, last_name, email, role, permissions, current_company_id') // Selecionar current_company_id
           .eq('id', supabaseUser.id)
           .single();
 
@@ -56,6 +57,7 @@ export const useAuthState = () => {
             email: supabaseUser.email || '', // Use email from auth.users
             role: data.role,
             permissions: data.permissions as Permission[],
+            current_company_id: data.current_company_id, // Atribuir current_company_id
           });
         }
       } else {
@@ -85,7 +87,7 @@ export const useAuthState = () => {
     if (data.user) {
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
-        .select('id, first_name, last_name, email, role, permissions')
+        .select('id, first_name, last_name, email, role, permissions, current_company_id') // Selecionar current_company_id
         .eq('id', data.user.id)
         .single();
 
@@ -103,6 +105,7 @@ export const useAuthState = () => {
           email: data.user.email || '',
           role: profileData.role,
           permissions: profileData.permissions as Permission[],
+          current_company_id: profileData.current_company_id, // Atribuir current_company_id
         });
       }
     }
