@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { 
   Package, 
   Search, 
@@ -25,6 +25,7 @@ import ProductHistoryModal from '@/react-app/components/ProductHistoryModal';
 import ProductModal from '@/react-app/components/ProductModal'; // Importar ProductModal
 import BulkPriceUpdateModal from '@/react-app/components/BulkPriceUpdateModal'; // Importar o novo modal
 import { useNotification } from '@/react-app/components/NotificationSystem';
+import { useLocation, useSearchParams } from 'react-router-dom'; // Importar useLocation e useSearchParams
 
 interface InventoryUnit {
   id: string;
@@ -74,8 +75,18 @@ interface Purchase {
   selectedColor?: string;
 }
 
+// Helper function to determine if a unit is low stock
+const isUnitLowStock = (unit: InventoryUnit, allUnits: InventoryUnit[]): boolean => {
+  if (unit.minStock === undefined || unit.minStock <= 0) return false;
+  const currentStockForProduct = allUnits.filter(u => u.productSku === unit.productSku && u.status === 'available').length;
+  return currentStockForProduct <= unit.minStock;
+};
+
 export default function Inventory() {
   const { showSuccess } = useNotification();
+  const [searchParams] = useSearchParams(); // Hook para ler parâmetros da URL
+  const location = useLocation(); // Hook para obter a localização atual
+
   const [activeTab, setActiveTab] = useState<'inventory' | 'purchases'>('inventory');
   const [inventoryUnits, setInventoryUnits] = useState<InventoryUnit[]>([]);
   const [purchases, setPurchases] = useState<Purchase[]>([]);
@@ -106,6 +117,9 @@ export default function Inventory() {
   const [purchaseDateFrom, setPurchaseDateFrom] = useState('');
   const [purchaseDateTo, setPurchaseDateTo] = useState('');
   const [purchaseStatusFilter, setPurchaseStatusFilter] = useState('all');
+
+  // New state for low stock filter from Dashboard
+  const [showLowStockOnly, setShowLowStockOnly] = useState(false);
 
   useEffect(() => {
     // Mock data com produtos únicos por IMEI/Serial
@@ -329,6 +343,21 @@ export default function Inventory() {
     ]);
   }, []);
 
+  // Efeito para lidar com o parâmetro de URL 'filter=low-stock'
+  useEffect(() => {
+    const filterParam = searchParams.get('filter');
+    if (filterParam === 'low-stock') {
+      setShowLowStockOnly(true);
+      setActiveTab('inventory'); // Garante que a aba de inventário esteja ativa
+      setFilterStatus('available'); // Filtra para mostrar apenas itens disponíveis
+      setFilterCondition('all'); // Não filtra por condição específica
+      setSearchTerm(''); // Limpa o termo de busca
+      setLocatorSearch(''); // Limpa a busca por localizador
+    } else {
+      setShowLowStockOnly(false);
+    }
+  }, [searchParams]); // Depende de searchParams para reagir a mudanças na URL
+
   // Filtrar unidades do estoque por localizador
   const filteredByLocator = locatorSearch ? 
     inventoryUnits.filter(unit => 
@@ -357,7 +386,10 @@ export default function Inventory() {
     const matchesStatus = filterStatus === 'all' || unit.status === filterStatus;
     const matchesCondition = filterCondition === 'all' || unit.condition === filterCondition;
     
-    return matchesSearch && matchesBrand && matchesCategory && matchesStatus && matchesCondition;
+    // Nova lógica de filtro para estoque baixo
+    const matchesLowStock = !showLowStockOnly || isUnitLowStock(unit, inventoryUnits);
+
+    return matchesSearch && matchesBrand && matchesCategory && matchesStatus && matchesCondition && matchesLowStock;
   });
 
   const sortedUnits = [...filteredUnits].sort((a, b) => {
@@ -581,17 +613,17 @@ export default function Inventory() {
           {/* Botão Nova Compra/Produto (agora primeiro e menor) */}
           <button 
             onClick={handleNewPurchase}
-            className="bg-gradient-to-r from-blue-500 to-blue-600 text-white px-6 py-3 rounded-lg hover:shadow-lg transition-all duration-200 flex items-center font-medium"
+            className="bg-gradient-to-r from-blue-500 to-blue-600 text-white px-4 py-2 rounded-lg hover:shadow-lg transition-all duration-200 flex items-center font-medium text-sm"
           >
-            <ShoppingBag className="mr-2" size={20} />
+            <ShoppingBag className="mr-2" size={18} />
             Nova Compra/Produto
           </button>
           {/* Botão Atualizar Preços em Massa (agora segundo e menor) */}
           <button 
             onClick={() => setIsBulkPriceUpdateModalOpen(true)}
-            className="bg-gradient-to-r from-purple-500 to-purple-600 text-white px-6 py-3 rounded-lg hover:shadow-lg transition-all duration-200 flex items-center font-medium"
+            className="bg-gradient-to-r from-purple-500 to-purple-600 text-white px-4 py-2 rounded-lg hover:shadow-lg transition-all duration-200 flex items-center font-medium text-sm"
           >
-            <DollarSign className="mr-2" size={20} />
+            <DollarSign className="mr-2" size={18} />
             Atualizar Preços
           </button>
         </div>

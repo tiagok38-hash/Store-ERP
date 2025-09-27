@@ -355,9 +355,9 @@ export default function Dashboard() {
             trend={parseInt(data.lowStockTrend.replace('%', '').replace('+', ''))}
             isVisible={cardSettings.lowStock.visible}
             customColor={cardSettings.lowStock.color}
+            onClick={() => navigate('/inventory?filter=low-stock')} {/* Atualizado para incluir o filtro */}
             onVisibilityChange={handleCardVisibilityChange}
             onColorChange={handleCardColorChange}
-            onClick={() => navigate('/inventory')} // Redirecionar para a página de estoque
           />
         </div>
       )}
