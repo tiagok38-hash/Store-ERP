@@ -8,17 +8,21 @@ import {
   Tag,
   Smartphone,
   Plus,
-  Info, // Importar o ícone Info
-  Barcode, // Importar o ícone Barcode
-  Clock, // Importar o ícone Clock para garantia
-  MapPin // Importar o ícone MapPin para localização
+  Info,
+  Barcode,
+  Clock,
+  MapPin,
+  Upload, // Importar o ícone Upload
+  Camera, // Importar o ícone Camera
+  Image as ImageIcon // Importar o ícone Image
 } from 'lucide-react';
-import { Link } from 'react-router-dom'; // Importar Link
-import { useTheme } from '@/react-app/hooks/useTheme'; // Importar useTheme
-import { supabase } from '@/integrations/supabase/client'; // Importar supabase
-import { useAuth } from '@/react-app/hooks/useAuth'; // Importar useAuth
-import { formatCurrencyInput, parseCurrencyBR, formatCurrencyBR } from '@/react-app/utils/currency'; // Importar utilitários de moeda
-import { useNotification } from '@/react-app/components/NotificationSystem'; // Importar useNotification
+import { Link } from 'react-router-dom';
+import { useTheme } from '@/react-app/hooks/useTheme';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/react-app/hooks/useAuth';
+import { formatCurrencyInput, parseCurrencyBR, formatCurrencyBR } from '@/react-app/utils/currency';
+import { useNotification } from '@/react-app/components/NotificationSystem';
+import { uploadProductImage, deleteProductImage } from '@/integrations/supabase/storage'; // Importar funções de storage
 
 interface InventoryUnit {
   id: string;
@@ -42,14 +46,15 @@ interface InventoryUnit {
   updatedAt: string;
   purchaseId?: string;
   locatorCode?: string;
-  minStock?: number; // Adicionado minStock
+  minStock?: number;
+  image_url?: string; // Adicionado image_url
 }
 
 interface ProductModalProps {
   isOpen: boolean;
   onClose: () => void;
-  product?: InventoryUnit; // Alterado para InventoryUnit para edição
-  onProductSaved?: (product: InventoryUnit) => void; // Callback para salvar/atualizar
+  product?: InventoryUnit;
+  onProductSaved?: (product: InventoryUnit) => void;
 }
 
 // Estrutura hierárquica: Marca → Categoria → Descrição → Variações
@@ -214,82 +219,81 @@ const variationTypeTranslations: { [key: string]: string } = {
 
 export default function ProductModal({ isOpen, onClose, product, onProductSaved }: ProductModalProps) {
   const { theme } = useTheme();
-  const { user } = useAuth(); // Obter o usuário logado
-  const { showSuccess, showError } = useNotification(); // Usar notificações
+  const { user } = useAuth();
+  const { showSuccess, showError } = useNotification();
   const [formData, setFormData] = useState({
-    id: product?.id || '', // Adicionar ID para edição
+    id: product?.id || '',
     productSku: product?.productSku || '',
     brand: product?.brand || '',
     category: product?.category || '',
-    productDescription: product?.productDescription || '', // Alterado de 'description' para 'productDescription'
-    variations: [] as string[], // Variações são strings no InventoryUnit
+    productDescription: product?.productDescription || '',
+    variations: [] as string[],
     costPrice: product?.costPrice ? formatCurrencyBR(product.costPrice) : '',
     salePrice: product?.salePrice ? formatCurrencyBR(product.salePrice) : '',
-    additionalCost: '0,00', // Custo adicional não é um campo direto do InventoryUnit, mas pode ser usado para cálculo
-    defaultLocationId: product?.location || '', // Usar 'location' do InventoryUnit
-    defaultWarrantyTermId: '', // Será preenchido com base no nome da garantia
+    additionalCost: '0,00',
+    defaultLocationId: product?.location || '',
+    defaultWarrantyTermId: '',
     barcode: product?.barcode || '',
     imei1: product?.imei1 || '',
     imei2: product?.imei2 || '',
     serialNumber: product?.serialNumber || '',
-    condition: product?.condition || 'novo', // Adicionar condição
-    status: product?.status || 'available', // Adicionar status
-    minStock: product?.minStock || 0, // Adicionado minStock
+    condition: product?.condition || 'novo',
+    status: product?.status || 'available',
+    minStock: product?.minStock || 0,
+    image_url: product?.image_url || '', // Adicionado image_url ao formData
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [availableBrands, setAvailableBrands] = useState<string[]>([]); // Adicionado estado para marcas
+  const [availableBrands, setAvailableBrands] = useState<string[]>([]);
   const [availableCategories, setAvailableCategories] = useState<string[]>([]);
   const [availableDescriptions, setAvailableDescriptions] = useState<string[]>([]);
   const [availableVariations, setAvailableVariations] = useState<{[key: string]: string[]}>({});
   const [selectedVariations, setSelectedVariations] = useState<{[key: string]: string}>({});
-  const [stockLocations, setStockLocations] = useState<StockLocation[]>([]); // Estado para locais de estoque
-  const [warrantyTerms, setWarrantyTerms] = useState<WarrantyTerm[]>([]); // Estado para termos de garantia
+  const [stockLocations, setStockLocations] = useState<StockLocation[]>([]);
+  const [warrantyTerms, setWarrantyTerms] = useState<WarrantyTerm[]>([]);
   const [isAnimatingOut, setIsAnimatingOut] = useState(false);
+  const [imageFile, setImageFile] = useState<File | null>(null); // Estado para o arquivo de imagem
+  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null); // Estado para a URL de preview
 
   const handleClose = () => {
     setIsAnimatingOut(true);
     setTimeout(() => {
       onClose();
       setIsAnimatingOut(false);
-    }, 300); // Match animation duration
+    }, 300);
   };
 
-  // Reset form data when modal opens or product changes
   useEffect(() => {
     if (isOpen) {
-      setErrors({}); // Clear errors on open
-      // Populate available brands
+      setErrors({});
       setAvailableBrands(Object.keys(hierarchicalData));
 
       if (product) {
-        // Editing existing product
         setFormData({
           id: product.id,
           productSku: product.productSku || '',
           brand: product.brand || '',
           category: product.category || '',
           productDescription: product.productDescription || '',
-          variations: [], // Variations are not directly stored as an array in InventoryUnit
+          variations: [],
           costPrice: product.costPrice ? formatCurrencyBR(product.costPrice) : '',
           salePrice: product.salePrice ? formatCurrencyBR(product.salePrice) : '',
-          additionalCost: '0,00', // Not directly from InventoryUnit
+          additionalCost: '0,00',
           defaultLocationId: product.location || '',
-          defaultWarrantyTermId: '', // Will be set after fetching terms
+          defaultWarrantyTermId: '',
           barcode: product.barcode || '',
           imei1: product.imei1 || '',
           imei2: product.imei2 || '',
           serialNumber: product.serialNumber || '',
           condition: product.condition || 'novo',
           status: product.status || 'available',
-          minStock: product.minStock || 0, // Set minStock for editing
+          minStock: product.minStock || 0,
+          image_url: product.image_url || '', // Carregar URL da imagem existente
         });
-        // Set selected variations based on productDescription if possible
-        // This part is complex due to dynamic nature of variations, might need refinement
-        // For now, we'll rely on the user to re-select variations if needed.
+        setImagePreviewUrl(product.image_url || null); // Definir preview da imagem existente
+        setImageFile(null); // Limpar arquivo de imagem ao editar
         setSelectedVariations({});
       } else {
-        // Creating new product
         setFormData({
           id: '',
           productSku: '',
@@ -308,19 +312,20 @@ export default function ProductModal({ isOpen, onClose, product, onProductSaved 
           serialNumber: '',
           condition: 'novo',
           status: 'available',
-          minStock: 0, // Default minStock to 0 for new products
+          minStock: 0,
+          image_url: '',
         });
+        setImagePreviewUrl(null); // Limpar preview
+        setImageFile(null); // Limpar arquivo de imagem
         setSelectedVariations({});
       }
     }
   }, [isOpen, product]);
 
-  // Fetch stock locations and warranty terms
   useEffect(() => {
     const fetchAdminData = async () => {
       if (!user?.id) return;
 
-      // Fetch Stock Locations
       const { data: locationsData, error: locationsError } = await supabase
         .from('stock_locations')
         .select('id, name')
@@ -333,7 +338,6 @@ export default function ProductModal({ isOpen, onClose, product, onProductSaved 
         setStockLocations(locationsData || []);
       }
 
-      // Fetch Warranty Terms
       const { data: warrantyData, error: warrantyError } = await supabase
         .from('warranty_terms')
         .select('id, name, months')
@@ -344,7 +348,6 @@ export default function ProductModal({ isOpen, onClose, product, onProductSaved 
         console.error('Error fetching warranty terms:', warrantyError);
       } else {
         setWarrantyTerms(warrantyData || []);
-        // Set default warranty term if editing and product has one
         if (product && product.warrantyTerm) {
           const matchingTerm = warrantyData?.find(term => term.name === product.warrantyTerm);
           if (matchingTerm) {
@@ -359,7 +362,6 @@ export default function ProductModal({ isOpen, onClose, product, onProductSaved 
     }
   }, [isOpen, user, product]);
 
-  // Atualizar categorias quando marca muda
   useEffect(() => {
     if (formData.brand) {
       const brandData = hierarchicalData[formData.brand as keyof typeof hierarchicalData];
@@ -379,7 +381,6 @@ export default function ProductModal({ isOpen, onClose, product, onProductSaved 
     }
   }, [formData.brand]);
 
-  // Atualizar descrições quando categoria muda
   useEffect(() => {
     if (formData.brand && formData.category) {
       const brandData = hierarchicalData[formData.brand as keyof typeof hierarchicalData];
@@ -399,7 +400,6 @@ export default function ProductModal({ isOpen, onClose, product, onProductSaved 
     }
   }, [formData.brand, formData.category]);
 
-  // Atualizar variações quando descrição muda
   useEffect(() => {
     if (formData.brand && formData.category && formData.productDescription) {
       const brandData = hierarchicalData[formData.brand as keyof typeof hierarchicalData];
@@ -416,18 +416,12 @@ export default function ProductModal({ isOpen, onClose, product, onProductSaved 
     }
   }, [formData.brand, formData.category, formData.productDescription]);
 
-  // Gerar SKU automaticamente
   useEffect(() => {
     if (formData.brand && formData.category && formData.productDescription) {
       let sku = '';
       
-      // Prefixo da marca
       const brandPrefix = formData.brand.substring(0, 3).toUpperCase();
-      
-      // Categoria
       const categoryCode = formData.category.substring(0, 3).toUpperCase();
-      
-      // Descrição (pegar palavras importantes)
       const descriptionCode = formData.productDescription
         .replace(/[^a-zA-Z0-9\s]/g, '')
         .split(' ')
@@ -438,7 +432,6 @@ export default function ProductModal({ isOpen, onClose, product, onProductSaved 
       
       sku = `${brandPrefix}${categoryCode}${descriptionCode}`;
       
-      // Adicionar variações se disponível
       Object.values(selectedVariations).forEach(variation => {
         if (variation) {
           sku += variation.replace(/[^a-zA-Z0-9]/g, '').substring(0, 3).toUpperCase();
@@ -449,7 +442,7 @@ export default function ProductModal({ isOpen, onClose, product, onProductSaved 
     }
   }, [formData.brand, formData.category, formData.productDescription, selectedVariations]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     const newErrors: Record<string, string> = {};
@@ -460,7 +453,6 @@ export default function ProductModal({ isOpen, onClose, product, onProductSaved 
     
     const parsedCostPrice = parseCurrencyBR(formData.costPrice);
     const parsedSalePrice = parseCurrencyBR(formData.salePrice);
-    // const parsedAdditionalCost = parseCurrencyBR(formData.additionalCost); // Not directly used for InventoryUnit
 
     if (parsedCostPrice <= 0) {
       newErrors.costPrice = 'Preço de custo deve ser maior que zero';
@@ -483,40 +475,84 @@ export default function ProductModal({ isOpen, onClose, product, onProductSaved 
       return;
     }
 
+    if (!user) {
+      showError('Erro', 'Usuário não autenticado.');
+      return;
+    }
+
+    let finalImageUrl = formData.image_url;
+
+    try {
+      // Handle image upload/deletion
+      if (imageFile) {
+        // If there's an old image and a new one is uploaded, delete the old one first
+        if (formData.image_url) {
+          await deleteProductImage(formData.image_url);
+        }
+        finalImageUrl = await uploadProductImage(imageFile, formData.id || 'new-product', user.id);
+      } else if (formData.image_url && !imagePreviewUrl) {
+        // If there was an image but it was removed (imagePreviewUrl is null)
+        await deleteProductImage(formData.image_url);
+        finalImageUrl = ''; // Set to empty string or null in DB
+      }
+    } catch (uploadError: any) {
+      showError('Erro no upload da imagem', uploadError.message);
+      return;
+    }
+
     const selectedWarranty = warrantyTerms.find(term => term.id === formData.defaultWarrantyTermId);
     const selectedLocation = stockLocations.find(loc => loc.id === formData.defaultLocationId);
 
-    const newOrUpdatedProduct: InventoryUnit = {
-      id: formData.id || String(Date.now()), // Use existing ID or generate new one
-      productSku: formData.productSku,
-      productDescription: getProductDescription(), // Use the combined description
-      brand: formData.brand,
-      category: formData.category,
-      model: formData.productDescription, // Assuming description is the model for hierarchical data
-      color: selectedVariations['colors'] || undefined,
-      storage: selectedVariations['storage'] || undefined,
-      condition: formData.condition as 'novo' | 'seminovo' | 'usado',
-      location: selectedLocation?.name || undefined,
-      imei1: formData.imei1 || undefined,
-      imei2: formData.imei2 || undefined,
-      serialNumber: formData.serialNumber || undefined,
-      barcode: formData.barcode || undefined,
-      costPrice: parsedCostPrice,
-      salePrice: parsedSalePrice,
-      status: formData.status as 'available' | 'sold' | 'reserved' | 'defective',
-      createdAt: product?.createdAt || new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      purchaseId: product?.purchaseId, // Keep existing purchaseId if editing
-      locatorCode: product?.locatorCode, // Keep existing locatorCode if editing
-      warrantyTerm: selectedWarranty?.name || 'Sem garantia',
-      minStock: formData.minStock, // Incluir minStock
+    const productData = {
+      user_id: user.id, // Adicionar user_id para RLS
+      sku: formData.productSku,
+      description: getProductDescription(),
+      brand_id: formData.brand, // Assumindo que brand_id é o ID da marca
+      category_id: formData.category, // Assumindo que category_id é o ID da categoria
+      variation_id: null, // Não estamos usando variation_id diretamente aqui
+      cost_price: parsedCostPrice,
+      sale_price: parsedSalePrice,
+      min_stock: formData.minStock,
+      location_id: formData.defaultLocationId,
+      requires_imei: !!formData.imei1, // True se IMEI1 for preenchido
+      requires_serial: !!formData.serialNumber, // True se SerialNumber for preenchido
+      warranty_term_id: formData.defaultWarrantyTermId,
+      is_active: true, // Produtos são ativos por padrão
+      image_url: finalImageUrl, // Salvar a URL da imagem
     };
 
-    if (onProductSaved) {
-      onProductSaved(newOrUpdatedProduct);
+    if (product) {
+      // Update existing product
+      const { data: updatedData, error } = await supabase
+        .from('products')
+        .update(productData)
+        .eq('id', product.id)
+        .select();
+
+      if (error) {
+        showError('Erro ao atualizar produto', error.message);
+        console.error('Error updating product:', error);
+      } else {
+        showSuccess('Produto Atualizado', `O produto "${getProductDescription()}" foi atualizado com sucesso.`);
+        onProductSaved?.({ ...product, ...updatedData[0] });
+        handleClose();
+      }
+    } else {
+      // Insert new product
+      const { data: newData, error } = await supabase
+        .from('products')
+        .insert(productData)
+        .select();
+
+      if (error) {
+        showError('Erro ao criar produto', error.message);
+        console.error('Error creating product:', error);
+      } else {
+        showSuccess('Produto Criado', `O produto "${getProductDescription()}" foi criado com sucesso.`);
+        onProductSaved?.(newData[0]);
+        handleClose();
+      }
     }
-    
-    handleClose(); // Use the animated close
   };
 
   const calculateMarkup = () => {
@@ -537,7 +573,6 @@ export default function ProductModal({ isOpen, onClose, product, onProductSaved 
     if (formData.brand) description += formData.brand;
     if (formData.productDescription) description += ` ${formData.productDescription}`;
     
-    // Adicionar variações selecionadas
     Object.values(selectedVariations).forEach((value) => {
       if (value) {
         description += ` ${value}`;
@@ -558,7 +593,7 @@ export default function ProductModal({ isOpen, onClose, product, onProductSaved 
     if (Object.keys(selectedVariations).length > 0) {
       const variationString = Object.entries(selectedVariations)
         .filter(([_, value]) => value)
-        .map(([key, value]) => `${variationTypeTranslations[key] || key}: ${value}`) // Usar tradução aqui
+        .map(([key, value]) => `${variationTypeTranslations[key] || key}: ${value}`)
         .join(', ');
       
       setFormData(prev => ({
@@ -575,6 +610,20 @@ export default function ProductModal({ isOpen, onClose, product, onProductSaved 
       ...prev,
       variations: prev.variations.filter((_: any, i: number) => i !== index)
     }));
+  };
+
+  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      setImageFile(file);
+      setImagePreviewUrl(URL.createObjectURL(file));
+    }
+  };
+
+  const handleRemoveImage = () => {
+    setImageFile(null);
+    setImagePreviewUrl(null);
+    setFormData(prev => ({ ...prev, image_url: '' })); // Clear image_url in form data
   };
 
   if (!isOpen && !isAnimatingOut) return null;
@@ -715,14 +764,14 @@ export default function ProductModal({ isOpen, onClose, product, onProductSaved 
                   {Object.entries(availableVariations).map(([variationType, options]) => (
                     <div key={variationType}>
                       <label className="block text-sm font-medium text-slate-700 mb-1 capitalize">
-                        {variationTypeTranslations[variationType] || variationType} {/* Traduzir o label */}
+                        {variationTypeTranslations[variationType] || variationType}
                       </label>
                       <select
                         value={selectedVariations[variationType] || ''}
                         onChange={(e) => handleVariationChange(variationType, e.target.value)}
                         className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
                       >
-                        <option value="">Selecione {variationTypeTranslations[variationType] || variationType}</option> {/* Traduzir o placeholder */}
+                        <option value="">Selecione {variationTypeTranslations[variationType] || variationType}</option>
                         {options.map(option => (
                           <option key={option} value={option}>{option}</option>
                         ))}
@@ -868,7 +917,7 @@ export default function ProductModal({ isOpen, onClose, product, onProductSaved 
               </div>
             </div>
 
-            {/* Coluna 3: Configurações */}
+            {/* Coluna 3: Configurações e Imagem */}
             <div className="space-y-4">
               <h3 className="text-lg font-semibold text-slate-700 mb-4 flex items-center">
                 <Tag className="mr-2 text-purple-500" size={18} />
@@ -989,6 +1038,61 @@ export default function ProductModal({ isOpen, onClose, product, onProductSaved 
                 {errors.defaultLocationId && <p className="text-red-600 text-sm mt-1">{errors.defaultLocationId}</p>}
               </div>
 
+              {/* Upload de Imagem */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-slate-700 flex items-center">
+                  <Camera className="mr-2 text-orange-500" size={18} />
+                  Foto do Produto
+                </h3>
+                <div className={`border-2 border-dashed rounded-lg p-4 text-center ${
+                  theme === 'dark' ? 'border-slate-600' : 'border-slate-300'
+                }`}>
+                  {imagePreviewUrl ? (
+                    <div className="relative">
+                      <img 
+                        src={imagePreviewUrl} 
+                        alt="Product preview" 
+                        className="max-w-full max-h-32 mx-auto object-contain"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleRemoveImage}
+                        className="absolute top-0 right-0 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors"
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+                  ) : (
+                    <div>
+                      <ImageIcon className={`mx-auto mb-2 ${
+                        theme === 'dark' ? 'text-slate-500' : 'text-slate-400'
+                      }`} size={32} />
+                      <p className={`mb-1 ${
+                        theme === 'dark' ? 'text-slate-300' : 'text-slate-600'
+                      }`}>Nenhuma foto</p>
+                      <p className={`text-xs ${
+                        theme === 'dark' ? 'text-slate-400' : 'text-slate-500'
+                      }`}>PNG, JPG até 2MB</p>
+                    </div>
+                  )}
+                </div>
+                
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageUpload}
+                  className="hidden"
+                  id="product-image-upload"
+                />
+                <label
+                  htmlFor="product-image-upload"
+                  className="w-full bg-gradient-to-r from-orange-500 to-orange-600 text-white px-4 py-2 rounded-lg hover:shadow-lg transition-all duration-200 cursor-pointer flex items-center justify-center font-medium text-sm"
+                >
+                  <Upload className="mr-2" size={16} />
+                  {imagePreviewUrl ? 'Alterar Foto' : 'Adicionar Foto'}
+                </label>
+              </div>
+
               {/* Preview do Produto Final */}
               {formData.brand && formData.category && formData.productDescription && (
                 <div className="bg-gradient-to-r from-green-50 to-blue-50 p-4 rounded-lg border border-green-200">
@@ -1023,6 +1127,9 @@ export default function ProductModal({ isOpen, onClose, product, onProductSaved 
                       <p><strong>Garantia Padrão:</strong> {warrantyTerms.find(term => term.id === formData.defaultWarrantyTermId)?.name}</p>
                     )}
                     <p><strong>Estoque Mínimo:</strong> {formData.minStock}</p>
+                    {formData.image_url && (
+                      <p><strong>Foto:</strong> Sim</p>
+                    )}
                   </div>
                 </div>
               )}
