@@ -39,7 +39,8 @@ interface StockAdjustmentModalProps {
     change: number,
     reason: string,
     newStock: number,
-    adjustmentType: 'add' | 'remove'
+    adjustmentType: 'add' | 'remove',
+    oldStock: number // Adicionado: estoque antes do ajuste
   ) => void;
 }
 
@@ -104,7 +105,8 @@ export default function StockAdjustmentModal({
       finalChange,
       reason,
       newStock,
-      adjustmentType
+      adjustmentType,
+      currentStock // Passando o estoque atual (oldStock)
     );
     showSuccess('Estoque Ajustado', `O estoque de "${productUnit.productDescription}" foi ajustado com sucesso.`);
     handleClose();

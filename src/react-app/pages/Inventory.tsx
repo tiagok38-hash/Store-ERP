@@ -595,7 +595,8 @@ export default function Inventory() {
     change: number,
     reason: string,
     newStock: number,
-    adjustmentType: 'add' | 'remove'
+    adjustmentType: 'add' | 'remove',
+    oldStock: number // Adicionado: estoque antes do ajuste
   ) => {
     // Find all units with the same SKU and update their status or add/remove dummy units
     setInventoryUnits(prevUnits => {
@@ -673,7 +674,7 @@ export default function Inventory() {
         user: 'Current User',
         movementType: adjustmentType === 'add' ? 'entrada' : 'saída',
         quantity: change,
-        oldStock: currentStock,
+        oldStock: oldStock, // Usando o oldStock passado como argumento
         newStock: newStock,
         reason: reason,
       }
