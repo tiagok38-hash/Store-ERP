@@ -13,6 +13,7 @@ import {
   ChevronDown,
   ChevronRight,
   ChevronLeft, // Importar ChevronLeft
+  ChevronUp, // Importar ChevronUp
   UserCheck,
   Building2,
   History,
@@ -166,9 +167,9 @@ export default function Sidebar() {
                   theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-slate-200'
                 }`}>
                   {isExpanded ? (
-                    <ChevronDown size={16} className={theme === 'dark' ? 'text-slate-300' : 'text-slate-500'} />
+                    <ChevronUp size={16} className={theme === 'dark' ? 'text-slate-300' : 'text-slate-500'} />
                   ) : (
-                    <ChevronRight size={16} className={theme === 'dark' ? 'text-slate-300' : 'text-slate-500'} />
+                    <ChevronDown size={16} className={theme === 'dark' ? 'text-slate-300' : 'text-slate-500'} />
                   )}
                 </span>
               )}
