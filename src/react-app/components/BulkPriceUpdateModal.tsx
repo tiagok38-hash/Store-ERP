@@ -64,7 +64,6 @@ export default function BulkPriceUpdateModal({
   const [newCostPriceInput, setNewCostPriceInput] = useState('');
   const [newSalePriceInput, setNewSalePriceInput] = useState('');
 
-  const [displayedProducts, setDisplayedProducts] = useState<InventoryUnit[]>([]);
   const [isAnimatingOut, setIsAnimatingOut] = useState(false);
 
   // Memoiza a lista de produtos filtrados para a busca (não para exibição imediata)
@@ -193,7 +192,8 @@ export default function BulkPriceUpdateModal({
 
         <div className="p-6 max-h-[calc(90vh-120px)] overflow-y-auto">
           {/* Filters */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            {/* Condição Filter */}
             <div>
               <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-200' : 'text-slate-700'}`}>
                 Condição
@@ -211,27 +211,34 @@ export default function BulkPriceUpdateModal({
                 <option value="usado">Usado</option>
               </select>
             </div>
-            <div className="md:col-span-2 flex gap-2">
-              <div className="relative flex-1">
-                <Search className={`absolute left-3 top-1/2 transform -translate-y-1/2 ${theme === 'dark' ? 'text-slate-400' : 'text-slate-500'}`} size={20} />
-                <input
-                  type="text"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className={`w-full pl-10 pr-4 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent ${
-                    theme === 'dark' ? 'bg-slate-600 border-slate-500 text-white' : 'bg-white border-slate-300 text-slate-900'
-                  }`}
-                  placeholder="Digite o nome do produto para buscar..."
-                />
+
+            {/* Search Input and Button */}
+            <div className="md:col-span-2">
+              <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-200' : 'text-slate-700'}`}>
+                Buscar Produto
+              </label>
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <Search className={`absolute left-3 top-1/2 transform -translate-y-1/2 ${theme === 'dark' ? 'text-slate-400' : 'text-slate-500'}`} size={20} />
+                  <input
+                    type="text"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className={`w-full pl-10 pr-4 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent ${
+                      theme === 'dark' ? 'bg-slate-600 border-slate-500 text-white' : 'bg-white border-slate-300 text-slate-900'
+                    }`}
+                    placeholder="Nome, SKU, marca..."
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={handleSearch}
+                  className="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-colors flex items-center"
+                >
+                  <Search className="mr-2" size={18} />
+                  BUSCAR
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={handleSearch}
-                className="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-colors flex items-center"
-              >
-                <Search className="mr-2" size={18} />
-                BUSCAR
-              </button>
             </div>
           </div>
 
@@ -357,7 +364,7 @@ export default function BulkPriceUpdateModal({
             <button
               type="button"
               onClick={handleApplyChanges}
-              disabled={displayedProducts.length === 0 || (!newCostPriceInput && !newSalePriceInput)}
+              disabled={filteredProducts.length === 0 || (!newCostPriceInput && !newSalePriceInput)}
               className="px-6 py-3 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-xl font-medium shadow-lg transition-all duration-200 hover:shadow-xl hover:scale-105 flex items-center disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
             >
               <CheckCircle className="mr-2" size={16} />
