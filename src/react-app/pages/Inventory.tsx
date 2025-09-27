@@ -578,19 +578,21 @@ export default function Inventory() {
           <p className="text-slate-600">Gestão completa de produtos e compras</p>
         </div>
         <div className="flex gap-3">
-          <button 
-            onClick={() => setIsBulkPriceUpdateModalOpen(true)} // Botão para abrir o modal de atualização em massa
-            className="bg-gradient-to-r from-purple-500 to-purple-600 text-white px-8 py-4 rounded-lg hover:shadow-lg transition-all duration-200 flex items-center font-medium text-lg"
-          >
-            <DollarSign className="mr-3" size={24} />
-            Atualizar Preços em Massa
-          </button>
+          {/* Botão Nova Compra/Produto (agora primeiro e menor) */}
           <button 
             onClick={handleNewPurchase}
-            className="bg-gradient-to-r from-blue-500 to-blue-600 text-white px-8 py-4 rounded-lg hover:shadow-lg transition-all duration-200 flex items-center font-medium text-lg"
+            className="bg-gradient-to-r from-blue-500 to-blue-600 text-white px-6 py-3 rounded-lg hover:shadow-lg transition-all duration-200 flex items-center font-medium"
           >
-            <ShoppingBag className="mr-3" size={24} />
+            <ShoppingBag className="mr-2" size={20} />
             Nova Compra/Produto
+          </button>
+          {/* Botão Atualizar Preços em Massa (agora segundo e menor) */}
+          <button 
+            onClick={() => setIsBulkPriceUpdateModalOpen(true)}
+            className="bg-gradient-to-r from-purple-500 to-purple-600 text-white px-6 py-3 rounded-lg hover:shadow-lg transition-all duration-200 flex items-center font-medium"
+          >
+            <DollarSign className="mr-2" size={20} />
+            Atualizar Preços
           </button>
         </div>
       </div>
