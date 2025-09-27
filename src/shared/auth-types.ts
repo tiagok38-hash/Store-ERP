@@ -32,6 +32,9 @@ export const UserPermissions = {
   SALES_EDIT: 'sales.edit',
   SALES_DELETE: 'sales.delete',
   SALES_CARDS_VIEW: 'sales.cards.view',
+  SALES_VIEW_REVENUE_CARD: 'sales.view.revenue_card', // Nova permissão
+  SALES_VIEW_TAXES_CARD: 'sales.view.taxes_card',     // Nova permissão
+  SALES_VIEW_PROFIT_CARD: 'sales.view.profit_card',   // Nova permissão
   
   // Estoque
   INVENTORY_VIEW: 'inventory.view',

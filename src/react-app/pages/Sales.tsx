@@ -24,6 +24,8 @@ import SalesModal from '@/react-app/components/SalesModal'; // Importa o modal d
 import SaleActionsDropdown from '@/react-app/components/SaleActionsDropdown';
 import SaleViewModal from '@/react-app/components/SaleViewModal';
 import CardSimulatorModal from '@/react-app/components/CardSimulatorModal';
+import { useAuth } from '@/react-app/hooks/useAuth'; // Importar useAuth
+import { UserPermissions } from '@/shared/auth-types'; // Importar UserPermissions
 
 interface Sale {
   id: string;
@@ -99,6 +101,7 @@ const mockWarrantyTerms = [
 export default function Sales() {
   const { theme } = useTheme();
   const { showSuccess, showError } = useNotification();
+  const { hasPermission } = useAuth(); // Usar o hook de autenticação
   const [dateFrom, setDateFrom] = useState('01/09/25');
   const [dateTo, setDateTo] = useState('30/09/25');
   const [statusFilter, setStatusFilter] = useState('Todas');
@@ -296,30 +299,36 @@ export default function Sales() {
 
         {/* Stats Cards */}
         <div className="grid grid-cols-3 gap-4 mb-6">
-          <div className="bg-gradient-to-br from-green-500 to-green-600 p-4 rounded-xl text-center shadow-lg">
-            <h3 className="text-xs font-medium mb-1 text-green-100">
-              Faturamento
-            </h3>
-            <p className="text-lg font-bold text-white">
-              R$ {totalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-            </p>
-          </div>
-          <div className="bg-gradient-to-br from-red-500 to-red-600 p-4 rounded-xl text-center shadow-lg">
-            <h3 className="text-xs font-medium mb-1 text-red-100">
-              Taxas
-            </h3>
-            <p className="text-lg font-bold text-white">
-              R$ {totalTaxes.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-            </p>
-          </div>
-          <div className="bg-gradient-to-br from-blue-500 to-blue-600 p-4 rounded-xl text-center shadow-lg">
-            <h3 className="text-xs font-medium mb-1 text-blue-100">
-              Lucro
-            </h3>
-            <p className="text-lg font-bold text-white">
-              R$ {totalProfit.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-            </p>
-          </div>
+          {hasPermission(UserPermissions.SALES_VIEW_REVENUE_CARD) && (
+            <div className="bg-gradient-to-br from-green-500 to-green-600 p-4 rounded-xl text-center shadow-lg">
+              <h3 className="text-xs font-medium mb-1 text-green-100">
+                Faturamento
+              </h3>
+              <p className="text-lg font-bold text-white">
+                R$ {totalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              </p>
+            </div>
+          )}
+          {hasPermission(UserPermissions.SALES_VIEW_TAXES_CARD) && (
+            <div className="bg-gradient-to-br from-red-500 to-red-600 p-4 rounded-xl text-center shadow-lg">
+              <h3 className="text-xs font-medium mb-1 text-red-100">
+                Taxas
+              </h3>
+              <p className="text-lg font-bold text-white">
+                R$ {totalTaxes.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              </p>
+            </div>
+          )}
+          {hasPermission(UserPermissions.SALES_VIEW_PROFIT_CARD) && (
+            <div className="bg-gradient-to-br from-blue-500 to-blue-600 p-4 rounded-xl text-center shadow-lg">
+              <h3 className="text-xs font-medium mb-1 text-blue-100">
+                Lucro
+              </h3>
+              <p className="text-lg font-bold text-white">
+                R$ {totalProfit.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              </p>
+            </div>
+          )}
         </div>
       </div>
 
