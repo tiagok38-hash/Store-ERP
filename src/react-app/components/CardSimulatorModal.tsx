@@ -30,6 +30,9 @@ const interestRates = {
   18: 9.5
 };
 
+// Taxa de cartão de débito (simulada, replicada de outros modais)
+const debitCardFee = 2.5; // 2.5%
+
 export default function CardSimulatorModal({ isOpen, onClose }: CardSimulatorModalProps) {
   const { theme } = useTheme();
   const [productValue, setProductValue] = useState('');
@@ -38,6 +41,7 @@ export default function CardSimulatorModal({ isOpen, onClose }: CardSimulatorMod
   const [calculationResult, setCalculationResult] = useState({
     originalValue: 0,
     interestRate: 0,
+    debitFeeAmount: 0,
     totalWithInterest: 0,
     installmentValue: 0
   });
@@ -58,6 +62,7 @@ export default function CardSimulatorModal({ isOpen, onClose }: CardSimulatorMod
       setCalculationResult({
         originalValue: 0,
         interestRate: 0,
+        debitFeeAmount: 0,
         totalWithInterest: 0,
         installmentValue: 0
       });
@@ -66,23 +71,36 @@ export default function CardSimulatorModal({ isOpen, onClose }: CardSimulatorMod
 
     let interestRate = 0;
     let totalWithInterest = value;
-    
-    if (paymentType === 'credit' && installments > 3) {
-      interestRate = interestRates[installments as keyof typeof interestRates] || 0;
-      totalWithInterest = value * (1 + interestRate / 100);
+    let debitFeeAmount = 0;
+    let currentInstallments = installments;
+
+    if (paymentType === 'debit') {
+      debitFeeAmount = value * (debitCardFee / 100);
+      totalWithInterest = value + debitFeeAmount;
+      currentInstallments = 1; // Débito é sempre 1x
+    } else if (paymentType === 'credit') {
+      if (installments > 3) {
+        interestRate = interestRates[installments as keyof typeof interestRates] || 0;
+        totalWithInterest = value * (1 + interestRate / 100);
+      }
     }
 
-    const installmentValue = totalWithInterest / installments;
+    const installmentValue = totalWithInterest / currentInstallments;
 
     setCalculationResult({
       originalValue: value,
       interestRate,
+      debitFeeAmount,
       totalWithInterest,
       installmentValue
     });
   };
 
   useEffect(() => {
+    // Reset installments to 1 if switching to debit
+    if (paymentType === 'debit' && installments !== 1) {
+      setInstallments(1);
+    }
     performCalculation();
   }, [productValue, paymentType, installments]);
 
@@ -98,6 +116,7 @@ export default function CardSimulatorModal({ isOpen, onClose }: CardSimulatorMod
     setCalculationResult({
       originalValue: 0,
       interestRate: 0,
+      debitFeeAmount: 0,
       totalWithInterest: 0,
       installmentValue: 0
     });
@@ -203,40 +222,32 @@ export default function CardSimulatorModal({ isOpen, onClose }: CardSimulatorMod
               </div>
             </div>
 
-            {/* Número de Parcelas */}
-            <div>
-              <label className={`block text-sm font-medium mb-2 ${
-                theme === 'dark' ? 'text-white' : 'text-slate-800'
-              }`}>
-                Número de Parcelas *
-              </label>
-              <select
-                value={installments}
-                onChange={(e) => setInstallments(parseInt(e.target.value))}
-                disabled={paymentType === 'debit'}
-                className={`w-full px-3 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                  paymentType === 'debit' ? 'opacity-50 cursor-not-allowed' : ''
-                } ${
-                  theme === 'dark'
-                    ? 'bg-slate-700 border-slate-600 text-white'
-                    : 'bg-white border-slate-300 text-slate-900'
-                }`}
-              >
-                {Array.from({ length: 18 }, (_, i) => i + 1).map(i => (
-                  <option key={i} value={i}>
-                    {i === 1 ? '1x (À vista)' : `${i}x`}
-                    {paymentType === 'credit' && i > 3 && ` - ${interestRates[i as keyof typeof interestRates] || 0}% juros`}
-                  </option>
-                ))}
-              </select>
-              {paymentType === 'debit' && (
-                <p className={`text-xs mt-1 ${
-                  theme === 'dark' ? 'text-slate-400' : 'text-slate-500'
+            {/* Número de Parcelas (apenas para Crédito) */}
+            {paymentType === 'credit' && (
+              <div>
+                <label className={`block text-sm font-medium mb-2 ${
+                  theme === 'dark' ? 'text-white' : 'text-slate-800'
                 }`}>
-                  Cartão de débito: apenas à vista
-                </p>
-              )}
-            </div>
+                  Número de Parcelas *
+                </label>
+                <select
+                  value={installments}
+                  onChange={(e) => setInstallments(parseInt(e.target.value))}
+                  className={`w-full px-3 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                    theme === 'dark'
+                      ? 'bg-slate-700 border-slate-600 text-white'
+                      : 'bg-white border-slate-300 text-slate-900'
+                  }`}
+                >
+                  {Array.from({ length: 18 }, (_, i) => i + 1).map(i => (
+                    <option key={i} value={i}>
+                      {i === 1 ? '1x (À vista)' : `${i}x`}
+                      {i > 3 && ` - ${interestRates[i as keyof typeof interestRates] || 0}% juros`}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
           </div>
 
           {/* Resultado da Simulação */}
@@ -262,6 +273,17 @@ export default function CardSimulatorModal({ isOpen, onClose }: CardSimulatorMod
                   </span>
                 </div>
                 
+                {calculationResult.debitFeeAmount > 0 && (
+                  <div className="flex justify-between">
+                    <span className={`text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-slate-600'}`}>
+                      Taxa de Débito ({debitCardFee}%):
+                    </span>
+                    <span className={`font-semibold text-red-600 ${theme === 'dark' ? 'text-red-400' : ''}`}>
+                      R$ {calculationResult.debitFeeAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                )}
+
                 {calculationResult.interestRate > 0 && (
                   <div className="flex justify-between">
                     <span className={`text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-slate-600'}`}>
@@ -287,7 +309,7 @@ export default function CardSimulatorModal({ isOpen, onClose }: CardSimulatorMod
                     Valor da Parcela:
                   </span>
                   <span className={`font-bold text-lg ${theme === 'dark' ? 'text-blue-400' : 'text-blue-600'}`}>
-                    {installments}x de R$ {calculationResult.installmentValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    {paymentType === 'debit' ? '1x (À vista)' : `${installments}x`} de R$ {calculationResult.installmentValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                   </span>
                 </div>
               </div>
