@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { 
   MoreVertical, 
   Eye, 
@@ -26,6 +26,24 @@ export default function ProductActionsDropdown({
 }: ProductActionsDropdownProps) {
   const { theme } = useTheme();
   const [isOpen, setIsOpen] = useState(false);
+  const [openUpwards, setOpenUpwards] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (isOpen && buttonRef.current && dropdownRef.current) {
+      const buttonRect = buttonRef.current.getBoundingClientRect();
+      const dropdownHeight = dropdownRef.current.offsetHeight;
+      const spaceBelow = window.innerHeight - buttonRect.bottom;
+
+      // If space below is less than dropdown height, open upwards
+      if (spaceBelow < dropdownHeight + 20 && buttonRect.top > dropdownHeight + 20) { // +20 for some padding
+        setOpenUpwards(true);
+      } else {
+        setOpenUpwards(false);
+      }
+    }
+  }, [isOpen]);
 
   const handleAction = (action: () => void) => {
     action();
@@ -35,6 +53,7 @@ export default function ProductActionsDropdown({
   return (
     <div className="relative">
       <button
+        ref={buttonRef}
         onClick={() => setIsOpen(!isOpen)}
         className={`p-2 rounded-lg transition-colors ${
           theme === 'dark' 
@@ -57,7 +76,10 @@ export default function ProductActionsDropdown({
           
           {/* Dropdown Menu */}
           <div 
-            className={`absolute right-0 top-full mt-1 border rounded-lg shadow-lg z-20 min-w-[180px] ${
+            ref={dropdownRef}
+            className={`absolute right-0 border rounded-lg shadow-lg z-20 min-w-[180px] ${
+              openUpwards ? 'bottom-full mb-1' : 'top-full mt-1'
+            } ${
               theme === 'dark'
                 ? 'bg-slate-800 border-slate-700'
                 : 'bg-white border-slate-200'
