@@ -183,6 +183,9 @@ export default function PurchaseModal({
   const [isSupplierModalOpen, setIsSupplierModalOpen] = useState(false);
   const [isAnimatingOut, setIsAnimatingOut] = useState(false);
 
+  // New state for product type selection
+  const [productTypeSelection, setProductTypeSelection] = useState<'apple' | 'generic'>('apple');
+
   const handleClose = () => {
     setIsAnimatingOut(true);
     setTimeout(() => {
@@ -279,7 +282,8 @@ export default function PurchaseModal({
         }));
         setSelectedSupplier(tradeInCustomer.id);
         setSupplierSearchTerm(tradeInCustomer.name);
-        setSelectedBrandId(appleBrandId); // Default to Apple for trade-in
+        setProductTypeSelection('apple'); // Default to Apple for trade-in
+        setSelectedBrandId(appleBrandId); 
         setSelectedCategoryId('');
         setSelectedSubcategoryId('');
         setSelectedVariationId('');
@@ -304,6 +308,12 @@ export default function PurchaseModal({
           setSelectedCategoryId(firstItem.category_id || '');
           setSelectedSubcategoryId(firstItem.subcategory_id || '');
           setSelectedVariationId(firstItem.variation_id || '');
+          // Determine if it's an Apple product based on the first item's brand
+          if (firstItem.brand_id === appleBrandId) {
+            setProductTypeSelection('apple');
+          } else {
+            setProductTypeSelection('generic');
+          }
         }
       } else {
         // Reset form for new purchase
@@ -315,7 +325,8 @@ export default function PurchaseModal({
         });
         setSelectedSupplier('');
         setSupplierSearchTerm('');
-        setSelectedBrandId(appleBrandId); // Default to Apple for new purchase
+        setProductTypeSelection('apple'); // Default to Apple for new purchase
+        setSelectedBrandId(appleBrandId); 
         setSelectedCategoryId('');
         setSelectedSubcategoryId('');
         setSelectedVariationId('');
@@ -332,11 +343,30 @@ export default function PurchaseModal({
     }
   }, [isOpen, editingPurchase, isTradeIn, tradeInCustomer, suppliers, stockLocations, warrantyTerms, brands]); // Added brands to dependency array
 
+  // Effect to handle product type selection changes
+  useEffect(() => {
+    const appleBrandId = brands.find(b => b.name === 'Apple')?.id || '';
+    if (productTypeSelection === 'apple') {
+      setSelectedBrandId(appleBrandId);
+    } else {
+      setSelectedBrandId(''); // Clear brand for generic selection
+    }
+    setSelectedCategoryId('');
+    setSelectedSubcategoryId('');
+    setSelectedVariationId('');
+  }, [productTypeSelection, brands]);
+
   const filteredSuppliers = suppliers.filter(supplier => 
     supplier.name.toLowerCase().includes(supplierSearchTerm.toLowerCase())
   );
   
-  const availableCategories = categories.filter(cat => cat.brand_id === selectedBrandId);
+  const appleBrandId = brands.find(b => b.name === 'Apple')?.id;
+  const appleCategories = categories.filter(cat => cat.brand_id === appleBrandId);
+
+  const availableCategories = productTypeSelection === 'apple' 
+    ? appleCategories 
+    : categories.filter(cat => cat.brand_id === selectedBrandId);
+
   const availableSubcategories = subcategories.filter(subcat => subcat.category_id === selectedCategoryId);
   const availableVariations = variations.filter(v => v.subcategory_id === selectedSubcategoryId);
 
@@ -347,9 +377,13 @@ export default function PurchaseModal({
       costPrice: '',
       additionalCost: ''
     });
-    // Reset product selection fields
-    const appleBrandId = brands.find(b => b.name === 'Apple')?.id || '';
-    setSelectedBrandId(appleBrandId);
+    // Reset product selection fields based on current productTypeSelection
+    if (productTypeSelection === 'apple') {
+      const appleBrandId = brands.find(b => b.name === 'Apple')?.id || '';
+      setSelectedBrandId(appleBrandId);
+    } else {
+      setSelectedBrandId('');
+    }
     setSelectedCategoryId('');
     setSelectedSubcategoryId('');
     setSelectedVariationId('');
@@ -922,6 +956,38 @@ export default function PurchaseModal({
             </div>
           </div>
 
+          {/* Product Type Selection */}
+          <div className={`mb-4 p-2 rounded-lg ${theme === 'dark' ? 'bg-slate-700' : 'bg-slate-100'}`}>
+            <div className="flex justify-center gap-2">
+              <button
+                type="button"
+                onClick={() => setProductTypeSelection('apple')}
+                className={`flex-1 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                  productTypeSelection === 'apple'
+                    ? 'bg-blue-500 text-white shadow-sm'
+                    : theme === 'dark'
+                      ? 'text-slate-300 hover:bg-slate-600'
+                      : 'text-slate-700 hover:bg-slate-200'
+                }`}
+              >
+                Produto Apple
+              </button>
+              <button
+                type="button"
+                onClick={() => setProductTypeSelection('generic')}
+                className={`flex-1 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                  productTypeSelection === 'generic'
+                    ? 'bg-blue-500 text-white shadow-sm'
+                    : theme === 'dark'
+                      ? 'text-slate-300 hover:bg-slate-600'
+                      : 'text-slate-700 hover:bg-slate-200'
+                }`}
+              >
+                Produto Genérico
+              </button>
+            </div>
+          </div>
+
           {/* Product Form (always structured) */}
           <div className="space-y-3 mb-4">
             <div className="space-y-3">
@@ -946,6 +1012,7 @@ export default function PurchaseModal({
                         ? 'bg-slate-700 border-slate-600 text-white'
                         : 'bg-white border-slate-300 text-slate-900'
                     }`}
+                    disabled={productTypeSelection === 'apple'}
                   >
                     <option value="">Marca</option>
                     {brands.map(brand => (
