@@ -8,10 +8,16 @@ import {
   Tag,
   Smartphone,
   Plus,
-  Info // Importar o ícone Info
+  Info, // Importar o ícone Info
+  Barcode, // Importar o ícone Barcode
+  Clock, // Importar o ícone Clock para garantia
+  MapPin // Importar o ícone MapPin para localização
 } from 'lucide-react';
 import { Link } from 'react-router-dom'; // Importar Link
 import { useTheme } from '@/react-app/hooks/useTheme'; // Importar useTheme
+import { supabase } from '@/integrations/supabase/client'; // Importar supabase
+import { useAuth } from '@/react-app/hooks/useAuth'; // Importar useAuth
+import { formatCurrencyInput, parseCurrencyBR, formatCurrencyBR } from '@/react-app/utils/currency'; // Importar utilitários de moeda
 
 interface ProductModalProps {
   isOpen: boolean;
@@ -158,22 +164,36 @@ const hierarchicalData = {
   }
 };
 
+interface StockLocation {
+  id: string;
+  name: string;
+}
+
+interface WarrantyTerm {
+  id: string;
+  name: string;
+  months: number;
+}
+
 export default function ProductModal({ isOpen, onClose, product }: ProductModalProps) {
   const { theme } = useTheme();
+  const { user } = useAuth(); // Obter o usuário logado
   const [formData, setFormData] = useState({
     sku: product?.sku || '',
     brand: product?.brand || '',
     category: product?.category || '',
     description: product?.description || '',
     variations: product?.variations || [],
-    costPrice: product?.costPrice || '',
-    salePrice: product?.salePrice || '',
+    costPrice: product?.costPrice ? formatCurrencyBR(product.costPrice) : '',
+    salePrice: product?.salePrice ? formatCurrencyBR(product.salePrice) : '',
+    additionalCost: product?.additionalCost ? formatCurrencyBR(product.additionalCost) : '', // Novo campo
     minStock: product?.minStock || '5',
     maxStock: product?.maxStock || '50',
-    location: product?.location || '',
+    defaultLocationId: product?.defaultLocationId || '', // Alterado para ID
+    defaultWarrantyTermId: product?.defaultWarrantyTermId || '', // Alterado para ID
+    barcode: product?.barcode || '', // Novo campo
     requiresImei: product?.requiresImei || false,
     requiresSerial: product?.requiresSerial || false,
-    warrantyMonths: product?.warrantyMonths || '12'
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -181,6 +201,8 @@ export default function ProductModal({ isOpen, onClose, product }: ProductModalP
   const [availableDescriptions, setAvailableDescriptions] = useState<string[]>([]);
   const [availableVariations, setAvailableVariations] = useState<{[key: string]: string[]}>({});
   const [selectedVariations, setSelectedVariations] = useState<{[key: string]: string}>({});
+  const [stockLocations, setStockLocations] = useState<StockLocation[]>([]); // Estado para locais de estoque
+  const [warrantyTerms, setWarrantyTerms] = useState<WarrantyTerm[]>([]); // Estado para termos de garantia
   const [isAnimatingOut, setIsAnimatingOut] = useState(false);
 
   const handleClose = () => {
@@ -190,6 +212,43 @@ export default function ProductModal({ isOpen, onClose, product }: ProductModalP
       setIsAnimatingOut(false);
     }, 300); // Match animation duration
   };
+
+  // Fetch stock locations and warranty terms
+  useEffect(() => {
+    const fetchAdminData = async () => {
+      if (!user?.id) return;
+
+      // Fetch Stock Locations
+      const { data: locationsData, error: locationsError } = await supabase
+        .from('stock_locations')
+        .select('id, name')
+        .eq('user_id', user.id)
+        .eq('is_active', true);
+
+      if (locationsError) {
+        console.error('Error fetching stock locations:', locationsError);
+      } else {
+        setStockLocations(locationsData || []);
+      }
+
+      // Fetch Warranty Terms
+      const { data: warrantyData, error: warrantyError } = await supabase
+        .from('warranty_terms')
+        .select('id, name, months')
+        .eq('user_id', user.id)
+        .eq('is_active', true);
+
+      if (warrantyError) {
+        console.error('Error fetching warranty terms:', warrantyError);
+      } else {
+        setWarrantyTerms(warrantyData || []);
+      }
+    };
+
+    if (isOpen && user) {
+      fetchAdminData();
+    }
+  }, [isOpen, user]);
 
   // Atualizar categorias quando marca muda
   useEffect(() => {
@@ -289,11 +348,22 @@ export default function ProductModal({ isOpen, onClose, product }: ProductModalP
     if (!formData.brand) newErrors.brand = 'Marca é obrigatória';
     if (!formData.category) newErrors.category = 'Categoria é obrigatória';
     if (!formData.description) newErrors.description = 'Descrição é obrigatória';
-    if (!formData.costPrice || parseFloat(formData.costPrice) <= 0) {
+    
+    const parsedCostPrice = parseCurrencyBR(formData.costPrice);
+    const parsedSalePrice = parseCurrencyBR(formData.salePrice);
+    const parsedAdditionalCost = parseCurrencyBR(formData.additionalCost);
+
+    if (parsedCostPrice <= 0) {
       newErrors.costPrice = 'Preço de custo deve ser maior que zero';
     }
-    if (!formData.salePrice || parseFloat(formData.salePrice) <= 0) {
+    if (parsedSalePrice <= 0) {
       newErrors.salePrice = 'Preço de venda deve ser maior que zero';
+    }
+    if (!formData.defaultLocationId) {
+      newErrors.defaultLocationId = 'Localização de estoque é obrigatória';
+    }
+    if (!formData.defaultWarrantyTermId) {
+      newErrors.defaultWarrantyTermId = 'Garantia é obrigatória';
     }
 
     if (Object.keys(newErrors).length > 0) {
@@ -302,15 +372,32 @@ export default function ProductModal({ isOpen, onClose, product }: ProductModalP
     }
 
     // Simular salvamento
-    alert(`Produto ${product ? 'atualizado' : 'criado'} com sucesso!`);
+    alert(`Produto ${product ? 'atualizado' : 'criado'} com sucesso!
+      SKU: ${formData.sku}
+      Descrição: ${getProductDescription()}
+      Marca: ${formData.brand}
+      Categoria: ${formData.category}
+      Custo: R$ ${parsedCostPrice.toFixed(2)}
+      Custo Adicional: R$ ${parsedAdditionalCost.toFixed(2)}
+      Venda: R$ ${parsedSalePrice.toFixed(2)}
+      Localização Padrão: ${stockLocations.find(loc => loc.id === formData.defaultLocationId)?.name}
+      Garantia Padrão: ${warrantyTerms.find(term => term.id === formData.defaultWarrantyTermId)?.name}
+      Código de Barras: ${formData.barcode || '-'}
+      Requer IMEI: ${formData.requiresImei ? 'Sim' : 'Não'}
+      Requer Serial: ${formData.requiresSerial ? 'Sim' : 'Não'}
+    `);
     handleClose(); // Use the animated close
   };
 
   const calculateMarkup = () => {
-    const cost = parseFloat(formData.costPrice) || 0;
-    const sale = parseFloat(formData.salePrice) || 0;
-    if (cost > 0 && sale > 0) {
-      return (((sale - cost) / cost) * 100).toFixed(1);
+    const cost = parseCurrencyBR(formData.costPrice);
+    const additional = parseCurrencyBR(formData.additionalCost);
+    const sale = parseCurrencyBR(formData.salePrice);
+    
+    const trueCost = cost + additional;
+
+    if (trueCost > 0 && sale > 0) {
+      return (((sale - trueCost) / trueCost) * 100).toFixed(1);
     }
     return '0.0';
   };
@@ -574,6 +661,7 @@ export default function ProductModal({ isOpen, onClose, product }: ProductModalP
                   onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-slate-50"
                   placeholder="SKU será gerado automaticamente"
+                  readOnly
                 />
               </div>
 
@@ -583,10 +671,9 @@ export default function ProductModal({ isOpen, onClose, product }: ProductModalP
                     Preço de Custo *
                   </label>
                   <input
-                    type="number"
-                    step="0.01"
+                    type="text"
                     value={formData.costPrice}
-                    onChange={(e) => setFormData({ ...formData, costPrice: e.target.value })}
+                    onChange={(e) => setFormData({ ...formData, costPrice: formatCurrencyInput(e.target.value) })}
                     className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
                       errors.costPrice ? 'border-red-300' : 'border-slate-300'
                     }`}
@@ -597,26 +684,38 @@ export default function ProductModal({ isOpen, onClose, product }: ProductModalP
 
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Preço de Venda *
+                    Custo Adicional
                   </label>
                   <input
-                    type="number"
-                    step="0.01"
-                    value={formData.salePrice}
-                    onChange={(e) => setFormData({ ...formData, salePrice: e.target.value })}
-                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                      errors.salePrice ? 'border-red-300' : 'border-slate-300'
-                    }`}
+                    type="text"
+                    value={formData.additionalCost}
+                    onChange={(e) => setFormData({ ...formData, additionalCost: formatCurrencyInput(e.target.value) })}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     placeholder="0,00"
                   />
-                  {errors.salePrice && <p className className="text-red-600 text-sm mt-1">{errors.salePrice}</p>}
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Preço de Venda *
+                </label>
+                <input
+                  type="text"
+                  value={formData.salePrice}
+                  onChange={(e) => setFormData({ ...formData, salePrice: formatCurrencyInput(e.target.value) })}
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                    errors.salePrice ? 'border-red-300' : 'border-slate-300'
+                  }`}
+                  placeholder="0,00"
+                />
+                {errors.salePrice && <p className="text-red-600 text-sm mt-1">{errors.salePrice}</p>}
               </div>
 
               <div className="bg-slate-50 p-3 rounded-lg">
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium text-slate-700">Margem de Lucro:</span>
-                  <span className="text-lg font-bold text-blue-600">{calculateMarkup()}%</span>
+                  <span className="text-lg font-bold text-green-600">{calculateMarkup()}%</span>
                 </div>
               </div>
 
@@ -649,19 +748,6 @@ export default function ProductModal({ isOpen, onClose, product }: ProductModalP
                   />
                 </div>
               </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Localização no Estoque
-                </label>
-                <input
-                  type="text"
-                  value={formData.location}
-                  onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Ex: A1-B2, Prateleira 3"
-                />
-              </div>
             </div>
 
             {/* Coluna 3: Configurações */}
@@ -671,18 +757,67 @@ export default function ProductModal({ isOpen, onClose, product }: ProductModalP
                 Configurações
               </h3>
 
+              {/* Código de Barras */}
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Garantia (meses)
+                  Código de Barras
                 </label>
-                <input
-                  type="number"
-                  value={formData.warrantyMonths}
-                  onFocus={(e) => e.target.select()}
-                  onChange={(e) => setFormData({ ...formData, warrantyMonths: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  min="0"
-                />
+                <div className="relative">
+                  <Barcode className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={18} />
+                  <input
+                    type="text"
+                    value={formData.barcode}
+                    onChange={(e) => setFormData({ ...formData, barcode: e.target.value })}
+                    className="w-full pl-10 pr-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Digite o código de barras"
+                  />
+                </div>
+              </div>
+
+              {/* Garantia (Dropdown) */}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Garantia Padrão *
+                </label>
+                <div className="relative">
+                  <Clock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={18} />
+                  <select
+                    value={formData.defaultWarrantyTermId}
+                    onChange={(e) => setFormData({ ...formData, defaultWarrantyTermId: e.target.value })}
+                    className={`w-full pl-10 pr-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                      errors.defaultWarrantyTermId ? 'border-red-300' : 'border-slate-300'
+                    }`}
+                  >
+                    <option value="">Selecione um termo de garantia</option>
+                    {warrantyTerms.map(term => (
+                      <option key={term.id} value={term.id}>{term.name} ({term.months} meses)</option>
+                    ))}
+                  </select>
+                </div>
+                {errors.defaultWarrantyTermId && <p className="text-red-600 text-sm mt-1">{errors.defaultWarrantyTermId}</p>}
+              </div>
+
+              {/* Localização no Estoque (Dropdown) */}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Localização Padrão no Estoque *
+                </label>
+                <div className="relative">
+                  <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={18} />
+                  <select
+                    value={formData.defaultLocationId}
+                    onChange={(e) => setFormData({ ...formData, defaultLocationId: e.target.value })}
+                    className={`w-full pl-10 pr-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                      errors.defaultLocationId ? 'border-red-300' : 'border-slate-300'
+                    }`}
+                  >
+                    <option value="">Selecione um local de estoque</option>
+                    {stockLocations.map(location => (
+                      <option key={location.id} value={location.id}>{location.name}</option>
+                    ))}
+                  </select>
+                </div>
+                {errors.defaultLocationId && <p className="text-red-600 text-sm mt-1">{errors.defaultLocationId}</p>}
               </div>
 
               {/* Controles Especiais */}
@@ -731,7 +866,16 @@ export default function ProductModal({ isOpen, onClose, product }: ProductModalP
                       <p><strong>Variações:</strong> {formData.variations.length}</p>
                     )}
                     {formData.salePrice && (
-                      <p><strong>Preço:</strong> R$ {parseFloat(formData.salePrice).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                      <p><strong>Preço:</strong> R$ {parseCurrencyBR(formData.salePrice).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                    )}
+                    {formData.barcode && (
+                      <p><strong>Cód. Barras:</strong> {formData.barcode}</p>
+                    )}
+                    {formData.defaultLocationId && (
+                      <p><strong>Local Padrão:</strong> {stockLocations.find(loc => loc.id === formData.defaultLocationId)?.name}</p>
+                    )}
+                    {formData.defaultWarrantyTermId && (
+                      <p><strong>Garantia Padrão:</strong> {warrantyTerms.find(term => term.id === formData.defaultWarrantyTermId)?.name}</p>
                     )}
                   </div>
                 </div>
