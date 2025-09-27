@@ -9,12 +9,12 @@ import {
   DollarSign,
   FileText,
   MoreHorizontal,
-  Plus,
+  Plus, // Importar Plus
   Minus,
   Trash2,
   User,
   Package,
-  Calculator,
+  Calculator, // Importar Calculator
   Edit3,
   Check
 } from 'lucide-react';
@@ -138,8 +138,7 @@ export default function Sales() {
     {
       id: '1925',
       date: '13/09/2025 11:33',
-      seller: 'Isaac',
-      customer: 'Maria Madalena Da Conceição',
+      seller: 'Maria Madalena Da Conceição',
       status: 'Finalizada',
       origin: 'PDV Caixa IP #382',
       total: 1199.00,
@@ -280,18 +279,20 @@ export default function Sales() {
           <div className="flex gap-2 ml-auto">
             <button
               onClick={handleNewSale}
-              className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
+              className="bg-gradient-to-r from-green-500 to-green-600 text-white px-4 py-2 rounded-lg hover:shadow-lg transition-all duration-200 text-sm font-medium flex items-center"
             >
+              <Plus className="mr-2" size={18} /> {/* Ícone adicionado */}
               NOVA VENDA
             </button>
             <button 
               onClick={() => setIsCardSimulatorOpen(true)}
-              className={`px-4 py-2 rounded-lg text-sm font-medium ${
+              className={`px-4 py-2 rounded-lg text-sm font-medium flex items-center hover:shadow-lg transition-all duration-200 ${
                 theme === 'dark'
                   ? 'bg-slate-700 text-white hover:bg-slate-600'
                   : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
               }`}
             >
+              <Calculator className="mr-2" size={18} /> {/* Ícone adicionado */}
               Simulador de cartão
             </button>
           </div>
@@ -446,7 +447,7 @@ export default function Sales() {
                       theme === 'dark' ? 'text-green-400' : 'text-green-600'
                     }`}>
                       R$ {sale.profit.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                    </td>
+                    </td >
                     <td className="py-3 px-4 text-center">
                       <SaleActionsDropdown
                         saleId={sale.id}
