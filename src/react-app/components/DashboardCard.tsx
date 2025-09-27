@@ -53,8 +53,8 @@ export default function DashboardCard({
         theme === 'dark' 
           ? `bg-gradient-to-br ${customColor} text-white` 
           : `bg-gradient-to-br ${customColor} text-white`
-      } ${onClick ? 'cursor-pointer' : ''}`} {/* Adicionar cursor-pointer se for clicável */}
-      onClick={onClick} {/* Aplicar o onClick aqui */}
+      } ${onClick ? 'cursor-pointer' : ''}`} 
+      onClick={onClick} 
     >
       {/* Customization Button */}
       <button
