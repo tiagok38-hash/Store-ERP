@@ -10,7 +10,8 @@ productsWithStockApi.get('/', async (c) => {
     const products = await db.prepare(`
       SELECT 
         p.*,
-        COUNT(CASE WHEN iu.status = 'available' THEN 1 END) as available_stock
+        COUNT(CASE WHEN iu.status = 'available' THEN 1 END) as available_stock,
+        p.min_stock -- Adicionado min_stock
       FROM products p
       LEFT JOIN inventory_units iu ON p.id = iu.product_id
       WHERE p.is_active = 1

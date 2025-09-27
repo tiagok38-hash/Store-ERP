@@ -10,7 +10,8 @@ import {
   DollarSign,
   Package,
   UserCheck,
-  Settings
+  Settings,
+  AlertTriangle // Importar AlertTriangle para estoque baixo
 } from 'lucide-react';
 import DashboardCard from '@/react-app/components/DashboardCard';
 import { useTheme } from '@/react-app/hooks/useTheme';
@@ -56,7 +57,8 @@ export default function Dashboard() {
       sales: { visible: true, color: 'from-blue-600 to-blue-700' },
       revenue: { visible: true, color: 'from-green-600 to-green-700' },
       stock: { visible: true, color: 'from-orange-600 to-orange-700' },
-      customers: { visible: true, color: 'from-purple-600 to-purple-700' }
+      customers: { visible: true, color: 'from-purple-600 to-purple-700' },
+      lowStock: { visible: true, color: 'from-red-500 to-red-600' } // Novo card
     };
   });
 
@@ -75,11 +77,13 @@ export default function Dashboard() {
         stockCost: 65400,
         stockValue: 98200,
         customers: 145,
+        lowStockItems: 5, // Mock para estoque baixo
         salesTrend: '+15%',
         revenueTrend: '+22%',
         profitTrend: '+19%',
         stockTrend: '+8%',
-        customersTrend: '+12%'
+        customersTrend: '+12%',
+        lowStockTrend: '+2%' // Mock para estoque baixo
       },
       week: {
         sales: 156,
@@ -89,11 +93,13 @@ export default function Dashboard() {
         stockCost: 145600,
         stockValue: 230400,
         customers: 245,
+        lowStockItems: 12, // Mock para estoque baixo
         salesTrend: '+28%',
         revenueTrend: '+35%',
         profitTrend: '+31%',
         stockTrend: '+15%',
-        customersTrend: '+18%'
+        customersTrend: '+18%',
+        lowStockTrend: '+5%' // Mock para estoque baixo
       },
       month: {
         sales: 687,
@@ -103,11 +109,13 @@ export default function Dashboard() {
         stockCost: 567800,
         stockValue: 890200,
         customers: 456,
+        lowStockItems: 20, // Mock para estoque baixo
         salesTrend: '+42%',
         revenueTrend: '+38%',
         profitTrend: '+45%',
         stockTrend: '+22%',
-        customersTrend: '+25%'
+        customersTrend: '+25%',
+        lowStockTrend: '+10%' // Mock para estoque baixo
       },
       quarter: {
         sales: 2156,
@@ -117,11 +125,13 @@ export default function Dashboard() {
         stockCost: 1245600,
         stockValue: 2134500,
         customers: 789,
+        lowStockItems: 35, // Mock para estoque baixo
         salesTrend: '+33%',
         revenueTrend: '+29%',
         profitTrend: '+36%',
         stockTrend: '+28%',
-        customersTrend: '+32%'
+        customersTrend: '+32%',
+        lowStockTrend: '+8%' // Mock para estoque baixo
       },
       year: {
         sales: 8945,
@@ -131,11 +141,13 @@ export default function Dashboard() {
         stockCost: 4567800,
         stockValue: 7890200,
         customers: 1245,
+        lowStockItems: 50, // Mock para estoque baixo
         salesTrend: '+48%',
         revenueTrend: '+52%',
         profitTrend: '+55%',
         stockTrend: '+35%',
-        customersTrend: '+41%'
+        customersTrend: '+41%',
+        lowStockTrend: '+15%' // Mock para estoque baixo
       }
     };
     return periodData[period];
@@ -327,6 +339,20 @@ export default function Dashboard() {
             onVisibilityChange={handleCardVisibilityChange}
             onColorChange={handleCardColorChange}
             onClick={() => navigate('/registrations')}
+          />
+
+          {/* Produtos com Estoque Baixo Card */}
+          <DashboardCard
+            id="lowStock"
+            title="Estoque Baixo"
+            value={data.lowStockItems.toString()}
+            icon={<AlertTriangle size={24} />}
+            trend={parseInt(data.lowStockTrend.replace('%', '').replace('+', ''))}
+            isVisible={cardSettings.lowStock.visible}
+            customColor={cardSettings.lowStock.color}
+            onVisibilityChange={handleCardVisibilityChange}
+            onColorChange={handleCardColorChange}
+            onClick={() => navigate('/inventory')} // Redirecionar para a página de estoque
           />
         </div>
       )}

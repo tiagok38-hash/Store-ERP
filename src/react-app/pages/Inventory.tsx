@@ -14,7 +14,8 @@ import {
   Calendar,
   FileText,
   CheckCircle,
-  Clock
+  Clock,
+  AlertTriangle // Importar AlertTriangle para estoque baixo
 } from 'lucide-react';
 import PurchaseModal from '@/react-app/components/PurchaseModal';
 import FinalizePurchaseModal from '@/react-app/components/FinalizePurchaseModal';
@@ -45,6 +46,7 @@ interface InventoryUnit {
   updatedAt: string;
   purchaseId?: string;
   locatorCode?: string;
+  minStock?: number; // Adicionado minStock
 }
 
 interface Purchase {
@@ -124,7 +126,8 @@ export default function Inventory() {
         createdAt: '2025-09-13',
         updatedAt: '2025-09-13',
         purchaseId: '1',
-        locatorCode: 'LOC001234567'
+        locatorCode: 'LOC001234567',
+        minStock: 2 // Adicionado minStock
       },
       {
         id: '2',
@@ -147,7 +150,8 @@ export default function Inventory() {
         createdAt: '2025-09-13',
         updatedAt: '2025-09-13',
         purchaseId: '2',
-        locatorCode: 'LOC001234568'
+        locatorCode: 'LOC001234568',
+        minStock: 1 // Adicionado minStock
       },
       {
         id: '3',
@@ -170,7 +174,8 @@ export default function Inventory() {
         createdAt: '2025-09-13',
         updatedAt: '2025-09-13',
         purchaseId: '1',
-        locatorCode: 'LOC001234567'
+        locatorCode: 'LOC001234567',
+        minStock: 3 // Adicionado minStock
       },
       {
         id: '4',
@@ -193,7 +198,8 @@ export default function Inventory() {
         createdAt: '2025-09-13',
         updatedAt: '2025-09-13',
         purchaseId: '3',
-        locatorCode: 'LOC001234569'
+        locatorCode: 'LOC001234569',
+        minStock: 1 // Adicionado minStock
       },
       {
         id: '5',
@@ -216,7 +222,8 @@ export default function Inventory() {
         createdAt: '2025-09-13',
         updatedAt: '2025-09-13',
         purchaseId: '2',
-        locatorCode: 'LOC001234568'
+        locatorCode: 'LOC001234568',
+        minStock: 10 // Adicionado minStock
       }
     ]);
 
@@ -440,11 +447,21 @@ export default function Inventory() {
     return badges[status as keyof typeof badges] || badges.completed;
   };
 
+  // Calculate low stock items
+  const lowStockItems = inventoryUnits.filter(unit => 
+    unit.status === 'available' && 
+    unit.minStock !== undefined && 
+    unit.minStock > 0 && 
+    // To get the current stock for a product, we need to count available units for that productSku
+    inventoryUnits.filter(u => u.productSku === unit.productSku && u.status === 'available').length <= unit.minStock
+  );
+
   const summaryStats = {
     total: inventoryUnits.length,
     available: inventoryUnits.filter(u => u.status === 'available').length,
     sold: inventoryUnits.filter(u => u.status === 'sold').length,
     defective: inventoryUnits.filter(u => u.status === 'defective').length,
+    lowStock: lowStockItems.length, // Adicionado lowStock
     totalValue: activeTab === 'inventory' ? getInventoryValueForPeriod() : inventoryUnits
       .filter(u => u.status === 'available')
       .reduce((sum, u) => sum + u.costPrice, 0)
@@ -619,11 +636,9 @@ export default function Inventory() {
             </div>
             <div className="bg-white rounded-lg p-4 shadow-md">
               <h3 className="text-sm font-semibold text-slate-800 mb-2">
-                Valor Total em Compras {(!purchaseDateFrom && !purchaseDateTo) ? '(Mês Atual)' : '(Período)'}
+                Estoque Baixo
               </h3>
-              <p className="text-xl font-bold text-purple-500">
-                R$ {summaryStats.totalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-              </p>
+              <p className="text-xl font-bold text-orange-500">{summaryStats.lowStock}</p>
             </div>
           </div>
 
@@ -732,7 +747,7 @@ export default function Inventory() {
                     <th className="text-left py-3 px-4 font-semibold text-slate-700">Condição</th>
                     <th className="text-left py-3 px-4 font-semibold text-slate-700">Preços</th>
                     <th className="text-left py-3 px-4 font-semibold text-slate-700">Localização</th>
-                    <th className="text-left py-3 px-4 font-semibold text-slate-700">Localizador</th>
+                    <th className="text-left py-3 px-4 font-semibold text-slate-700">Estoque Mín.</th> {/* Adicionado */}
                     <th className="text-left py-3 px-4 font-semibold text-slate-700">Status</th>
                     <th className="text-center py-3 px-4 font-semibold text-slate-700">Ações</th>
                   </tr>
@@ -741,6 +756,8 @@ export default function Inventory() {
                   {sortedUnits.map((unit) => {
                     const statusBadge = getStatusBadge(unit.status);
                     const conditionBadge = getConditionBadge(unit.condition);
+                    const isLowStock = unit.minStock !== undefined && unit.minStock > 0 && 
+                                      inventoryUnits.filter(u => u.productSku === unit.productSku && u.status === 'available').length <= unit.minStock;
                     
                     return (
                       <tr key={unit.id} className="border-b border-slate-100 hover:bg-slate-50">
@@ -830,12 +847,13 @@ export default function Inventory() {
                             <span className="text-slate-400">-</span>
                           )}
                         </td>
-                        
-                        <td className="py-3 px-4">
-                          {unit.locatorCode ? (
-                            <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs font-mono">
-                              {unit.locatorCode}
-                            </span>
+
+                        <td className="py-3 px-4"> {/* Coluna de Estoque Mínimo */}
+                          {unit.minStock !== undefined && unit.minStock > 0 ? (
+                            <div className={`flex items-center text-sm ${isLowStock ? 'text-orange-600 font-bold' : 'text-slate-700'}`}>
+                              {isLowStock && <AlertTriangle size={14} className="mr-1" />}
+                              {unit.minStock} un.
+                            </div>
                           ) : (
                             <span className="text-slate-400">-</span>
                           )}

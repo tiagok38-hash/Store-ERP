@@ -42,6 +42,7 @@ interface InventoryUnit {
   updatedAt: string;
   purchaseId?: string;
   locatorCode?: string;
+  minStock?: number; // Adicionado minStock
 }
 
 interface ProductModalProps {
@@ -233,9 +234,11 @@ export default function ProductModal({ isOpen, onClose, product, onProductSaved 
     serialNumber: product?.serialNumber || '',
     condition: product?.condition || 'novo', // Adicionar condição
     status: product?.status || 'available', // Adicionar status
+    minStock: product?.minStock || 0, // Adicionado minStock
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [availableBrands, setAvailableBrands] = useState<string[]>([]); // Adicionado estado para marcas
   const [availableCategories, setAvailableCategories] = useState<string[]>([]);
   const [availableDescriptions, setAvailableDescriptions] = useState<string[]>([]);
   const [availableVariations, setAvailableVariations] = useState<{[key: string]: string[]}>({});
@@ -256,6 +259,9 @@ export default function ProductModal({ isOpen, onClose, product, onProductSaved 
   useEffect(() => {
     if (isOpen) {
       setErrors({}); // Clear errors on open
+      // Populate available brands
+      setAvailableBrands(Object.keys(hierarchicalData));
+
       if (product) {
         // Editing existing product
         setFormData({
@@ -276,6 +282,7 @@ export default function ProductModal({ isOpen, onClose, product, onProductSaved 
           serialNumber: product.serialNumber || '',
           condition: product.condition || 'novo',
           status: product.status || 'available',
+          minStock: product.minStock || 0, // Set minStock for editing
         });
         // Set selected variations based on productDescription if possible
         // This part is complex due to dynamic nature of variations, might need refinement
@@ -301,6 +308,7 @@ export default function ProductModal({ isOpen, onClose, product, onProductSaved 
           serialNumber: '',
           condition: 'novo',
           status: 'available',
+          minStock: 0, // Default minStock to 0 for new products
         });
         setSelectedVariations({});
       }
@@ -466,6 +474,9 @@ export default function ProductModal({ isOpen, onClose, product, onProductSaved 
     if (!formData.defaultWarrantyTermId) {
       newErrors.defaultWarrantyTermId = 'Garantia é obrigatória';
     }
+    if (formData.minStock < 0) {
+      newErrors.minStock = 'Quantidade mínima de estoque não pode ser negativa';
+    }
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
@@ -498,6 +509,7 @@ export default function ProductModal({ isOpen, onClose, product, onProductSaved 
       purchaseId: product?.purchaseId, // Keep existing purchaseId if editing
       locatorCode: product?.locatorCode, // Keep existing locatorCode if editing
       warrantyTerm: selectedWarranty?.name || 'Sem garantia',
+      minStock: formData.minStock, // Incluir minStock
     };
 
     if (onProductSaved) {
@@ -638,7 +650,7 @@ export default function ProductModal({ isOpen, onClose, product, onProductSaved 
                   }`}
                 >
                   <option value="">Selecione a marca</option>
-                  {Object.keys(hierarchicalData).map(brand => (
+                  {availableBrands.map(brand => (
                     <option key={brand} value={brand}>{brand}</option>
                   ))}
                 </select>
@@ -836,6 +848,24 @@ export default function ProductModal({ isOpen, onClose, product, onProductSaved 
                   <span className="text-lg font-bold text-green-600">{calculateMarkup()}%</span>
                 </div>
               </div>
+
+              {/* Quantidade Mínima de Estoque */}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Quantidade Mínima de Estoque
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  value={formData.minStock}
+                  onChange={(e) => setFormData({ ...formData, minStock: parseInt(e.target.value) || 0 })}
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                    errors.minStock ? 'border-red-300' : 'border-slate-300'
+                  }`}
+                  placeholder="0"
+                />
+                {errors.minStock && <p className="text-red-600 text-sm mt-1">{errors.minStock}</p>}
+              </div>
             </div>
 
             {/* Coluna 3: Configurações */}
@@ -992,6 +1022,7 @@ export default function ProductModal({ isOpen, onClose, product, onProductSaved 
                     {formData.defaultWarrantyTermId && (
                       <p><strong>Garantia Padrão:</strong> {warrantyTerms.find(term => term.id === formData.defaultWarrantyTermId)?.name}</p>
                     )}
+                    <p><strong>Estoque Mínimo:</strong> {formData.minStock}</p>
                   </div>
                 </div>
               )}
