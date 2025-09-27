@@ -146,24 +146,123 @@ export default function AuditPage() {
         ipAddress: '192.168.1.100',
         userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
         createdAt: '2025-09-11T09:00:00Z' // Another day
+      },
+      // Mock sales actions for specific sellers
+      {
+        id: '7',
+        userId: '1', // Admin Sistema
+        userName: 'Admin Sistema',
+        action: 'SALE_FINALIZED',
+        tableName: 'sales',
+        recordId: '1928',
+        newValues: {
+          seller: 'Isaac',
+          customer: 'Erica Maria Alves Do Nascimento',
+          total: 3349.00,
+          discount: 0.00,
+          items: ['iPhone 13 Pro']
+        },
+        ipAddress: '192.168.1.100',
+        userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        createdAt: '2025-09-13T12:35:00Z'
+      },
+      {
+        id: '8',
+        userId: '2', // João Vendedor
+        userName: 'João Vendedor',
+        action: 'SALE_FINALIZED',
+        tableName: 'sales',
+        recordId: '1927',
+        newValues: {
+          seller: 'Joana',
+          customer: 'Marilia Maria Da Silva Alves',
+          total: 2299.00,
+          discount: 0.00,
+          items: ['Samsung Galaxy S22']
+        },
+        ipAddress: '192.168.1.105',
+        userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+        createdAt: '2025-09-13T11:56:00Z'
+      },
+      {
+        id: '9',
+        userId: '1', // Admin Sistema
+        userName: 'Admin Sistema',
+        action: 'DISCOUNT_EXCEEDED',
+        tableName: 'sales',
+        recordId: '1925',
+        oldValues: {
+          originalPrice: 1500.00,
+          discountPercentage: 10
+        },
+        newValues: {
+          finalPrice: 1199.00,
+          discountPercentage: 20
+        },
+        ipAddress: '192.168.1.100',
+        userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        createdAt: '2025-09-13T11:33:00Z'
+      },
+      {
+        id: '10',
+        userId: '4', // Natalia
+        userName: 'Natalia',
+        action: 'PRODUCT_ADD',
+        tableName: 'inventory_units',
+        recordId: 'UNIT001',
+        newValues: {
+          productDescription: 'Fone Bluetooth JBL',
+          costPrice: 120.00,
+          salePrice: 189.90
+        },
+        ipAddress: '192.168.1.115',
+        userAgent: 'Mozilla/5.0 (Linux; Android 10; SM-G970F) AppleWebKit/537.36',
+        createdAt: '2025-09-12T10:00:00Z'
+      },
+      {
+        id: '11',
+        userId: '4', // Natalia
+        userName: 'Natalia',
+        action: 'PRODUCT_DELETE',
+        tableName: 'inventory_units',
+        recordId: 'UNIT005',
+        oldValues: {
+          productDescription: 'Capinha iPhone 12',
+          salePrice: 30.00
+        },
+        ipAddress: '192.168.1.115',
+        userAgent: 'Mozilla/5.0 (Linux; Android 10; SM-G970F) AppleWebKit/537.36',
+        createdAt: '2025-09-12T10:15:00Z'
       }
     ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())); // Sort by date descending
   }, []);
 
   const getActionColor = (action: string) => {
     switch (action) {
-      case 'CREATE': return 'bg-green-100 text-green-800';
+      case 'CREATE':
+      case 'SALE_FINALIZED':
+      case 'PRODUCT_ADD':
+        return 'bg-green-100 text-green-800';
       case 'UPDATE': return 'bg-blue-100 text-blue-800';
-      case 'DELETE': return 'bg-red-100 text-red-800';
+      case 'DELETE':
+      case 'PRODUCT_DELETE':
+        return 'bg-red-100 text-red-800';
+      case 'DISCOUNT_EXCEEDED': return 'bg-orange-100 text-orange-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
 
   const getActionIcon = (action: string) => {
     switch (action) {
-      case 'CREATE': return <CheckCircle size={16} className="text-green-600" />;
+      case 'CREATE':
+      case 'SALE_FINALIZED':
+      case 'PRODUCT_ADD':
+        return <CheckCircle size={16} className="text-green-600" />;
       case 'UPDATE': return <Edit size={16} className="text-blue-600" />;
-      case 'DELETE': return <Trash2 size={16} className="text-red-600" />;
+      case 'DELETE':
+      case 'PRODUCT_DELETE':
+        return <Trash2 size={16} className="text-red-600" />;
+      case 'DISCOUNT_EXCEEDED': return <AlertTriangle size={16} className="text-orange-600" />;
       default: return <Info size={16} className="text-gray-600" />;
     }
   };
@@ -173,6 +272,10 @@ export default function AuditPage() {
       case 'CREATE': return 'Criação';
       case 'UPDATE': return 'Edição';
       case 'DELETE': return 'Exclusão';
+      case 'SALE_FINALIZED': return 'Venda Finalizada';
+      case 'DISCOUNT_EXCEEDED': return 'Desconto Excedido';
+      case 'PRODUCT_ADD': return 'Produto Adicionado';
+      case 'PRODUCT_DELETE': return 'Produto Excluído';
       default: return action;
     }
   };
@@ -194,11 +297,21 @@ export default function AuditPage() {
       warranty_terms: 'Termos de Garantia',
       stock_conditions: 'Condições de Estoque',
       stock_locations: 'Locais de Estoque',
+      inventory_units: 'Unidades de Estoque',
     };
     return tableMap[tableName] || tableName;
   };
 
-  const users = useMemo(() => [...new Set(auditLogs.map(log => ({ id: log.userId, name: log.userName })))], [auditLogs]);
+  const users = useMemo(() => {
+    const uniqueUsers = new Map<string, { id: string; name: string }>();
+    auditLogs.forEach(log => {
+      if (!uniqueUsers.has(log.userId)) {
+        uniqueUsers.set(log.userId, { id: log.userId, name: log.userName });
+      }
+    });
+    return Array.from(uniqueUsers.values());
+  }, [auditLogs]);
+  
   const actions = useMemo(() => [...new Set(auditLogs.map(log => log.action))], [auditLogs]);
   const tables = useMemo(() => [...new Set(auditLogs.map(log => log.tableName))], [auditLogs]);
 
@@ -311,7 +424,7 @@ export default function AuditPage() {
         </div>
         <div className={`rounded-xl p-6 shadow-lg ${theme === 'dark' ? 'bg-slate-800' : 'bg-white'}`}>
           <h3 className={`text-lg font-semibold mb-2 ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>Criações</h3>
-          <p className="text-3xl font-bold text-green-600">{auditLogs.filter(l => l.action === 'CREATE').length}</p>
+          <p className="text-3xl font-bold text-green-600">{auditLogs.filter(l => l.action === 'CREATE' || l.action === 'SALE_FINALIZED' || l.action === 'PRODUCT_ADD').length}</p>
         </div>
         <div className={`rounded-xl p-6 shadow-lg ${theme === 'dark' ? 'bg-slate-800' : 'bg-white'}`}>
           <h3 className={`text-lg font-semibold mb-2 ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>Edições</h3>
@@ -319,7 +432,7 @@ export default function AuditPage() {
         </div>
         <div className={`rounded-xl p-6 shadow-lg ${theme === 'dark' ? 'bg-slate-800' : 'bg-white'}`}>
           <h3 className={`text-lg font-semibold mb-2 ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>Exclusões</h3>
-          <p className="text-3xl font-bold text-red-600">{auditLogs.filter(l => l.action === 'DELETE').length}</p>
+          <p className="text-3xl font-bold text-red-600">{auditLogs.filter(l => l.action === 'DELETE' || l.action === 'PRODUCT_DELETE').length}</p>
         </div>
       </div>
 

@@ -167,6 +167,15 @@ const interestRates = {
 const debitCardFee = 2.5; // 2.5%
 const creditCardFee = 3.5; // 3.5%
 
+// Mock audit log function (for demonstration purposes)
+const mockAuditLog = (logEntry: any) => {
+  console.log('AUDIT LOG:', logEntry);
+  // In a real application, this would send data to a backend audit log service
+};
+
+// Define a discount threshold for logging purposes
+const DISCOUNT_THRESHOLD_PERCENTAGE = 15; // Example: log if discount exceeds 15%
+
 export default function EnhancedSalesModal({ isOpen, onClose }: EnhancedSalesModalProps) {
   const { theme } = useTheme();
   const { showSuccess, showError, showWarning } = useNotification();
@@ -426,7 +435,57 @@ export default function EnhancedSalesModal({ isOpen, onClose }: EnhancedSalesMod
 
     const sellerName = selectedSeller?.name || 'Vendedor';
     const customerInfo = selectedCustomer ? `Cliente: ${selectedCustomer.name}` : 'Cliente Avulso';
-    
+    const saleId = `SALE-${Date.now()}`; // Generate a unique sale ID
+
+    // Simulate logging the sale to audit log
+    mockAuditLog({
+      id: `AUDIT-${Date.now()}-SALE`,
+      userId: selectedSeller?.id || 'unknown', // Use actual user ID if available
+      userName: sellerName,
+      action: 'SALE_FINALIZED',
+      tableName: 'sales',
+      recordId: saleId,
+      newValues: {
+        seller: sellerName,
+        customer: customerInfo,
+        total: getCartTotal(),
+        discount: getDiscountAmount(),
+        items: cart.map(item => ({ id: item.id, description: item.productDescription, price: item.salePrice })),
+        paymentMethods: paymentMethods.map(method => ({ type: method.type, amount: method.amount }))
+      },
+      ipAddress: '127.0.0.1', // Mock IP
+      userAgent: navigator.userAgent,
+      createdAt: new Date().toISOString()
+    });
+
+    // Simulate logging if discount exceeded threshold
+    const subtotal = getCartSubtotal();
+    const discountAmount = getDiscountAmount();
+    const discountPercentage = (discountAmount / subtotal) * 100;
+
+    if (discountPercentage > DISCOUNT_THRESHOLD_PERCENTAGE) {
+      mockAuditLog({
+        id: `AUDIT-${Date.now()}-DISCOUNT-EXCEEDED`,
+        userId: selectedSeller?.id || 'unknown',
+        userName: sellerName,
+        action: 'DISCOUNT_EXCEEDED',
+        tableName: 'sales',
+        recordId: saleId,
+        oldValues: {
+          originalPrice: subtotal,
+          discountPercentage: `${DISCOUNT_THRESHOLD_PERCENTAGE}% (threshold)`
+        },
+        newValues: {
+          finalPrice: getCartTotal(),
+          discountAmount: discountAmount,
+          discountPercentage: `${discountPercentage.toFixed(2)}% (applied)`
+        },
+        ipAddress: '127.0.0.1',
+        userAgent: navigator.userAgent,
+        createdAt: new Date().toISOString()
+      });
+    }
+
     showSuccess(
       'Venda Finalizada!', 
       `${customerInfo} • Total: R$ ${formatCurrencyBR(getCartTotal())} • Vendedor: ${sellerName}`

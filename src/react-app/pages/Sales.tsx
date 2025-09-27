@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { 
   ShoppingCart, 
   Filter, 
@@ -16,7 +16,8 @@ import {
   Package,
   Calculator, // Importar Calculator
   Edit3,
-  Check
+  Check,
+  Award // Ícone para ranking
 } from 'lucide-react';
 import { useTheme } from '@/react-app/hooks/useTheme';
 import { useNotification } from '@/react-app/components/NotificationSystem';
@@ -85,10 +86,10 @@ const mockProducts = [
 ];
 
 const mockSellers = [
-  { id: '1', name: 'João Vendedor' },
-  { id: '2', name: 'Maria Silva' },
-  { id: '3', name: 'Pedro Santos' },
-  { id: '4', name: 'Ana Costa' },
+  { id: '1', name: 'Isaac' },
+  { id: '2', name: 'Joana' },
+  { id: '3', name: 'Maria Madalena Da Conceição' },
+  { id: '4', name: 'Natalia' },
 ];
 
 const mockWarrantyTerms = [
@@ -109,7 +110,7 @@ export default function Sales() {
   const [isCardSimulatorOpen, setIsCardSimulatorOpen] = useState(false);
   const [productSearch, setProductSearch] = useState('');
   const [viewingSaleId, setViewingSaleId] = useState<string | null>(null);
-  
+  const [sellerRankingSortOrder, setSellerRankingSortOrder] = useState<'desc' | 'asc'>('desc');
 
   // Mock data for sales
   const sales: Sale[] = [
@@ -139,6 +140,7 @@ export default function Sales() {
       id: '1925',
       date: '13/09/2025 11:33',
       seller: 'Maria Madalena Da Conceição',
+      customer: 'Cliente Avulso',
       status: 'Finalizada',
       origin: 'PDV Caixa IP #382',
       total: 1199.00,
@@ -169,11 +171,28 @@ export default function Sales() {
     }
   ];
 
-  const totalRevenue = 345412.96;
-  const totalTaxes = 17.64;
-  const totalProfit = 26196.35;
+  const totalRevenue = sales.reduce((sum, sale) => sum + sale.total, 0);
+  const totalTaxes = sales.reduce((sum, sale) => sum + sale.taxes, 0);
+  const totalProfit = sales.reduce((sum, sale) => sum + sale.profit, 0);
 
-  
+  // Calculate seller ranking
+  const sellerRanking = useMemo(() => {
+    const rankingMap: { [key: string]: { name: string; totalSales: number; salesCount: number } } = {};
+    sales.forEach(sale => {
+      if (!rankingMap[sale.seller]) {
+        rankingMap[sale.seller] = { name: sale.seller, totalSales: 0, salesCount: 0 };
+      }
+      rankingMap[sale.seller].totalSales += sale.total;
+      rankingMap[sale.seller].salesCount += 1;
+    });
+
+    return Object.values(rankingMap).sort((a, b) => {
+      if (sellerRankingSortOrder === 'desc') {
+        return b.totalSales - a.totalSales;
+      }
+      return a.totalSales - b.totalSales;
+    });
+  }, [sales, sellerRankingSortOrder]);
 
   const handleNewSale = () => {
     setIsNewSaleModalOpen(true);
@@ -333,8 +352,66 @@ export default function Sales() {
         </div>
       </div>
 
+      {/* Seller Ranking */}
+      <div className="p-6 pt-0">
+        <div className={`rounded-lg shadow-lg overflow-hidden mb-6 ${
+          theme === 'dark' ? 'bg-slate-800' : 'bg-white'
+        }`}>
+          <div className={`p-4 border-b ${theme === 'dark' ? 'border-slate-700' : 'border-slate-200'} flex justify-between items-center`}>
+            <h3 className={`text-lg font-semibold flex items-center ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>
+              <Award className="mr-2 text-yellow-500" size={20} />
+              Ranking de Vendedores
+            </h3>
+            <button
+              onClick={() => setSellerRankingSortOrder(prev => prev === 'desc' ? 'asc' : 'desc')}
+              className={`px-3 py-1 rounded-lg text-sm font-medium flex items-center transition-colors ${
+                theme === 'dark'
+                  ? 'bg-slate-700 text-white hover:bg-slate-600'
+                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+              }`}
+            >
+              Ordenar por Vendas {sellerRankingSortOrder === 'desc' ? '↓' : '↑'}
+            </button>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className={theme === 'dark' ? 'bg-slate-700' : 'bg-slate-50'}>
+                <tr>
+                  <th className={`text-left py-3 px-4 font-semibold text-sm ${theme === 'dark' ? 'text-slate-200' : 'text-slate-700'}`}>Posição</th>
+                  <th className={`text-left py-3 px-4 font-semibold text-sm ${theme === 'dark' ? 'text-slate-200' : 'text-slate-700'}`}>Vendedor</th>
+                  <th className={`text-left py-3 px-4 font-semibold text-sm ${theme === 'dark' ? 'text-slate-200' : 'text-slate-700'}`}>Total Vendido</th>
+                  <th className={`text-left py-3 px-4 font-semibold text-sm ${theme === 'dark' ? 'text-slate-200' : 'text-slate-700'}`}>Nº de Vendas</th>
+                </tr>
+              </thead>
+              <tbody>
+                {sellerRanking.map((seller, index) => (
+                  <tr key={seller.name} className={`border-b transition-colors ${
+                    theme === 'dark' 
+                      ? 'border-slate-700 hover:bg-slate-700/50' 
+                      : 'border-slate-100 hover:bg-slate-50'
+                  }`}>
+                    <td className={`py-3 px-4 font-medium text-sm ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>
+                      {index + 1}º
+                    </td>
+                    <td className={`py-3 px-4 text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-slate-600'}`}>
+                      {seller.name}
+                    </td>
+                    <td className={`py-3 px-4 text-sm font-semibold ${theme === 'dark' ? 'text-green-400' : 'text-green-600'}`}>
+                      R$ {seller.totalSales.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    </td>
+                    <td className={`py-3 px-4 text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-slate-600'}`}>
+                      {seller.salesCount}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
       {/* Sales Table */}
-      <div className="p-6">
+      <div className="p-6 pt-0">
         <div className={`rounded-lg shadow-lg overflow-hidden ${
           theme === 'dark' ? 'bg-slate-800' : 'bg-white'
         }`}>
@@ -442,7 +519,7 @@ export default function Sales() {
                       theme === 'dark' ? 'text-slate-300' : 'text-slate-600'
                     }`}>
                       R$ {sale.taxes.toFixed(2)}
-                    </td>
+                    </td >
                     <td className={`py-3 px-4 text-sm font-semibold ${
                       theme === 'dark' ? 'text-green-400' : 'text-green-600'
                     }`}>
