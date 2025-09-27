@@ -15,13 +15,15 @@ import {
   FileText,
   CheckCircle,
   Clock,
-  AlertTriangle // Importar AlertTriangle para estoque baixo
+  AlertTriangle, // Importar AlertTriangle para estoque baixo
+  DollarSign // Importar DollarSign para o botão de atualização de preços
 } from 'lucide-react';
 import PurchaseModal from '@/react-app/components/PurchaseModal';
 import FinalizePurchaseModal from '@/react-app/components/FinalizePurchaseModal';
 import PurchaseViewModal from '@/react-app/components/PurchaseViewModal';
 import ProductHistoryModal from '@/react-app/components/ProductHistoryModal';
 import ProductModal from '@/react-app/components/ProductModal'; // Importar ProductModal
+import BulkPriceUpdateModal from '@/react-app/components/BulkPriceUpdateModal'; // Importar o novo modal
 import { useNotification } from '@/react-app/components/NotificationSystem';
 
 interface InventoryUnit {
@@ -96,6 +98,9 @@ export default function Inventory() {
   // New states for ProductModal (editing inventory units)
   const [isProductEditModalOpen, setIsProductEditModalOpen] = useState(false);
   const [editingProductUnit, setEditingProductUnit] = useState<InventoryUnit | null>(null);
+
+  // New state for BulkPriceUpdateModal
+  const [isBulkPriceUpdateModalOpen, setIsBulkPriceUpdateModalOpen] = useState(false);
 
   // Purchase filters
   const [purchaseDateFrom, setPurchaseDateFrom] = useState('');
@@ -573,6 +578,13 @@ export default function Inventory() {
           <p className="text-slate-600">Gestão completa de produtos e compras</p>
         </div>
         <div className="flex gap-3">
+          <button 
+            onClick={() => setIsBulkPriceUpdateModalOpen(true)} // Botão para abrir o modal de atualização em massa
+            className="bg-gradient-to-r from-purple-500 to-purple-600 text-white px-8 py-4 rounded-lg hover:shadow-lg transition-all duration-200 flex items-center font-medium text-lg"
+          >
+            <DollarSign className="mr-3" size={24} />
+            Atualizar Preços em Massa
+          </button>
           <button 
             onClick={handleNewPurchase}
             className="bg-gradient-to-r from-blue-500 to-blue-600 text-white px-8 py-4 rounded-lg hover:shadow-lg transition-all duration-200 flex items-center font-medium text-lg"
@@ -1170,6 +1182,14 @@ export default function Inventory() {
         }}
         product={editingProductUnit} // Pass the selected unit for editing
         onProductSaved={handleProductUnitSaved} // Handle saving updates
+      />
+
+      {/* Bulk Price Update Modal */}
+      <BulkPriceUpdateModal
+        isOpen={isBulkPriceUpdateModalOpen}
+        onClose={() => setIsBulkPriceUpdateModalOpen(false)}
+        inventoryUnits={inventoryUnits}
+        onUpdateInventoryUnits={setInventoryUnits}
       />
     </div>
   );
