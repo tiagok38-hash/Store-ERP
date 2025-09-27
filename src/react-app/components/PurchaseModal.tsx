@@ -323,7 +323,9 @@ export default function PurchaseModal({
           observations: editingPurchase.observations || ''
         });
         setSelectedSupplier(editingPurchase.supplier_id || '');
-        setSupplierSearchTerm(suppliers.find(s => s.id === editingPurchase.supplier_id)?.name || '');
+        // Melhoria: Usar editingPurchase.supplier_name como fallback se a lista de suppliers ainda não carregou
+        const foundSupplierName = suppliers.find(s => s.id === editingPurchase.supplier_id)?.name;
+        setSupplierSearchTerm(foundSupplierName || editingPurchase.supplier_name || '');
         setItems(editingPurchase.items || []);
         setAdditionalCost(editingPurchase.additional_cost || 0);
         // Re-populate product selection fields if editing an existing item
