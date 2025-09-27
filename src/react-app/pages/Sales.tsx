@@ -203,7 +203,7 @@ export default function Sales() {
       <div className={`p-6 border-b ${
         theme === 'dark' ? 'border-slate-700 bg-slate-900/50' : 'border-slate-200 bg-white/50'
       }`}>
-        <div className="flex justify-between items-center mb-6">
+        <div className="flex justify-between items-center mb-2"> {/* Ajustado mb-6 para mb-2 para dar espaço ao subtítulo */}
           <h1 className={`text-2xl font-bold flex items-center ${
             theme === 'dark' ? 'text-white' : 'text-slate-800'
           }`}>
@@ -211,6 +211,10 @@ export default function Sales() {
             Vendas
           </h1>
         </div>
+        {/* Subtítulo adicionado aqui */}
+        <p className={`text-slate-600 mb-6 ${theme === 'dark' ? 'text-slate-300' : ''}`}>
+          Gerencie suas vendas e transações
+        </p>
 
         {/* Date Filters and Action Buttons */}
         <div className="flex flex-wrap items-center gap-4 mb-6">
