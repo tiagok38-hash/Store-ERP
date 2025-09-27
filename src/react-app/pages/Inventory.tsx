@@ -16,8 +16,10 @@ import {
   CheckCircle,
   Clock,
   AlertTriangle, // Importar AlertTriangle para estoque baixo
-  DollarSign // Importar DollarSign para o botão de atualização de preços
+  DollarSign, // Importar DollarSign para o botão de atualização de preços
+  Settings // Importar Settings para o novo botão
 } from 'lucide-react';
+import { Link } from 'react-router-dom'; // Importar Link para navegação
 import PurchaseModal from '@/react-app/components/PurchaseModal';
 import FinalizePurchaseModal from '@/react-app/components/FinalizePurchaseModal';
 import PurchaseViewModal from '@/react-app/components/PurchaseViewModal';
@@ -578,7 +580,7 @@ export default function Inventory() {
           <p className="text-slate-600">Gestão completa de produtos e compras</p>
         </div>
         <div className="flex gap-3">
-          {/* Botão Nova Compra/Produto (agora primeiro e menor) */}
+          {/* Botão Nova Compra/Produto */}
           <button 
             onClick={handleNewPurchase}
             className="bg-gradient-to-r from-blue-500 to-blue-600 text-white px-6 py-3 rounded-lg hover:shadow-lg transition-all duration-200 flex items-center font-medium"
@@ -586,7 +588,7 @@ export default function Inventory() {
             <ShoppingBag className="mr-2" size={20} />
             Nova Compra/Produto
           </button>
-          {/* Botão Atualizar Preços em Massa (agora segundo e menor) */}
+          {/* Botão Atualizar Preços em Massa */}
           <button 
             onClick={() => setIsBulkPriceUpdateModalOpen(true)}
             className="bg-gradient-to-r from-purple-500 to-purple-600 text-white px-6 py-3 rounded-lg hover:shadow-lg transition-all duration-200 flex items-center font-medium"
@@ -594,6 +596,14 @@ export default function Inventory() {
             <DollarSign className="mr-2" size={20} />
             Atualizar Preços
           </button>
+          {/* Novo Botão para Configurações de Estoque */}
+          <Link 
+            to="/administration/warranty-stock"
+            className="bg-gradient-to-r from-indigo-500 to-indigo-600 text-white px-6 py-3 rounded-lg hover:shadow-lg transition-all duration-200 flex items-center font-medium"
+          >
+            <Settings className="mr-2" size={20} />
+            Configurações de Estoque
+          </Link>
         </div>
       </div>
 
@@ -793,7 +803,6 @@ export default function Inventory() {
                         </td>
                         
                         <td className="py-3 px-4">
-                          {/* Removido o div com a inicial da marca */}
                           <div>
                             <div className="font-medium text-slate-800">{unit.brand}</div>
                             <div className="text-sm text-slate-600">{unit.category}</div>
