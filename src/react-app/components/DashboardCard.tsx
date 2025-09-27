@@ -142,18 +142,18 @@ export default function DashboardCard({
           {icon}
         </div>
         {trend !== undefined && (
-          <div className={`flex items-center text-sm ${isPositive ? 'text-green-100' : isNegative ? 'text-red-100' : 'text-white/80'}`}>
-            {isPositive && <TrendingUp size={16} className="mr-1" />}
-            {isNegative && <TrendingDown size={16} className="mr-1" />}
+          <div className={`flex items-center text-base ${isPositive ? 'text-green-100' : isNegative ? 'text-red-100' : 'text-white/80'}`}>
+            {isPositive && <TrendingUp size={18} className="mr-1" />}
+            {isNegative && <TrendingDown size={18} className="mr-1" />}
             {Math.abs(trend)}%
           </div>
         )}
       </div>
       <div>
-        <h3 className="text-2xl font-bold mb-1">{value}</h3>
-        <p className="text-white/90 text-sm">{title}</p>
+        <h3 className="text-3xl font-bold mb-1">{value}</h3> {/* Aumentado de text-2xl para text-3xl */}
+        <p className="text-white/90 text-lg">{title}</p> {/* Aumentado de text-sm para text-lg */}
         {subtitle && (
-          <p className="text-xs text-white/80 mt-1">{subtitle}</p>
+          <p className="text-base text-white/80 mt-1">{subtitle}</p> {/* Aumentado de text-xs para text-base */}
         )}
       </div>
     </div>

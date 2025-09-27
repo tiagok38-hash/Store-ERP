@@ -53,11 +53,10 @@ export default function Dashboard() {
   const [customDateTo, setCustomDateTo] = useState('');
   const [cardSettings, setCardSettings] = useState(() => {
     const defaultSettings = {
-      sales: { visible: true, color: 'from-blue-600 to-blue-700' },
-      revenue: { visible: true, color: 'from-green-600 to-green-700' },
+      revenueAndSales: { visible: true, color: 'from-blue-600 to-blue-700' }, // Novo card combinado
       stock: { visible: true, color: 'from-orange-600 to-orange-700' },
       customers: { visible: true, color: 'from-purple-600 to-purple-700' },
-      lowStock: { visible: true, color: 'from-red-500 to-red-600' } // Novo card
+      lowStock: { visible: true, color: 'from-red-500 to-red-600' }
     };
     const saved = localStorage.getItem('dashboardCardSettings');
     if (saved) {
@@ -66,10 +65,8 @@ export default function Dashboard() {
         const mergedSettings = { ...defaultSettings };
         for (const key in parsedSaved) {
           if (parsedSaved.hasOwnProperty(key) && mergedSettings.hasOwnProperty(key)) {
-            // Merge individual properties, ensuring defaults are not overwritten by undefined/null
             mergedSettings[key] = { ...mergedSettings[key], ...parsedSaved[key] };
           } else if (parsedSaved.hasOwnProperty(key)) {
-            // Add new keys from saved settings if they don't exist in defaults
             mergedSettings[key] = parsedSaved[key];
           }
         }
@@ -304,32 +301,19 @@ export default function Dashboard() {
       {/* Cards */}
       {hasPermission(UserPermissions.DASHBOARD_CARDS_VIEW) && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          {/* Vendas Card */}
+          {/* Faturamento e Vendas Card (Combinado) */}
           <DashboardCard
-            id="sales"
-            title={`Vendas ${getPeriodLabel(selectedPeriod)}`}
-            value={data.sales.toString()}
-            icon={<ShoppingCart size={24} />}
-            trend={parseInt(data.salesTrend.replace('%', '').replace('+', ''))}
-            subtitle={`Lucro: R$ ${data.profit.toLocaleString('pt-BR')}`}
-            isVisible={cardSettings.sales.visible}
-            customColor={cardSettings.sales.color}
-            onVisibilityChange={handleCardVisibilityChange}
-            onColorChange={handleCardColorChange}
-            onClick={() => navigate('/sales')}
-          />
-
-          {/* Faturamento Card */}
-          <DashboardCard
-            id="revenue"
+            id="revenueAndSales"
             title="Faturamento"
             value={`R$ ${data.revenue.toLocaleString('pt-BR')}`}
             icon={<DollarSign size={24} />}
             trend={parseInt(data.revenueTrend.replace('%', '').replace('+', ''))}
-            isVisible={cardSettings.revenue.visible}
-            customColor={cardSettings.revenue.color}
+            subtitle={`Vendas: ${data.sales} | Lucro: R$ ${data.profit.toLocaleString('pt-BR')}`}
+            isVisible={cardSettings.revenueAndSales.visible}
+            customColor={cardSettings.revenueAndSales.color}
             onVisibilityChange={handleCardVisibilityChange}
             onColorChange={handleCardColorChange}
+            onClick={() => navigate('/sales')}
           />
 
           {/* Estoque Card */}
