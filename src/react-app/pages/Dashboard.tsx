@@ -61,9 +61,23 @@ export default function Dashboard() {
     };
     const saved = localStorage.getItem('dashboardCardSettings');
     if (saved) {
-      const parsedSaved = JSON.parse(saved);
-      // Merge saved settings with default settings to ensure new cards are included
-      return { ...defaultSettings, ...parsedSaved };
+      try {
+        const parsedSaved = JSON.parse(saved);
+        const mergedSettings = { ...defaultSettings };
+        for (const key in parsedSaved) {
+          if (parsedSaved.hasOwnProperty(key) && mergedSettings.hasOwnProperty(key)) {
+            // Merge individual properties, ensuring defaults are not overwritten by undefined/null
+            mergedSettings[key] = { ...mergedSettings[key], ...parsedSaved[key] };
+          } else if (parsedSaved.hasOwnProperty(key)) {
+            // Add new keys from saved settings if they don't exist in defaults
+            mergedSettings[key] = parsedSaved[key];
+          }
+        }
+        return mergedSettings;
+      } catch (e) {
+        console.error("Failed to parse dashboardCardSettings from localStorage, using default.", e);
+        return defaultSettings;
+      }
     }
     return defaultSettings;
   });
