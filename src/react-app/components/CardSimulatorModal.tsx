@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { X, Calculator, CreditCard } from 'lucide-react';
 import { useTheme } from '@/react-app/hooks/useTheme';
 import { formatCurrencyInput, parseCurrencyBR } from '@/react-app/utils/currency';
@@ -35,7 +35,6 @@ export default function CardSimulatorModal({ isOpen, onClose }: CardSimulatorMod
   const [productValue, setProductValue] = useState('');
   const [paymentType, setPaymentType] = useState<'debit' | 'credit'>('credit');
   const [installments, setInstallments] = useState(1);
-  const [calculated, setCalculated] = useState(false);
   const [calculationResult, setCalculationResult] = useState({
     originalValue: 0,
     interestRate: 0,
@@ -52,10 +51,16 @@ export default function CardSimulatorModal({ isOpen, onClose }: CardSimulatorMod
     }, 300); // Match animation duration
   };
 
-  const handleCalculate = () => {
+  const performCalculation = () => {
     const value = parseCurrencyBR(productValue);
     
     if (value <= 0) {
+      setCalculationResult({
+        originalValue: 0,
+        interestRate: 0,
+        totalWithInterest: 0,
+        installmentValue: 0
+      });
       return;
     }
 
@@ -75,21 +80,21 @@ export default function CardSimulatorModal({ isOpen, onClose }: CardSimulatorMod
       totalWithInterest,
       installmentValue
     });
-    
-    setCalculated(true);
   };
+
+  useEffect(() => {
+    performCalculation();
+  }, [productValue, paymentType, installments]);
 
   const handleProductValueChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const formatted = formatCurrencyInput(e.target.value);
     setProductValue(formatted);
-    setCalculated(false);
   };
 
   const resetCalculation = () => {
     setProductValue('');
     setPaymentType('credit');
     setInstallments(1);
-    setCalculated(false);
     setCalculationResult({
       originalValue: 0,
       interestRate: 0,
@@ -99,6 +104,8 @@ export default function CardSimulatorModal({ isOpen, onClose }: CardSimulatorMod
   };
 
   if (!isOpen && !isAnimatingOut) return null;
+
+  const showResults = parseCurrencyBR(productValue) > 0;
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
@@ -166,6 +173,7 @@ export default function CardSimulatorModal({ isOpen, onClose }: CardSimulatorMod
               </label>
               <div className="grid grid-cols-2 gap-3">
                 <button
+                  type="button"
                   onClick={() => setPaymentType('debit')}
                   className={`p-3 border rounded-lg flex items-center justify-center transition-all ${
                     paymentType === 'debit'
@@ -179,6 +187,7 @@ export default function CardSimulatorModal({ isOpen, onClose }: CardSimulatorMod
                   Débito
                 </button>
                 <button
+                  type="button"
                   onClick={() => setPaymentType('credit')}
                   className={`p-3 border rounded-lg flex items-center justify-center transition-all ${
                     paymentType === 'credit'
@@ -231,7 +240,7 @@ export default function CardSimulatorModal({ isOpen, onClose }: CardSimulatorMod
           </div>
 
           {/* Resultado da Simulação */}
-          {calculated && (
+          {showResults && (
             <div className={`p-4 rounded-lg border-2 mb-6 ${
               theme === 'dark' 
                 ? 'bg-slate-700/50 border-slate-600' 
@@ -288,6 +297,7 @@ export default function CardSimulatorModal({ isOpen, onClose }: CardSimulatorMod
           {/* Botões de Ação */}
           <div className="flex gap-3 justify-end">
             <button
+              type="button"
               onClick={resetCalculation}
               className={`px-6 py-3 rounded-xl font-medium transition-all duration-200 ${
                 theme === 'dark'
@@ -296,14 +306,6 @@ export default function CardSimulatorModal({ isOpen, onClose }: CardSimulatorMod
               }`}
             >
               Limpar
-            </button>
-            <button
-              onClick={handleCalculate}
-              disabled={!productValue || parseCurrencyBR(productValue) <= 0}
-              className="px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl font-medium shadow-lg transition-all duration-200 hover:shadow-xl hover:scale-105 flex items-center disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
-            >
-              <Calculator className="mr-2" size={16} />
-              Calcular
             </button>
           </div>
         </div>
